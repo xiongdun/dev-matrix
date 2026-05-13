@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <Sidebar :collapsed="sidebarCollapsed" @toggle="toggleSidebar" />
     <main class="main-content">
       <Dashboard />

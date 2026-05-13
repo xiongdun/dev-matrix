@@ -19,6 +19,7 @@ DevMatrix is an enterprise-grade AI software development platform that orchestra
 - **Multi-Repository Support**: Manage and modify multiple repositories simultaneously
 - **Audit Logging**: Complete traceability of all state changes and agent actions
 - **Vue 3 Dashboard**: macOS glassmorphism UI with real-time monitoring
+- **Internationalization (i18n)**: Full Chinese/English support for both backend and frontend
 
 ## Architecture
 
@@ -45,12 +46,13 @@ DevMatrix is an enterprise-grade AI software development platform that orchestra
 | Layer | Technology |
 |-------|-----------|
 | Workflow Engine | Temporal |
-| API Framework | FastAPI |
-| Frontend | Vue 3 + TypeScript + Vite |
+| API Framework | FastAPI (port 8000) |
+| Frontend | Vue 3 + TypeScript + Vite (port 3000) |
 | State Storage | SQLite (dev) / PostgreSQL (prod) |
 | Code Graph | In-memory (dev) / Neo4j (prod) |
 | Sandbox | Docker (dev) / Firecracker (prod) |
-| LLM Providers | OpenAI, Anthropic, Azure |
+| LLM Providers | OpenAI, Anthropic |
+| i18n | Backend: JSON locales / Frontend: vue-i18n |
 
 ## Project Structure
 
@@ -70,74 +72,111 @@ dev-matrix/
 │   │   ├── workflow.py          # Workflow control
 │   │   └── registry.py          # Registry introspection
 │   ├── code_intelligence/        # Code analysis & graph
-│   │   ├── indexer.py           # Code indexing
-│   │   ├── retriever.py         # Context retrieval
-│   │   └── code_graph.py        # Graph builder + Neo4j
-│   ├── core/registry/            # Component registration
-│   │   ├── base.py              # Generic Registry
+│   │   ├── indexer.py           # AST code indexing
+│   │   ├── retriever.py         # Context retrieval with scoring
+│   │   └── code_graph.py        # Graph builder + Neo4j backend
+│   ├── core/registry/            # Component registration (Registry Pattern)
+│   │   ├── base.py              # Generic Registry<T>
 │   │   ├── agent_registry.py    # AgentRegistry
 │   │   ├── llm_registry.py      # LLMProviderRegistry
-│   │   └── discovery.py         # Auto-discovery
-│   ├── events/                   # Event-driven architecture
+│   │   └── discovery.py         # Auto-discovery utility
+│   ├── events/                   # Event-driven architecture (EventBus)
 │   │   ├── bus.py               # EventBus (pub-sub)
 │   │   ├── types.py             # Event type definitions
 │   │   └── handlers/            # Event handlers
+│   │       ├── state_handlers.py
+│   │       ├── workflow_handlers.py
+│   │       ├── agent_handlers.py
+│   │       └── approval_handlers.py
+│   ├── i18n/                     # Internationalization
+│   │   ├── core.py              # i18n utilities
+│   │   └── locales/             # Translation files
+│   │       ├── en.json
+│   │       └── zh.json
 │   ├── llm/                      # LLM abstraction layer
 │   │   ├── client.py            # LLM client implementations
 │   │   ├── router.py            # LLM routing with strategies
-│   │   └── strategies/          # Routing strategies
+│   │   └── strategies/          # Routing strategies (Strategy Pattern)
 │   │       ├── base.py          # Strategy ABC
 │   │       ├── quality_first.py # Quality-first strategy
 │   │       ├── cost_first.py    # Cost-first strategy
 │   │       └── config_driven.py # Config-driven strategy
-│   ├── prompts/                  # Prompt template engine
+│   ├── prompts/                  # Prompt template engine (Jinja2)
 │   │   ├── engine.py            # Jinja2PromptTemplate
 │   │   ├── registry.py          # PromptRegistry
 │   │   ├── loader.py            # Filesystem loader
 │   │   └── templates/           # .j2 template files
-│   ├── state/                    # State management
+│   │       ├── business_analyst.j2
+│   │       ├── product_manager.j2
+│   │       ├── architect.j2
+│   │       ├── developer.j2
+│   │       └── qa.j2
+│   ├── skills/                   # Pluggable Skill system
+│   │   ├── base.py              # BaseSkill, SkillResult, SkillConfig
+│   │   ├── registry.py          # SkillRegistry with decorator registration
+│   │   ├── code_search.py       # Code search skill
+│   │   ├── prompt_enhance.py    # Prompt enhancement skill
+│   │   └── validation.py        # Output validation skill
+│   ├── state/                    # State management + snapshots
 │   │   ├── models.py            # SQLAlchemy models
-│   │   └── repository.py        # StateRepository + snapshots
-│   ├── utils/                    # Utilities
-│   │   ├── retry.py             # Retry decorators
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   └── repository.py        # StateRepository + snapshots + rollback
+│   ├── utils/                    # Utilities (retry, audit, sandbox, git)
+│   │   ├── retry.py             # Retry decorators (backoff + immediate)
 │   │   ├── audit.py             # Audit logging
 │   │   ├── multi_repo.py        # Multi-repo manager
 │   │   ├── git_provider.py      # GitHub/GitLab integration
 │   │   └── sandbox.py           # Docker/Firecracker sandbox
-│   ├── workflow/                 # Temporal workflows
+│   ├── workflow/                 # Temporal workflows + configurable pipeline
 │   │   ├── activities.py        # Activity implementations
 │   │   ├── definitions.py       # DevWorkflow class
-│   │   └── pipeline/            # Configurable pipeline
-│   │       ├── models.py        # PipelineStage, PipelineConfig
-│   │       ├── loader.py        # YAML loader
-│   │       └── executor.py      # WorkflowPipeline executor
-│   ├── config.py                # Application configuration
+│   │   ├── pipeline/            # Configurable pipeline (Pipeline Pattern)
+│   │   │   ├── models.py        # PipelineStage, PipelineConfig
+│   │   │   ├── loader.py        # YAML/JSON loader
+│   │   │   └── executor.py      # WorkflowPipeline executor
+│   │   └── worker.py            # Temporal Worker entry
+│   ├── config.py                # Pydantic Settings
 │   └── main.py                  # FastAPI application entry
 ├── config/                       # Configuration files
 │   ├── llm-routing.yaml         # LLM routing rules
 │   └── workflow-pipeline.yaml   # Workflow stage definitions
-├── frontend/                     # Vue 3 + TypeScript frontend
+├── frontend/                     # Vue 3 + TypeScript + Vite frontend
 │   ├── src/
 │   │   ├── main.ts              # Application entry
 │   │   ├── App.vue              # Root component
 │   │   ├── style.css            # macOS glassmorphism styles
 │   │   ├── api/                 # API service layer
-│   │   └── components/          # Vue components
-│   │       ├── Sidebar.vue      # Collapsible sidebar
-│   │       ├── Dashboard.vue    # Main dashboard
-│   │       ├── StatCard.vue     # Statistics cards
-│   │       ├── ActivityList.vue # Recent activity
-│   │       └── TaskList.vue     # Recent tasks
+│   │   ├── components/          # Vue components
+│   │   │   ├── Sidebar.vue      # Collapsible sidebar
+│   │   │   ├── Dashboard.vue    # Main dashboard
+│   │   │   ├── StatCard.vue     # Statistics cards
+│   │   │   ├── ActivityList.vue # Recent activity
+│   │   │   └── TaskList.vue     # Recent tasks
+│   │   └── i18n/                # Frontend i18n
+│   │       ├── index.ts
+│   │       └── locales/
+│   │           ├── en.json
+│   │           └── zh.json
 │   ├── index.html
 │   ├── package.json
-│   ├── vite.config.ts           # Vite + proxy config
-│   └── tsconfig.json            # TypeScript config
+│   ├── vite.config.ts           # Vite + proxy to backend:8000
+│   ├── tsconfig.json
+│   └── tsconfig.node.json
 ├── tests/                        # Test suite
+│   ├── test_registry.py         # Registry pattern tests
+│   ├── test_events.py           # EventBus tests
+│   └── test_state.py            # State repository tests
 ├── docs/                         # Documentation
-├── docker-compose.yml            # Infrastructure services
+│   └── architecture.md          # Architecture documentation
+├── docker-compose.yml            # Infrastructure services (Temporal, Postgres, Redis)
 ├── Dockerfile                    # Application container
 ├── requirements.txt              # Python dependencies
-└── pytest.ini                   # Test configuration
+├── pytest.ini                   # Test configuration
+├── .env.example                 # Environment variables template
+├── .gitignore                   # Git ignore rules
+├── LICENSE                      # MIT License
+├── CLAUDE.md                    # Project context for AI assistants
+└── README.md                    # This file
 ```
 
 ## Design Patterns
@@ -183,7 +222,7 @@ python -c "from app.state.models import init_db; init_db()"
 ### 4. Start Temporal Worker
 
 ```bash
-python app/worker.py
+python app/workflow/worker.py
 ```
 
 ### 5. Start API Server
@@ -244,6 +283,74 @@ curl http://localhost:8000/approvals/{project_id}/snapshots
 curl -X POST "http://localhost:8000/approvals/{project_id}/rollback?snapshot_id={id}"
 ```
 
+## Using Skills
+
+Skills are independent, reusable capability units that can be used standalone or composed with Agents.
+
+### Standalone Usage
+
+```python
+from app.skills.code_search import CodeSearchSkill
+
+skill = CodeSearchSkill()
+result = await skill.execute({"query": "authentication", "repo_path": "./my-project"})
+print(result.output)
+```
+
+### Compose with Agent
+
+```python
+from app.agents.architect import ArchitectAgent
+from app.skills.code_search import CodeSearchSkill
+
+agent = ArchitectAgent(llm_router, state_repo)
+agent.use_skill(CodeSearchSkill())
+
+# Agent will automatically use code_search skill during proposal generation
+proposal = await agent.generate_proposal(project_id, context)
+```
+
+### Register Custom Skill
+
+```python
+from app.skills.base import BaseSkill, SkillResult
+from app.skills.registry import register_skill
+
+@register_skill("my_skill")
+class MySkill(BaseSkill):
+    name = "my_skill"
+    description = "My custom skill"
+
+    async def execute(self, context):
+        return SkillResult(output="done")
+```
+
+## Internationalization (i18n)
+
+DevMatrix supports both Chinese (zh) and English (en) with full i18n coverage.
+
+### Backend i18n
+
+Backend translations are stored in `app/i18n/locales/`:
+
+```python
+from app.i18n.core import get_text
+
+message = get_text("workflow.approval_required", locale="zh")
+```
+
+### Frontend i18n
+
+Frontend uses `vue-i18n` with translations in `frontend/src/i18n/locales/`:
+
+```vue
+<template>
+  <p>{{ $t('dashboard.title') }}</p>
+</template>
+```
+
+Switch language via the locale selector in the UI or by setting `DEFAULT_LOCALE` in `.env`.
+
 ## Development
 
 ### Run Tests
@@ -258,7 +365,11 @@ Copy `.env.example` to `.env` and configure:
 
 - `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` - LLM provider credentials
 - `DATABASE_URL` - Database connection string (defaults to SQLite)
-- `TEMPORAL_HOST` - Temporal server address
+- `TEMPORAL_HOST` - Temporal server address (default: `localhost:7233`)
+- `REDIS_URL` - Redis connection (default: `redis://localhost:6379/0`)
+- `APP_HOST` / `APP_PORT` - API server bind address (default: `0.0.0.0:8000`)
+- `DEFAULT_LOCALE` - Default language: `zh` or `en` (default: `zh`)
+- `LLM_STRATEGY` - Routing strategy: `quality_first`, `cost_first`, or `config_driven`
 - `GITHUB_TOKEN` - For PR automation (optional)
 - `NEO4J_URI` - Neo4j connection (optional)
 

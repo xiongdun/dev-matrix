@@ -5,10 +5,7 @@
       :key="activity.id"
       class="activity-item"
     >
-      <div class="activity-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-        </svg>
+      <div class="activity-icon" :style="{ backgroundColor: getActivityColor(activity.type) }">
       </div>
       <div class="activity-content">
         <div class="activity-title">{{ activity.title }}</div>
@@ -25,6 +22,17 @@
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+
+function getActivityColor(type: string): string {
+  const colors: Record<string, string> = {
+    requirement_created: '#22c55e',
+    workflow_started: '#3b82f6',
+    approval_submitted: '#a855f7',
+    agent_action: '#f59e0b',
+    snapshot_created: '#06b6d4',
+  }
+  return colors[type] || '#71717a'
+}
 
 defineProps<{
   activities: Array<{

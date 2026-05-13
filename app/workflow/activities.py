@@ -15,6 +15,44 @@ from app.workflow.pipeline.executor import ActivityContext
 
 audit_logger = AuditLogger()
 
+# Global singletons for reuse within the worker process
+_llm_router = None
+_state_repo = None
+
+
+def _get_llm_router():
+    global _llm_router
+    if _llm_router is None:
+        _llm_router = LLMRouter()
+    return _llm_router
+
+
+def _get_state_repo():
+    global _state_repo
+    if _state_repo is None:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from app.config import get_settings
+
+        settings = get_settings()
+        engine = create_engine(settings.database_url)
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
+        _state_repo = StateRepository(db)
+    return _state_repo
+
+
+def _create_agent(agent_class, skills=None):
+    """Factory: create agent with reused dependencies and optional skills."""
+    agent = agent_class(
+        llm_router=_get_llm_router(),
+        state_repository=_get_state_repo(),
+    )
+    if skills:
+        for skill in skills:
+            agent.use_skill(skill)
+    return agent
+
 
 async def analyze_requirement(context: ActivityContext) -> Dict[str, Any]:
     """Business Analyst activity: analyze user requirements."""
@@ -22,11 +60,7 @@ async def analyze_requirement(context: ActivityContext) -> Dict[str, Any]:
     if not requirement:
         raise ValueError("No requirement provided")
 
-    router = LLMRouter()
-    agent = BusinessAnalystAgent(
-        llm_router=router,
-        state_repository=_get_state_repo(),
-    )
+    agent = _create_agent(BusinessAnalystAgent)
 
     proposal = await agent.generate_proposal(
         project_id=context.project_id,
@@ -60,11 +94,7 @@ async def generate_prd(context: ActivityContext) -> Dict[str, Any]:
     if not analysis:
         raise ValueError("No analysis provided")
 
-    router = LLMRouter()
-    agent = ProductManagerAgent(
-        llm_router=router,
-        state_repository=_get_state_repo(),
-    )
+    agent = _create_agent(ProductManagerAgent)
 
     proposal = await agent.generate_proposal(
         project_id=context.project_id,
@@ -90,10 +120,10 @@ async def analyze_code_impact(context: ActivityContext) -> Dict[str, Any]:
     if not prd:
         raise ValueError("No PRD provided")
 
-    router = LLMRouter()
-    agent = ArchitectAgent(
-        llm_router=router,
-        state_repository=_get_state_repo(),
+    from app.skills.code_search import CodeSearchSkill
+    agent = _create_agent(
+        ArchitectAgent,
+        skills=[CodeSearchSkill()] if context.inputs.get("repo_path") else None,
     )
 
     proposal = await agent.generate_proposal(
@@ -120,11 +150,7 @@ async def generate_patch(context: ActivityContext) -> Dict[str, Any]:
     if not architecture:
         raise ValueError("No architecture provided")
 
-    router = LLMRouter()
-    agent = DeveloperAgent(
-        llm_router=router,
-        state_repository=_get_state_repo(),
-    )
+    agent = _create_agent(DeveloperAgent)
 
     proposal = await agent.generate_proposal(
         project_id=context.project_id,
@@ -150,11 +176,7 @@ async def generate_tests(context: ActivityContext) -> Dict[str, Any]:
     if not patch:
         raise ValueError("No patch provided")
 
-    router = LLMRouter()
-    agent = QAAgent(
-        llm_router=router,
-        state_repository=_get_state_repo(),
-    )
+    agent = _create_agent(QAAgent)
 
     proposal = await agent.generate_proposal(
         project_id=context.project_id,
@@ -191,19 +213,6 @@ async def execute_tests(context: ActivityContext) -> Dict[str, Any]:
         "executed": True,
         "results": "Tests executed (placeholder implementation)",
     }
-
-
-def _get_state_repo() -> StateRepository:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from app.config import get_settings
-    from app.state.models import Base
-
-    settings = get_settings()
-    engine = create_engine(settings.database_url)
-    SessionLocal = sessionmaker(bind=engine)
-    db = SessionLocal()
-    return StateRepository(db)
 
 
 ACTIVITY_MAP = {

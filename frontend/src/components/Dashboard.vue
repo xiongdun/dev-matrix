@@ -1,8 +1,11 @@
 <template>
   <div>
     <div class="dashboard-header">
-      <h1>{{ t('dashboard.title') }}</h1>
-      <p>{{ t('app.subtitle') }}</p>
+      <div>
+        <h1>{{ t('dashboard.title') }}</h1>
+        <p>{{ t('app.subtitle') }}</p>
+      </div>
+      <ThemeToggle />
     </div>
 
     <div class="stats-grid">
@@ -29,14 +32,14 @@
     </div>
 
     <div class="dashboard-grid">
-      <div class="glass-panel">
+      <div class="panel">
         <div class="panel-header">
           <h2 class="panel-title">{{ t('dashboard.recentActivity') }}</h2>
         </div>
         <ActivityList :activities="activities" />
       </div>
 
-      <div class="glass-panel">
+      <div class="panel">
         <div class="panel-header">
           <h2 class="panel-title">{{ t('dashboard.recentTasks') }}</h2>
         </div>
@@ -52,6 +55,7 @@ import { useI18n } from 'vue-i18n'
 import StatCard from './StatCard.vue'
 import ActivityList from './ActivityList.vue'
 import TaskList from './TaskList.vue'
+import ThemeToggle from './ThemeToggle.vue'
 import { api } from '../api'
 
 const { t } = useI18n()

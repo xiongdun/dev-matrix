@@ -32,6 +32,7 @@ class BaseAgent(ABC):
     ):
         self.llm_router = llm_router
         self.state_repository = state_repository
+        self._skills: Dict[str, "BaseSkill"] = {}
 
     def read_state(self, project_id: str) -> Dict[str, Any]:
         state = self.state_repository.get_state(project_id)
@@ -60,3 +61,23 @@ class BaseAgent(ABC):
         if not validation.is_valid:
             raise ValueError(f"Validation failed: {validation.errors}")
         return proposal
+
+    # ===== Skill Composition API =====
+
+    def use_skill(self, skill: "BaseSkill") -> "BaseAgent":
+        """Compose a Skill into this Agent. Returns self for chaining."""
+        self._skills[skill.name] = skill
+        return self
+
+    def has_skill(self, name: str) -> bool:
+        return name in self._skills
+
+    async def call_skill(self, name: str, context: Dict[str, Any]) -> "SkillResult":
+        """Execute a composed Skill by name."""
+        skill = self._skills.get(name)
+        if skill is None:
+            raise ValueError(f"Skill '{name}' not composed into agent '{self.name}'")
+        return await skill.execute(context)
+
+    def list_skills(self) -> List[str]:
+        return list(self._skills.keys())

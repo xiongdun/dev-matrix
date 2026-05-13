@@ -11,10 +11,24 @@ class ArchitectAgent(BaseAgent):
         state = self.read_state(project_id)
         prd = state.get("prd", "")
         repo_path = context.get("repo_path", "")
+
+        code_context = ""
+        if self.has_skill("code_search") and repo_path:
+            try:
+                result = await self.call_skill("code_search", {
+                    "query": prd,
+                    "repo_path": repo_path,
+                })
+                if result.success:
+                    code_context = f"\n\nRelevant code context:\n{result.output}"
+            except Exception:
+                pass
+
         prompt = (
             f"You are a Software Architect. Based on the following PRD, analyze the "
             f"technical impact and design a solution. Include: system design, "
-            f"component diagram, API design, data model changes, and affected files.\n\n"
+            f"component diagram, API design, data model changes, and affected files."
+            f"{code_context}\n\n"
             f"PRD:\n{prd}\n\n"
             f"Repository: {repo_path}"
         )
@@ -22,7 +36,7 @@ class ArchitectAgent(BaseAgent):
         return Proposal(
             agent_name=self.name,
             content=response,
-            metadata={"phase": "architecture_design"},
+            metadata={"phase": "architecture_design", "used_code_search": bool(code_context)},
         )
 
     async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
