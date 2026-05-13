@@ -1,0 +1,19 @@
+{
+  "app.name": "DevMatrix",
+  "app.description": "多角色协作软件开发智能体操作系统",
+  "workflow.started": "工作流已启动",
+  "workflow.completed": "工作流已完成",
+  "workflow.failed": "工作流失败",
+  "agent.started": "智能体 {agent} 已启动",
+  "agent.completed": "智能体 {agent} 已完成",
+  "agent.failed": "智能体 {agent} 失败",
+  "approval.required": "需要人工审批",
+  "approval.approved": "已批准",
+  "approval.rejected": "已拒绝",
+  "state.changed": "状态已变更",
+  "snapshot.created": "快照已创建",
+  "rollback.performed": "已回滚到快照",
+  "error.not_found": "未找到",
+  "error.already_exists": "已存在",
+  "error.validation_failed": "验证失败"
+}

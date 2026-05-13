@@ -1,0 +1,19 @@
+{
+  "app.name": "DevMatrix",
+  "app.description": "Multi-role Collaborative Software Development Agent Operating System",
+  "workflow.started": "Workflow started",
+  "workflow.completed": "Workflow completed",
+  "workflow.failed": "Workflow failed",
+  "agent.started": "Agent {agent} started",
+  "agent.completed": "Agent {agent} completed",
+  "agent.failed": "Agent {agent} failed",
+  "approval.required": "Human approval required",
+  "approval.approved": "Approved",
+  "approval.rejected": "Rejected",
+  "state.changed": "State changed",
+  "snapshot.created": "Snapshot created",
+  "rollback.performed": "Rollback performed",
+  "error.not_found": "Not found",
+  "error.already_exists": "Already exists",
+  "error.validation_failed": "Validation failed"
+}

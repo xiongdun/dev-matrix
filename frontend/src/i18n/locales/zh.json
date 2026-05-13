@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "DevMatrix",
+    "subtitle": "AI 软件开发操作系统"
+  },
+  "sidebar": {
+    "dashboard": "仪表盘",
+    "requirements": "需求管理",
+    "approvals": "审批中心",
+    "workflow": "工作流",
+    "settings": "设置",
+    "collapse": "收起侧边栏",
+    "expand": "展开侧边栏"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "stats": {
+      "activeAgents": "活跃智能体",
+      "pendingApprovals": "待审批",
+      "completedTasks": "已完成任务",
+      "workflowRuns": "工作流运行"
+    },
+    "recentActivity": "最近活动",
+    "recentTasks": "最近任务"
+  },
+  "activity": {
+    "title": "最近活动",
+    "empty": "暂无活动",
+    "types": {
+      "requirement_created": "创建需求",
+      "approval_submitted": "提交审批",
+      "workflow_started": "启动工作流",
+      "agent_action": "智能体操作",
+      "snapshot_created": "创建快照"
+    }
+  },
+  "tasks": {
+    "title": "最近任务",
+    "empty": "暂无任务",
+    "status": {
+      "pending": "待处理",
+      "running": "运行中",
+      "completed": "已完成",
+      "failed": "失败",
+      "approved": "已批准",
+      "rejected": "已拒绝"
+    }
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "出错了",
+    "retry": "重试",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建"
+  }
+}

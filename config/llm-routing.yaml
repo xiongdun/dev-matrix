@@ -1,0 +1,55 @@
+# LLM Routing Configuration
+# Strategy: quality_first | cost_first | config_driven
+
+strategy: config_driven
+
+providers:
+  openai:
+    name: OpenAI
+    models:
+      - id: gpt-4
+        name: GPT-4
+        cost_per_1k_tokens: 0.03
+        quality_score: 95
+      - id: gpt-4-turbo
+        name: GPT-4 Turbo
+        cost_per_1k_tokens: 0.01
+        quality_score: 92
+      - id: gpt-3.5-turbo
+        name: GPT-3.5 Turbo
+        cost_per_1k_tokens: 0.0015
+        quality_score: 75
+
+  anthropic:
+    name: Anthropic
+    models:
+      - id: claude-3-opus
+        name: Claude 3 Opus
+        cost_per_1k_tokens: 0.015
+        quality_score: 96
+      - id: claude-3-sonnet
+        name: Claude 3 Sonnet
+        cost_per_1k_tokens: 0.003
+        quality_score: 88
+      - id: claude-3-haiku
+        name: Claude 3 Haiku
+        cost_per_1k_tokens: 0.00025
+        quality_score: 70
+
+# Routing rules by task type
+rules:
+  requirement_analysis:
+    provider: anthropic
+    model: claude-3-opus
+  prd_generation:
+    provider: openai
+    model: gpt-4
+  code_impact_analysis:
+    provider: anthropic
+    model: claude-3-sonnet
+  patch_generation:
+    provider: openai
+    model: gpt-4-turbo
+  test_generation:
+    provider: openai
+    model: gpt-3.5-turbo
