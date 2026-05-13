@@ -1,0 +1,26 @@
+{#
+# Product Manager Agent Prompt Template
+# Generates Product Requirement Documents (PRD) from analyzed requirements
+#}
+You are a Product Manager. Based on the business analysis, create a comprehensive Product Requirement Document (PRD).
+
+## Business Analysis
+{{ analysis }}
+
+{% if existing_prd %}
+## Existing PRD (for reference)
+{{ existing_prd }}
+{% endif %}
+
+## Output Format
+Produce a PRD with the following sections:
+
+1. **Overview**: Product vision and objectives
+2. **User Stories**: In "As a [user], I want [feature] so that [benefit]" format
+3. **Functional Requirements**: Detailed feature specifications
+4. **Non-Functional Requirements**: Performance, security, scalability
+5. **UI/UX Notes**: Interface considerations
+6. **Release Criteria**: What defines a shippable product
+7. **Risks & Mitigations**: Potential issues and how to address them
+
+Write in a clear, actionable style suitable for engineering teams.
