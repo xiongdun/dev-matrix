@@ -56,6 +56,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--bg-primary);
@@ -68,6 +73,7 @@ body {
 #app {
   display: flex;
   min-height: 100vh;
+  width: 100%;
 }
 
 /* Sidebar */
@@ -78,7 +84,9 @@ body {
   display: flex;
   flex-direction: column;
   position: fixed;
-  height: 100vh;
+  left: 0;
+  top: 0;
+  bottom: 0;
   transition: width 0.2s ease;
   z-index: 100;
 }
@@ -94,6 +102,7 @@ body {
   gap: 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--border-color);
+  height: 64px;
 }
 
 .sidebar-logo {
@@ -193,11 +202,15 @@ body {
   margin-left: var(--sidebar-width);
   padding: 32px;
   min-height: 100vh;
-  transition: margin-left 0.2s ease;
+  width: calc(100% - var(--sidebar-width));
+  max-width: calc(100% - var(--sidebar-width));
+  transition: margin-left 0.2s ease, width 0.2s ease;
 }
 
 #app.sidebar-collapsed .main-content {
   margin-left: var(--sidebar-collapsed);
+  width: calc(100% - var(--sidebar-collapsed));
+  max-width: calc(100% - var(--sidebar-collapsed));
 }
 
 /* Dashboard Header */
@@ -485,4 +498,33 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover);
+}
+
+/* Form Controls */
+.setting-select,
+.setting-input {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 14px;
+  min-width: 200px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.setting-select:focus,
+.setting-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.setting-select option {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.setting-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

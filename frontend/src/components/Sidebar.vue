@@ -6,11 +6,11 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a
+      <router-link
         v-for="item in menuItems"
         :key="item.key"
-        :class="['nav-item', { active: activeItem === item.key }]"
-        @click="activeItem = item.key"
+        :to="item.path"
+        :class="['nav-item', { active: $route.path === item.path }]"
       >
         <span class="nav-icon">
           <svg v-if="item.icon === 'dashboard'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -25,12 +25,18 @@
           <svg v-else-if="item.icon === 'workflow'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="4" y="3" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><rect x="4" y="19" width="16" height="4" rx="1"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="16" y1="15" x2="16" y2="19"/>
           </svg>
+          <svg v-else-if="item.icon === 'agents'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <svg v-else-if="item.icon === 'skills'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
           <svg v-else-if="item.icon === 'settings'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </span>
         <span class="nav-label">{{ $t(item.labelKey) }}</span>
-      </a>
+      </router-link>
     </nav>
 
     <div class="sidebar-toggle" @click="handleToggle" :title="collapsed ? $t('sidebar.expand') : $t('sidebar.collapse')">
@@ -55,14 +61,14 @@ const emit = defineEmits<{
   toggle: []
 }>()
 
-const activeItem = ref('dashboard')
-
 const menuItems = [
-  { key: 'dashboard', icon: 'dashboard', labelKey: 'sidebar.dashboard' },
-  { key: 'requirements', icon: 'requirements', labelKey: 'sidebar.requirements' },
-  { key: 'approvals', icon: 'approvals', labelKey: 'sidebar.approvals' },
-  { key: 'workflow', icon: 'workflow', labelKey: 'sidebar.workflow' },
-  { key: 'settings', icon: 'settings', labelKey: 'sidebar.settings' },
+  { key: 'dashboard', icon: 'dashboard', labelKey: 'sidebar.dashboard', path: '/' },
+  { key: 'requirements', icon: 'requirements', labelKey: 'sidebar.requirements', path: '/requirements' },
+  { key: 'approvals', icon: 'approvals', labelKey: 'sidebar.approvals', path: '/approvals' },
+  { key: 'workflow', icon: 'workflow', labelKey: 'sidebar.workflow', path: '/workflow' },
+  { key: 'agents', icon: 'agents', labelKey: 'sidebar.agents', path: '/agents' },
+  { key: 'skills', icon: 'skills', labelKey: 'sidebar.skills', path: '/skills' },
+  { key: 'settings', icon: 'settings', labelKey: 'sidebar.settings', path: '/settings' },
 ]
 
 function handleToggle() {

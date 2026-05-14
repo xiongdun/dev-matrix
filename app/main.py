@@ -6,12 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.state.models import init_db
 from app.api import requirements, approvals, workflow, registry
+from app.skills.registry import _global_registry as skill_registry
+from app.skills.base import BaseSkill
+from app.core.registry.discovery import discover_and_register
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     init_db()
+    discover_and_register("app.skills", skill_registry, BaseSkill)
     yield
 
 

@@ -49,4 +49,31 @@ export const api = {
       body: JSON.stringify(data),
     })
   },
+
+  getAgentDetails() {
+    return request<{ agents: Array<{ name: string; description: string; status: string; skills: string[] }> }>('/registry/agents/detail')
+  },
+
+  getSkills() {
+    return request<{ skills: Array<{ name: string; description: string; used_by: string[] }> }>('/registry/skills')
+  },
+
+  mountSkill(agentName: string, skillName: string) {
+    return request<{ success: boolean }>(`/registry/agents/${agentName}/skills/${skillName}`, {
+      method: 'POST',
+    })
+  },
+
+  unmountSkill(agentName: string, skillName: string) {
+    return request<{ success: boolean }>(`/registry/agents/${agentName}/skills/${skillName}`, {
+      method: 'DELETE',
+    })
+  },
+
+  uploadSkill(payload: { name: string; description: string; code: string; config?: Record<string, any> }) {
+    return request<{ success: boolean; name: string; description: string }>('/registry/skills/upload', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
 }

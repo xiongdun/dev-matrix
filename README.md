@@ -18,7 +18,9 @@ DevMatrix is an enterprise-grade AI software development platform that orchestra
 - **Auto PR/Release**: GitHub/GitLab integration for automated pull requests and releases
 - **Multi-Repository Support**: Manage and modify multiple repositories simultaneously
 - **Audit Logging**: Complete traceability of all state changes and agent actions
-- **Vue 3 Dashboard**: macOS glassmorphism UI with real-time monitoring
+- **Vue 3 Dashboard**: Linear/Vercel-style dark developer tool UI with real-time monitoring
+- **Theme Switching**: One-click toggle between dark and light themes
+- **Settings Page**: Dedicated configuration page for appearance, LLM, workflow, and notifications
 - **Internationalization (i18n)**: Full Chinese/English support for both backend and frontend
 
 ## Architecture
@@ -144,14 +146,23 @@ dev-matrix/
 │   ├── src/
 │   │   ├── main.ts              # Application entry
 │   │   ├── App.vue              # Root component
-│   │   ├── style.css            # macOS glassmorphism styles
+│   │   ├── style.css            # Linear/Vercel dark developer tool styles
 │   │   ├── api/                 # API service layer
 │   │   ├── components/          # Vue components
 │   │   │   ├── Sidebar.vue      # Collapsible sidebar
 │   │   │   ├── Dashboard.vue    # Main dashboard
 │   │   │   ├── StatCard.vue     # Statistics cards
 │   │   │   ├── ActivityList.vue # Recent activity
-│   │   │   └── TaskList.vue     # Recent tasks
+│   │   │   ├── TaskList.vue     # Recent tasks
+│   │   │   ├── ThemeToggle.vue  # Dark/light theme toggle
+│   │   │   └── settings/        # Settings components
+│   │   │       ├── SettingsSection.vue
+│   │   │       └── SettingItem.vue
+│   │   ├── pages/               # Route pages
+│   │   │   └── SettingsPage.vue # Settings configuration page
+│   │   ├── composables/         # Vue composables
+│   │   │   └── useSettings.ts   # Settings state management
+│   │   ├── router.ts            # Vue Router configuration
 │   │   └── i18n/                # Frontend i18n
 │   │       ├── index.ts
 │   │       └── locales/
@@ -399,11 +410,18 @@ Each phase requires human approval before proceeding, ensuring quality control t
 
 The Vue 3 frontend provides:
 
-- **macOS Glassmorphism UI**: `backdrop-filter: blur(40px)` with semi-transparent surfaces
-- **Collapsible Sidebar**: Click the DevMatrix logo to toggle sidebar width
-- **Real-time Stats**: Agent status, task progress, budget tracking
-- **Activity Feed**: Recent agent actions and workflow events
-- **Task List**: Current development tasks with status indicators
+- **Linear/Vercel Dark UI**: Clean, high-contrast developer tool aesthetic inspired by Linear, Vercel, and GitHub Dark Mode
+- **Theme Switching**: One-click toggle between dark (`#0a0a0a`) and light (`#ffffff`) themes via CSS variables
+- **Collapsible Sidebar**: Fixed sidebar with smooth width transition (240px ↔ 64px)
+- **Real-time Stats**: 4-column stat cards with trend indicators
+- **Activity Feed**: Recent agent actions with color-coded type indicators
+- **Task List**: Status badges (pending/running/completed/failed) with agent attribution
+- **Settings Page**: `/settings` route with grouped configuration sections:
+  - **Appearance**: Theme, language (zh/en), sidebar default state
+  - **LLM Configuration**: Provider, API key, model, routing strategy
+  - **Workflow**: Approval mode, timeout, retry count
+  - **Notifications**: Event toggles, webhook URL
+  - **About**: Version, backend status
 
 ## License
 

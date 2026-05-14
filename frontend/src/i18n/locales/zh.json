@@ -8,6 +8,8 @@
     "requirements": "需求管理",
     "approvals": "审批中心",
     "workflow": "工作流",
+    "agents": "智能体管理",
+    "skills": "技能管理",
     "settings": "设置",
     "collapse": "收起侧边栏",
     "expand": "展开侧边栏"
@@ -56,5 +58,79 @@
     "delete": "删除",
     "edit": "编辑",
     "create": "创建"
+  },
+  "settings": {
+    "title": "设置",
+    "save": "保存更改",
+    "saved": "设置已保存",
+    "appearance": {
+      "title": "外观",
+      "theme": "主题",
+      "themeDark": "深色",
+      "themeLight": "浅色",
+      "language": "语言",
+      "sidebar": "侧边栏默认状态",
+      "sidebarExpanded": "展开",
+      "sidebarCollapsed": "收起"
+    },
+    "llm": {
+      "title": "LLM 配置",
+      "provider": "默认提供商",
+      "apiKey": "API 密钥",
+      "show": "显示",
+      "hide": "隐藏",
+      "model": "模型",
+      "strategy": "路由策略",
+      "strategyQuality": "质量优先",
+      "strategyCost": "成本优先",
+      "strategyConfig": "配置驱动"
+    },
+    "workflow": {
+      "title": "工作流",
+      "approvalMode": "审批模式",
+      "approvalManual": "人工审批",
+      "approvalAuto": "自动通过",
+      "timeout": "活动超时（秒）",
+      "retryCount": "重试次数"
+    },
+    "notifications": {
+      "title": "通知",
+      "workflowCompleted": "工作流完成",
+      "approvalRequired": "需要审批",
+      "agentFailed": "智能体失败",
+      "webhookUrl": "Webhook 地址"
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本",
+      "backend": "后端状态",
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "github": "GitHub"
+    }
+  },
+  "agents": {
+    "title": "智能体管理",
+    "subtitle": "查看所有智能体状态，动态挂载或卸载技能",
+    "mountedSkills": "已装载技能",
+    "noSkills": "暂无技能",
+    "selectSkill": "选择技能",
+    "mount": "挂载",
+    "status": {
+      "idle": "空闲",
+      "active": "活跃",
+      "error": "错误"
+    }
+  },
+  "skills": {
+    "title": "技能管理",
+    "subtitle": "查看所有技能，上传自定义技能配置",
+    "name": "名称",
+    "description": "描述",
+    "usedBy": "被使用于",
+    "uploadText": "点击或拖拽上传技能配置文件",
+    "uploadHint": "支持 JSON 格式",
+    "uploadSuccess": "技能 {name} 上传并注册成功",
+    "errorInvalidFile": "请上传有效的 JSON 文件"
   }
 }
