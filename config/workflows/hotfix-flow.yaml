@@ -1,0 +1,32 @@
+name: hotfix-flow
+version: "1.0.0"
+description: "Emergency hotfix workflow with minimal approval steps for rapid deployment"
+category: hotfix
+
+stages:
+  - id: analyze_requirement
+    name: "Requirement Analysis"
+    agent: business_analyst
+    activity: analyze_requirement
+    requires_approval: false
+    timeout_seconds: 120
+
+  - id: generate_patch
+    name: "Patch Generation"
+    agent: developer
+    activity: generate_patch
+    requires_approval: true
+    timeout_seconds: 300
+
+  - id: execute_tests
+    name: "Test Execution"
+    agent: qa
+    activity: execute_tests
+    requires_approval: false
+    timeout_seconds: 300
+
+settings:
+  default_timeout: 180
+  max_retries: 2
+  retry_delay: 3
+  auto_rollback_on_failure: true

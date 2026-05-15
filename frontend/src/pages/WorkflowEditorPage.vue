@@ -58,9 +58,9 @@
             <div class="custom-agent-node">
               <div class="node-header">
                 <span class="node-dot" :class="agentNodeProps.data.status === 'active' ? 'dot-active' : 'dot-idle'"></span>
-                <span class="node-title">{{ agentNodeProps.data.label }}</span>
+                <span class="node-title">{{ agentNodeProps.data.label || agentNodeProps.data.name || agentNodeProps.id }}</span>
               </div>
-              <div class="node-desc">{{ agentNodeProps.data.description }}</div>
+              <div class="node-desc">{{ agentNodeProps.data.description || agentNodeProps.data.agent || '' }}</div>
               <Handle type="target" :position="Position.Left" />
               <Handle type="source" :position="Position.Right" />
             </div>
@@ -111,7 +111,7 @@ const agents = ref<Array<{ name: string; description: string; status: string; sk
 const agentsLoading = ref(true)
 const agentsError = ref('')
 
-let workflowId: number | null = null
+const workflowId = ref<number | null>(null)
 
 async function loadAgents() {
   agentsLoading.value = true
@@ -129,12 +129,21 @@ async function loadAgents() {
 async function loadWorkflow(id: number) {
   try {
     const res = await api.getWorkflow(id)
-    workflowId = res.id
+    workflowId.value = res.id
     workflowName.value = res.name
     if (res.flow_json) {
       try {
         const flow = JSON.parse(res.flow_json)
-        nodes.value = flow.nodes || []
+        nodes.value = (flow.nodes || []).map((n: any) => ({
+          ...n,
+          type: n.type || 'agent',
+          data: {
+            ...n.data,
+            label: n.data?.label || n.data?.name || n.id,
+            description: n.data?.description || n.data?.agent || '',
+            status: n.data?.status || 'idle',
+          },
+        }))
         edges.value = flow.edges || []
       } catch {
         // invalid flow_json, start empty
@@ -202,16 +211,15 @@ async function handleSave() {
   try {
     const flowJson = JSON.stringify({ nodes: nodes.value, edges: edges.value })
 
-    if (workflowId) {
-      await api.saveWorkflow(workflowId, {
+    if (workflowId.value) {
+      await api.saveWorkflow(workflowId.value, {
         name: workflowName.value,
         flow_json: flowJson,
       })
     } else {
-      const created = await api.createWorkflow({ name: workflowName.value })
-      workflowId = created.id
-      await api.saveWorkflow(workflowId, { flow_json: flowJson })
-      addTab(`workflow-editor-${workflowId}`, `${t('workflow.editor')} - ${workflowName.value}`, `/workflow/editor/${workflowId}`)
+      const created = await api.createWorkflow({ name: workflowName.value, flow_json: flowJson })
+      workflowId.value = created.id
+      addTab(`workflow-editor-${workflowId.value}`, `${t('workflow.editor')} - ${workflowName.value}`, `/workflow/editor/${workflowId.value}`)
     }
 
     saveSuccess.value = true
@@ -408,18 +416,19 @@ onMounted(async () => {
 }
 
 .custom-agent-node {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
   padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
   min-width: 160px;
   position: relative;
+  transition: all 0.2s ease;
 }
 
 .node-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 4px;
 }
 
@@ -430,6 +439,14 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+.node-dot.dot-active {
+  background-color: var(--accent-green);
+}
+
+.node-dot.dot-idle {
+  background-color: var(--text-muted);
+}
+
 .node-title {
   font-size: 13px;
   font-weight: 600;
@@ -438,10 +455,8 @@ onMounted(async () => {
 
 .node-desc {
   font-size: 11px;
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .save-error {

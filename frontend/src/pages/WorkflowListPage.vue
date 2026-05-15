@@ -31,7 +31,10 @@
         </thead>
         <tbody>
           <tr v-for="wf in workflows" :key="wf.id">
-            <td class="wf-name">{{ wf.name }}</td>
+            <td class="wf-name">
+              {{ wf.name }}
+              <span v-if="wf.is_template" class="template-badge">{{ categoryLabel(wf.category) }}</span>
+            </td>
             <td class="wf-desc">{{ wf.description || '—' }}</td>
             <td class="wf-version">{{ wf.version }}</td>
             <td>
@@ -40,7 +43,8 @@
             <td class="wf-time">{{ formatDate(wf.created_at) }}</td>
             <td class="wf-actions">
               <button class="btn-action btn-edit" @click="handleEdit(wf)">{{ t('common.edit') }}</button>
-              <button class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
+              <button v-if="wf.is_template" class="btn-action btn-instantiate" @click="handleInstantiate(wf)">{{ t('workflow.instantiate') }}</button>
+              <button v-if="!wf.is_template" class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
             </td>
           </tr>
         </tbody>
@@ -55,10 +59,12 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
 import { useTabs } from '../composables/useTabs'
+import { useDialog } from '../composables/useDialog'
 
 const { t } = useI18n()
 const router = useRouter()
 const { addTab } = useTabs()
+const { showConfirm, showPrompt } = useDialog()
 
 interface Workflow {
   id: number
@@ -66,6 +72,8 @@ interface Workflow {
   description: string
   version: string
   status: string
+  is_template: boolean
+  category: string | null
   created_at: string
   updated_at: string
 }
@@ -98,13 +106,51 @@ function handleEdit(wf: Workflow) {
 }
 
 async function handleDelete(wf: Workflow) {
-  if (!confirm(t('workflow.confirmDelete', { name: wf.name }))) return
+  const confirmed = await showConfirm({
+    title: t('common.confirm'),
+    message: t('workflow.confirmDelete', { name: wf.name }),
+    type: 'warning',
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
+  })
+  if (!confirmed) return
   try {
     await api.deleteWorkflow(wf.id)
     await fetchWorkflows()
   } catch (e: any) {
     error.value = e.message || String(e)
   }
+}
+
+async function handleInstantiate(wf: Workflow) {
+  const projectId = await showPrompt({
+    title: t('workflow.instantiate'),
+    message: t('workflow.enterProjectId'),
+    placeholder: 'project-id',
+  })
+  if (!projectId) return
+  try {
+    const result = await api.instantiateTemplate(wf.id, projectId)
+    await showConfirm({
+      title: t('common.confirm'),
+      message: t('workflow.instanceCreated', { instanceId: result.instance_id }),
+      type: 'success',
+      showCancel: false,
+      confirmText: t('common.confirm'),
+    })
+  } catch (e: any) {
+    error.value = e.message || String(e)
+  }
+}
+
+function categoryLabel(category: string | null) {
+  const map: Record<string, string> = {
+    standard: t('workflow.categoryStandard'),
+    hotfix: t('workflow.categoryHotfix'),
+    db_change: t('workflow.categoryDbChange'),
+    auto_fix: t('workflow.categoryAutoFix'),
+  }
+  return map[category || ''] || category || ''
 }
 
 function statusClass(status: string) {
@@ -263,5 +309,28 @@ onMounted(fetchWorkflows)
 .btn-delete:hover {
   border-color: var(--accent-red);
   color: var(--accent-red);
+}
+
+.template-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+.btn-instantiate {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.btn-instantiate:hover {
+  background-color: rgba(99, 102, 241, 0.1);
 }
 </style>

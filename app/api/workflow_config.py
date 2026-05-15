@@ -1,21 +1,17 @@
-"""工作流配置 API 模块。
+"""工作流配置/模板 API 模块。
 
-提供工作流配置的 CRUD 管理接口，以及将 Vue Flow 图形配置
-同步保存为 YAML 文件的功能。
+提供工作流配置的 CRUD 管理接口、模板管理接口，
+以及将 Vue Flow 图形配置同步保存为 YAML 文件的功能。
 
 主要端点：
     - GET /workflow-config/ - 列出所有工作流配置
+    - GET /workflow-config/templates - 列出所有预置模板
     - GET /workflow-config/{id} - 获取单个工作流配置
     - POST /workflow-config/ - 创建工作流配置
+    - POST /workflow-config/{id}/instantiate - 从模板创建实例
     - PUT /workflow-config/{id} - 更新工作流配置
     - DELETE /workflow-config/{id} - 删除工作流配置
     - POST /workflow-config/{id}/sync-yaml - 同步保存为 YAML 文件
-
-使用示例：
-    ```python
-    from app.api.workflow_config import router
-    app.include_router(router, prefix="/workflow-config")
-    ```
 """
 
 import json
@@ -29,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.state.models import WorkflowConfigModel, get_db
+from app.state.models import WorkflowConfigModel, WorkflowInstanceModel, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,12 +36,23 @@ _WORKFLOW_DIR = os.path.join(
     "workflows",
 )
 
+PRESET_TEMPLATES = [
+    {"name": "standard-dev-flow", "category": "standard",
+     "description": "Standard development workflow with full human approval checkpoints"},
+    {"name": "hotfix-flow", "category": "hotfix",
+     "description": "Emergency hotfix workflow with minimal approval steps for rapid deployment"},
+    {"name": "db-change-flow", "category": "db_change",
+     "description": "Database change workflow with mandatory architecture review and dual approval"},
+    {"name": "auto-fix-flow", "category": "auto_fix",
+     "description": "Automated fix workflow for lint/type errors with auto-approval"},
+]
+
 
 class WorkflowConfigCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128)
     description: str = ""
     version: str = "1.0.0"
-    flow_json: str = "{}"
+    flow_json: str = Field(default="{}", max_length=1048576)
     status: str = "draft"
 
 
@@ -53,7 +60,7 @@ class WorkflowConfigUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=128)
     description: Optional[str] = None
     version: Optional[str] = None
-    flow_json: Optional[str] = None
+    flow_json: Optional[str] = Field(None, max_length=1048576)
     status: Optional[str] = None
 
 
@@ -65,6 +72,8 @@ class WorkflowConfigResponse(BaseModel):
     flow_json: str
     yaml_path: Optional[str]
     status: str
+    is_template: bool = False
+    category: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -77,6 +86,29 @@ class SyncYamlResponse(BaseModel):
     yaml_path: str
 
 
+class InstantiateRequest(BaseModel):
+    project_id: str = Field(..., min_length=1, max_length=64)
+
+
+class WorkflowInstanceResponse(BaseModel):
+    id: int
+    instance_id: str
+    template_id: Optional[int]
+    project_id: str
+    current_state: str
+    participants: List[str] = []
+    artifacts: List[Dict[str, Any]] = []
+    status: str
+    context_json: str = "{}"
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 def _model_to_response(model: WorkflowConfigModel) -> WorkflowConfigResponse:
     return WorkflowConfigResponse(
         id=model.id,
@@ -86,23 +118,125 @@ def _model_to_response(model: WorkflowConfigModel) -> WorkflowConfigResponse:
         flow_json=model.flow_json,
         yaml_path=model.yaml_path,
         status=model.status,
+        is_template=bool(model.is_template),
+        category=model.category,
         created_at=model.created_at,
         updated_at=model.updated_at,
     )
 
 
+def _instance_to_response(model: WorkflowInstanceModel) -> WorkflowInstanceResponse:
+    participants = json.loads(model.participants) if model.participants else []
+    artifacts = json.loads(model.artifacts) if model.artifacts else []
+    return WorkflowInstanceResponse(
+        id=model.id,
+        instance_id=model.instance_id,
+        template_id=model.template_id,
+        project_id=model.project_id,
+        current_state=model.current_state,
+        participants=participants,
+        artifacts=artifacts,
+        status=model.status,
+        context_json=model.context_json,
+        started_at=model.started_at,
+        completed_at=model.completed_at,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+    )
+
+
+def _generate_instance_id(db: Session) -> str:
+    year = datetime.utcnow().year
+    prefix = f"WF-{year}-"
+    last = db.query(WorkflowInstanceModel).filter(
+        WorkflowInstanceModel.instance_id.like(f"{prefix}%")
+    ).order_by(WorkflowInstanceModel.id.desc()).first()
+    seq = 1
+    if last and last.instance_id.startswith(prefix):
+        try:
+            seq = int(last.instance_id[len(prefix):]) + 1
+        except ValueError:
+            seq = 1
+    return f"{prefix}{seq:03d}"
+
+
+def _extract_participants(flow_json_str: str) -> List[str]:
+    try:
+        flow = json.loads(flow_json_str)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    agents = set()
+    for node in flow.get("nodes", []):
+        data = node.get("data", {})
+        agent = data.get("agent", "")
+        if agent:
+            agents.add(agent)
+    return sorted(agents)
+
+
+def seed_templates(db: Session) -> None:
+    """将预置模板 YAML 文件同步到数据库（幂等）。"""
+    for tpl_info in PRESET_TEMPLATES:
+        existing = db.query(WorkflowConfigModel).filter(
+            WorkflowConfigModel.name == tpl_info["name"]
+        ).first()
+        if existing is not None:
+            continue
+
+        yaml_path = os.path.join(_WORKFLOW_DIR, f"{tpl_info['name']}.yaml")
+        flow_json = "{}"
+        if os.path.exists(yaml_path):
+            try:
+                with open(yaml_path, "r", encoding="utf-8") as f:
+                    pipeline_data = yaml.safe_load(f)
+                stages = pipeline_data.get("stages", [])
+                nodes = []
+                edges = []
+                for i, s in enumerate(stages):
+                    nodes.append({
+                        "id": s["id"],
+                        "type": "agentNode",
+                        "position": {"x": 250, "y": i * 120},
+                        "data": {
+                            "id": s["id"],
+                            "name": s.get("name", s["id"]),
+                            "agent": s.get("agent", ""),
+                            "activity": s.get("activity", s["id"]),
+                            "requires_approval": s.get("requires_approval", True),
+                            "timeout_seconds": s.get("timeout_seconds", 300),
+                        },
+                    })
+                    if i > 0:
+                        edges.append({
+                            "id": f"e-{stages[i-1]['id']}-{s['id']}",
+                            "source": stages[i - 1]["id"],
+                            "target": s["id"],
+                        })
+                flow_json = json.dumps({"nodes": nodes, "edges": edges}, ensure_ascii=False)
+            except Exception:
+                logger.exception("Failed to load template YAML: %s", yaml_path)
+
+        config = WorkflowConfigModel(
+            name=tpl_info["name"],
+            description=tpl_info["description"],
+            version="1.0.0",
+            flow_json=flow_json,
+            yaml_path=yaml_path if os.path.exists(yaml_path) else None,
+            status="active",
+            is_template=1,
+            category=tpl_info["category"],
+        )
+        db.add(config)
+
+    try:
+        db.commit()
+        logger.info("Template seeding completed")
+    except Exception:
+        db.rollback()
+        logger.exception("Template seeding failed")
+
+
 def _flow_json_to_pipeline(flow_json_str: str, name: str, version: str, description: str) -> Dict[str, Any]:
-    """将 Vue Flow 的 nodes/edges JSON 转换为 workflow-pipeline.yaml 兼容格式。
-
-    Args:
-        flow_json_str: Vue Flow 的 JSON 字符串，包含 nodes 和 edges。
-        name: 工作流名称。
-        version: 版本号。
-        description: 描述。
-
-    Returns:
-        Dict: 与 workflow-pipeline.yaml 格式兼容的字典。
-    """
     try:
         flow = json.loads(flow_json_str)
     except json.JSONDecodeError:
@@ -164,15 +298,28 @@ def _flow_json_to_pipeline(flow_json_str: str, name: str, version: str, descript
     }
 
 
+@router.get("/templates", response_model=Dict[str, List[WorkflowConfigResponse]])
+async def list_templates(db: Session = Depends(get_db)):
+    try:
+        templates = db.query(WorkflowConfigModel).filter(
+            WorkflowConfigModel.is_template == 1
+        ).order_by(WorkflowConfigModel.id.asc()).all()
+        logger.info("Listed %d workflow templates", len(templates))
+        return {"templates": [_model_to_response(t) for t in templates]}
+    except Exception as exc:
+        logger.exception("Failed to list workflow templates")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
 @router.get("/", response_model=Dict[str, List[WorkflowConfigResponse]])
 async def list_workflow_configs(db: Session = Depends(get_db)):
     try:
         configs = db.query(WorkflowConfigModel).order_by(WorkflowConfigModel.id.desc()).all()
         logger.info("Listed %d workflow configs", len(configs))
-        return {"configs": [_model_to_response(c) for c in configs]}
+        return {"workflows": [_model_to_response(c) for c in configs]}
     except Exception as exc:
         logger.exception("Failed to list workflow configs")
-        raise HTTPException(status_code=500, detail=f"Failed to list workflow configs: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/{config_id}", response_model=WorkflowConfigResponse)
@@ -204,7 +351,46 @@ async def create_workflow_config(payload: WorkflowConfigCreate, db: Session = De
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to create workflow config '%s'", payload.name)
-        raise HTTPException(status_code=500, detail=f"Failed to create workflow config: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.post("/{config_id}/instantiate", response_model=WorkflowInstanceResponse, status_code=201)
+async def instantiate_template(config_id: int, payload: InstantiateRequest, db: Session = Depends(get_db)):
+    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+    if config is None:
+        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+
+    existing = db.query(WorkflowInstanceModel).filter(
+        WorkflowInstanceModel.project_id == payload.project_id,
+        WorkflowInstanceModel.status.in_(["running", "paused"]),
+    ).first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail=f"Project '{payload.project_id}' already has an active instance ({existing.instance_id})")
+
+    participants = _extract_participants(config.flow_json)
+    instance_id = _generate_instance_id(db)
+
+    try:
+        instance = WorkflowInstanceModel(
+            instance_id=instance_id,
+            template_id=config.id,
+            project_id=payload.project_id,
+            current_state="PENDING",
+            participants=json.dumps(participants, ensure_ascii=False),
+            artifacts="[]",
+            status="running",
+            context_json="{}",
+            started_at=datetime.utcnow(),
+        )
+        db.add(instance)
+        db.commit()
+        db.refresh(instance)
+        logger.info("Created instance %s from template '%s' for project %s", instance_id, config.name, payload.project_id)
+        return _instance_to_response(instance)
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Failed to instantiate template %d", config_id)
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.put("/{config_id}", response_model=WorkflowConfigResponse)
@@ -229,7 +415,7 @@ async def update_workflow_config(config_id: int, payload: WorkflowConfigUpdate, 
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to update workflow config %d", config_id)
-        raise HTTPException(status_code=500, detail=f"Failed to update workflow config: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.delete("/{config_id}", response_model=Dict[str, bool])
@@ -237,6 +423,8 @@ async def delete_workflow_config(config_id: int, db: Session = Depends(get_db)):
     config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
     if config is None:
         raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+    if config.is_template:
+        raise HTTPException(status_code=403, detail="Cannot delete preset template")
     try:
         db.delete(config)
         db.commit()
@@ -245,7 +433,7 @@ async def delete_workflow_config(config_id: int, db: Session = Depends(get_db)):
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to delete workflow config %d", config_id)
-        raise HTTPException(status_code=500, detail=f"Failed to delete workflow config: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post("/{config_id}/sync-yaml", response_model=SyncYamlResponse)
@@ -272,7 +460,7 @@ async def sync_yaml(config_id: int, db: Session = Depends(get_db)):
             yaml.dump(pipeline, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     except OSError as exc:
         logger.exception("Failed to write YAML file '%s'", yaml_path)
-        raise HTTPException(status_code=500, detail=f"Failed to write YAML file: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     try:
         config.yaml_path = yaml_path
@@ -281,7 +469,7 @@ async def sync_yaml(config_id: int, db: Session = Depends(get_db)):
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to update yaml_path for config %d", config_id)
-        raise HTTPException(status_code=500, detail=f"Failed to update yaml_path: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Synced workflow config '%s' to YAML: %s", config.name, yaml_path)
     return {"success": True, "yaml_path": yaml_path}

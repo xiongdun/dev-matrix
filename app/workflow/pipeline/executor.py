@@ -17,7 +17,7 @@ from app.agents.base import Proposal
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
 from app.llm.router import LLMRouter
-from app.state.models import get_db, WorkflowTaskModel
+from app.state.models import get_db, WorkflowTaskModel, WorkflowInstanceModel
 from app.state.repository import StateRepository
 from app.state.statemachine import StateMachine, ProjectStatus
 from app.workflow.pipeline.loader import PipelineLoader
@@ -54,7 +54,7 @@ class WorkflowPipeline:
                 logger.exception("Failed to load pipeline config")
                 self.config = None
 
-    async def run(self, project_id: str, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def run(self, project_id: str, initial_context: Optional[Dict[str, Any]] = None, template_id: Optional[int] = None) -> Dict[str, Any]:
         if self.config is None:
             return {"status": "error", "message": "Pipeline config not loaded"}
 
@@ -67,7 +67,37 @@ class WorkflowPipeline:
 
         repo.update_state(project_id, repo.get_state(project_id).state_json, ProjectStatus.ANALYZING.value)
 
-        event_bus.publish(Event(type=EventTypes.WORKFLOW_STARTED, payload={"project_id": project_id}, source="pipeline", project_id=project_id))
+        instance = db.query(WorkflowInstanceModel).filter(
+            WorkflowInstanceModel.project_id == project_id,
+            WorkflowInstanceModel.status.in_(["running", "paused"]),
+        ).first()
+        if instance is None:
+            from app.api.workflow_config import _generate_instance_id, _extract_participants
+            instance_id = _generate_instance_id(db)
+            participants = []
+            for s in self.config.stages:
+                if s.agent and s.agent not in participants:
+                    participants.append(s.agent)
+            instance = WorkflowInstanceModel(
+                instance_id=instance_id,
+                template_id=template_id,
+                project_id=project_id,
+                current_state="ANALYZING",
+                participants=json.dumps(participants, ensure_ascii=False),
+                artifacts="[]",
+                status="running",
+                context_json=json.dumps(initial_context or {}, ensure_ascii=False),
+                started_at=datetime.utcnow(),
+            )
+            db.add(instance)
+            db.commit()
+            db.refresh(instance)
+        else:
+            instance.current_state = "ANALYZING"
+            instance.status = "running"
+            db.commit()
+
+        event_bus.publish(Event(type=EventTypes.WORKFLOW_STARTED, payload={"project_id": project_id, "instance_id": instance.instance_id}, source="pipeline", project_id=project_id))
 
         snapshot = repo.create_snapshot(project_id)
 
@@ -83,13 +113,21 @@ class WorkflowPipeline:
         try:
             await self._execute_stages(project_id, start_stages, stage_map, executed, results, context, db, repo, router)
             repo.update_state(project_id, repo.get_state(project_id).state_json, ProjectStatus.COMPLETED.value)
-            event_bus.publish(Event(type=EventTypes.WORKFLOW_COMPLETED, payload={"project_id": project_id}, source="pipeline", project_id=project_id))
-            return {"status": "completed", "project_id": project_id, "results": results}
+            instance.current_state = "COMPLETED"
+            instance.status = "completed"
+            instance.completed_at = datetime.utcnow()
+            db.commit()
+            event_bus.publish(Event(type=EventTypes.WORKFLOW_COMPLETED, payload={"project_id": project_id, "instance_id": instance.instance_id}, source="pipeline", project_id=project_id))
+            return {"status": "completed", "project_id": project_id, "instance_id": instance.instance_id, "results": results}
         except Exception as exc:
             logger.exception("Pipeline failed for project %s", project_id)
             repo.update_state(project_id, repo.get_state(project_id).state_json, ProjectStatus.FAILED.value)
-            event_bus.publish(Event(type=EventTypes.WORKFLOW_FAILED, payload={"project_id": project_id, "error": str(exc)}, source="pipeline", project_id=project_id))
-            return {"status": "failed", "project_id": project_id, "error": str(exc)}
+            instance.current_state = "FAILED"
+            instance.status = "failed"
+            instance.completed_at = datetime.utcnow()
+            db.commit()
+            event_bus.publish(Event(type=EventTypes.WORKFLOW_FAILED, payload={"project_id": project_id, "instance_id": instance.instance_id, "error": str(exc)}, source="pipeline", project_id=project_id))
+            return {"status": "failed", "project_id": project_id, "instance_id": instance.instance_id, "error": str(exc)}
 
     async def _execute_stages(
         self, project_id: str, stages: List[PipelineStage], stage_map: Dict[str, PipelineStage],
@@ -124,6 +162,14 @@ class WorkflowPipeline:
 
         status = StateMachine.stage_to_status(stage.id)
         repo.update_state(project_id, repo.get_state(project_id).state_json, status)
+
+        instance = db.query(WorkflowInstanceModel).filter(
+            WorkflowInstanceModel.project_id == project_id,
+            WorkflowInstanceModel.status.in_(["running", "paused"]),
+        ).first()
+        if instance:
+            instance.current_state = stage.id.upper()
+            db.commit()
 
         try:
             from app.core.registry.agent_registry import agent_registry
@@ -165,6 +211,12 @@ class WorkflowPipeline:
             db.commit()
             db.refresh(task)
 
+            if instance:
+                artifacts = json.loads(instance.artifacts) if instance.artifacts else []
+                artifacts.append({"name": f"{stage.id}_output", "stage": stage.id, "agent": stage.agent})
+                instance.artifacts = json.dumps(artifacts, ensure_ascii=False)
+                db.commit()
+
             context[stage.id] = proposal.content
             results[stage.id] = {"status": "completed", "task_id": task.id}
 
@@ -172,6 +224,9 @@ class WorkflowPipeline:
 
             if stage.requires_approval:
                 repo.update_state(project_id, repo.get_state(project_id).state_json, ProjectStatus.AWAITING_APPROVAL.value)
+                if instance:
+                    instance.current_state = f"{stage.id.upper()}_REVIEW"
+                    db.commit()
                 event_bus.publish(Event(type=EventTypes.APPROVAL_REQUIRED, payload={"project_id": project_id, "stage_id": stage.id, "task_id": task.id}, source="pipeline", project_id=project_id))
 
                 approval = await self._wait_for_approval(db, task.id, timeout=86400)

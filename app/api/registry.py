@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 
 from app.core.registry.agent_registry import agent_registry
 from app.core.registry.llm_registry import llm_registry
+from app.api.schemas import ErrorResponse
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill, SkillConfig
 from app.llm.router import LLMRouter
@@ -91,7 +92,7 @@ class SkillUploadPayload(BaseModel):
         code: 技能代码字符串，至少 1 个字符。
         config: 技能配置字典，可选。
     """
-    name: str = Field(..., min_length=1, max_length=128)
+    name: str = Field(..., min_length=1, max_length=128, pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*$")
     description: str = Field(..., min_length=1)
     code: str = Field(..., min_length=1)
     config: Dict[str, Any] = {}
@@ -134,13 +135,6 @@ class ProviderResponse(BaseModel):
     description: str
 
 
-class ErrorResponse(BaseModel):
-    """错误响应模型。
-
-    Attributes:
-        detail: 错误详情。
-    """
-    detail: str
 
 
 def _get_or_create_agent(agent_name: str) -> Any:
@@ -165,7 +159,7 @@ def _get_or_create_agent(agent_name: str) -> Any:
         db = next(get_db())
     except Exception as exc:
         logger.exception("Database connection failed when creating agent '%s'", agent_name)
-        raise HTTPException(status_code=503, detail=f"Database connection failed: {exc}") from exc
+        raise HTTPException(status_code=503, detail="Database connection failed") from exc
     llm_router = LLMRouter()
     state_repo = StateRepository(db)
     agent = agent_cls(llm_router=llm_router, state_repository=state_repo)
@@ -194,7 +188,7 @@ async def list_agents() -> Dict[str, List[AgentInfoResponse]]:
         return {"agents": agents}
     except Exception as exc:
         logger.exception("Failed to list agents")
-        raise HTTPException(status_code=500, detail=f"Failed to list agents: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/agents/detail", response_model=Dict[str, List[AgentDetailResponse]])
@@ -234,7 +228,7 @@ async def list_agent_details() -> Dict[str, List[AgentDetailResponse]]:
         raise
     except Exception as exc:
         logger.exception("Failed to list agent details")
-        raise HTTPException(status_code=500, detail=f"Failed to list agent details: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post(
@@ -264,7 +258,7 @@ async def mount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
     except Exception as exc:
         logger.exception("Unexpected error getting agent '%s'", agent_name)
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     try:
         skill_cls = skill_registry.get(skill_name)
@@ -273,7 +267,7 @@ async def mount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
     except Exception as exc:
         logger.exception("Unexpected error getting skill '%s'", skill_name)
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     if agent.has_skill(skill_name):
         logger.warning(
@@ -289,7 +283,7 @@ async def mount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         agent.use_skill(skill)
     except Exception as exc:
         logger.exception("Failed to mount skill '%s' on agent '%s'", skill_name, agent_name)
-        raise HTTPException(status_code=500, detail=f"Failed to mount skill: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Mounted skill '%s' on agent '%s'", skill_name, agent_name)
     return {"success": True, "agent": agent_name, "skill": skill_name}
@@ -322,7 +316,7 @@ async def unmount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
     except Exception as exc:
         logger.exception("Unexpected error getting agent '%s'", agent_name)
-        raise HTTPException(status_code=500, detail=f"Internal error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     if not agent.has_skill(skill_name):
         logger.warning(
@@ -334,10 +328,10 @@ async def unmount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         )
 
     try:
-        del agent._skills[skill_name]
+        agent.remove_skill(skill_name)
     except Exception as exc:
         logger.exception("Failed to unmount skill '%s' from agent '%s'", skill_name, agent_name)
-        raise HTTPException(status_code=500, detail=f"Failed to unmount skill: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Unmounted skill '%s' from agent '%s'", skill_name, agent_name)
     return {"success": True, "agent": agent_name, "skill": skill_name}
@@ -375,7 +369,7 @@ async def list_skills() -> Dict[str, List[SkillInfoResponse]]:
         return {"skills": skills}
     except Exception as exc:
         logger.exception("Failed to list skills")
-        raise HTTPException(status_code=500, detail=f"Failed to list skills: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 # 上传技能代码中禁止包含的危险导入/模式
@@ -465,7 +459,7 @@ async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
             f.write(payload.code)
     except OSError as exc:
         logger.exception("Failed to write skill file '%s'", file_path)
-        raise HTTPException(status_code=500, detail=f"Failed to write skill file: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     try:
         module_name = f"app.skills.custom.{payload.name}"
@@ -506,7 +500,7 @@ async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
             os.remove(file_path)
         if f"app.skills.custom.{payload.name}" in sys.modules:
             del sys.modules[f"app.skills.custom.{payload.name}"]
-        raise HTTPException(status_code=500, detail=f"Failed to process skill: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Uploaded and registered skill '%s'", payload.name)
     return {"success": True, "name": payload.name, "description": payload.description}
@@ -531,4 +525,4 @@ async def list_llm_providers() -> Dict[str, List[ProviderResponse]]:
         return {"providers": providers}
     except Exception as exc:
         logger.exception("Failed to list LLM providers")
-        raise HTTPException(status_code=500, detail=f"Failed to list LLM providers: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

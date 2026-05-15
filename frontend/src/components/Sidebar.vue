@@ -1,25 +1,20 @@
-<!--
-  @file 侧边栏组件
-  @description 应用主导航侧边栏，包含路由链接和主题切换
-  @component Sidebar
-  @emits
-    - toggle: 侧边栏展开/收起状态变化
-  @slots
-    - default: 导航内容区
-
-  @example
-  ```vue
-  <template>
-    <Sidebar />
-  </template>
-  ```
--->
-
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTabs } from '../composables/useTabs'
+import {
+  LayoutDashboard,
+  Bot,
+  Wrench,
+  GitBranch,
+  Workflow,
+  List,
+  Layers,
+  ClipboardCheck,
+  Settings,
+  ChevronDown,
+} from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -31,28 +26,29 @@ interface NavItem {
   id: string
   path: string
   title: string
-  icon: string
+  icon: any
   children?: NavItem[]
 }
 
 const workflowExpanded = ref(true)
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: '📊' },
-  { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: '🤖' },
-  { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: '🔧' },
+  { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: LayoutDashboard },
+  { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: Bot },
+  { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: Wrench },
   {
     id: 'workflow',
     path: '/workflow',
     title: 'sidebar.workflow',
-    icon: '🔄',
+    icon: GitBranch,
     children: [
-      { id: 'workflow-editor', path: '/workflow/editor', title: 'sidebar.workflowEditor', icon: '✏️' },
-      { id: 'workflow-list', path: '/workflow/list', title: 'sidebar.workflowList', icon: '📋' },
+      { id: 'workflow-editor', path: '/workflow/editor', title: 'sidebar.workflowEditor', icon: Workflow },
+      { id: 'workflow-list', path: '/workflow/list', title: 'sidebar.workflowList', icon: List },
+      { id: 'workflow-instances', path: '/workflow/instances', title: 'sidebar.workflowInstances', icon: Layers },
     ],
   },
-  { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: '📋' },
-  { id: 'settings', path: '/settings', title: 'sidebar.settings', icon: '⚙️' },
+  { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
+  { id: 'settings', path: '/settings', title: 'sidebar.settings', icon: Settings },
 ]
 
 const navigateTo = (item: NavItem) => {
@@ -88,9 +84,9 @@ const isParentActive = (item: NavItem) => {
           :class="{ active: item.children ? isParentActive(item) : isActive(item.path), 'parent-active': isParentActive(item) }"
           @click="navigateTo(item)"
         >
-          <span class="nav-icon">{{ item.icon }}</span>
+          <component :is="item.icon" class="nav-icon-lucide" :size="18" />
           <span class="nav-label">{{ t(item.title) }}</span>
-          <span v-if="item.children" class="nav-expand" :class="{ expanded: workflowExpanded }">▾</span>
+          <ChevronDown v-if="item.children" class="nav-expand" :class="{ expanded: workflowExpanded }" :size="14" />
         </div>
         <div v-if="item.children && workflowExpanded" class="nav-children">
           <div
@@ -100,7 +96,7 @@ const isParentActive = (item: NavItem) => {
             :class="{ active: isActive(child.path) }"
             @click="navigateToChild(child)"
           >
-            <span class="nav-icon">{{ child.icon }}</span>
+            <component :is="child.icon" class="nav-icon-lucide" :size="16" />
             <span class="nav-label">{{ t(child.title) }}</span>
           </div>
         </div>
@@ -149,8 +145,8 @@ const isParentActive = (item: NavItem) => {
   font-weight: 600;
 }
 
-.nav-icon {
-  font-size: 1.25rem;
+.nav-icon-lucide {
+  flex-shrink: 0;
 }
 
 .nav-label {
@@ -160,8 +156,8 @@ const isParentActive = (item: NavItem) => {
 }
 
 .nav-expand {
-  font-size: 0.75rem;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .nav-expand.expanded {

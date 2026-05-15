@@ -48,7 +48,7 @@ def _on_event(event):
             event_role = event.payload.get("agent_role", "")
             if event_role and sub.role != event_role:
                 continue
-        asyncio.get_event_loop().create_task(sub.put(payload))
+        asyncio.get_running_loop().create_task(sub.put(payload))
 
 
 _bus_listener_attached = False

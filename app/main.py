@@ -41,7 +41,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.state.models import init_db
-from app.api import requirements, approvals, workflow, registry, workflow_config, workbench, events, lifecycle
+from app.api import requirements, approvals, workflow, registry, workflow_config, workbench, events, lifecycle, workflow_instance
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill
 from app.core.registry.discovery import discover_and_register
@@ -114,6 +114,17 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized")
     except Exception as exc:
         logger.exception("Database initialization failed")
+        raise
+    try:
+        from app.state.models import get_db
+        from app.api.workflow_config import seed_templates
+        db = next(get_db())
+        try:
+            seed_templates(db)
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.exception("Template seeding failed")
         raise
     try:
         discover_and_register("app.skills", skill_registry, BaseSkill)
@@ -230,6 +241,7 @@ app.include_router(workflow_config.router, prefix="/workflow-config", tags=["wor
 app.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
 app.include_router(events.router, prefix="/events", tags=["events"])
 app.include_router(lifecycle.router, prefix="/lifecycle", tags=["lifecycle"])
+app.include_router(workflow_instance.router, prefix="/workflow-instances", tags=["workflow-instances"])
 
 
 @app.get("/health")

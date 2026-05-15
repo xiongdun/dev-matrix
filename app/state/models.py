@@ -90,9 +90,10 @@ class StateSnapshotModel(Base):
 
 
 class WorkflowConfigModel(Base):
-    """工作流配置模型。
+    """工作流配置/模板模型。
 
     存储 Vue Flow 可视化编辑器设计的工作流配置。
+    当 is_template=True 时，该记录为预置流程模板，不可删除。
 
     Attributes:
         id: 主键 ID。
@@ -102,6 +103,8 @@ class WorkflowConfigModel(Base):
         flow_json: Vue Flow 的 nodes/edges JSON。
         yaml_path: 同步保存的 YAML 文件路径。
         status: 配置状态 (draft/active/archived)。
+        is_template: 是否为预置模板。
+        category: 模板分类 (standard/hotfix/db_change/auto_fix)。
         created_at: 创建时间。
         updated_at: 更新时间。
     """
@@ -115,6 +118,46 @@ class WorkflowConfigModel(Base):
     flow_json = Column(Text, default="{}")
     yaml_path = Column(String(256), nullable=True)
     status = Column(String(32), default="draft")
+    is_template = Column(Integer, default=0)
+    category = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class WorkflowInstanceModel(Base):
+    """工作流实例模型。
+
+    一个需求对应一个流程实例，记录实例的运行时状态。
+
+    Attributes:
+        id: 主键 ID。
+        instance_id: 业务编号（如 WF-2026-001）。
+        template_id: 引用的模板 ID（关联 WorkflowConfigModel）。
+        project_id: 关联的需求项目 ID。
+        current_state: 当前阶段状态（如 ARCHITECTURE_REVIEW）。
+        participants: 参与的 Agent 角色列表 JSON。
+        artifacts: 产出物列表 JSON（如 [{"name": "prd_v2.md", "stage": "generate_prd"}]）。
+        status: 实例状态 (running/paused/completed/failed/cancelled)。
+        context_json: 运行时上下文 JSON。
+        started_at: 实例启动时间。
+        completed_at: 实例完成时间。
+        created_at: 创建时间。
+        updated_at: 更新时间。
+    """
+
+    __tablename__ = "workflow_instances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instance_id = Column(String(32), unique=True, index=True, nullable=False)
+    template_id = Column(Integer, nullable=True)
+    project_id = Column(String(64), index=True, nullable=False)
+    current_state = Column(String(64), default="PENDING")
+    participants = Column(Text, default="[]")
+    artifacts = Column(Text, default="[]")
+    status = Column(String(32), default="running")
+    context_json = Column(Text, default="{}")
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -166,6 +209,12 @@ def receive_before_update(mapper, connection, target):
 @event.listens_for(WorkflowConfigModel, "before_update")
 def workflow_config_before_update(mapper, connection, target):
     """在更新 WorkflowConfigModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
+@event.listens_for(WorkflowInstanceModel, "before_update")
+def workflow_instance_before_update(mapper, connection, target):
+    """在更新 WorkflowInstanceModel 前自动设置 updated_at 时间戳。"""
     target.updated_at = datetime.utcnow()
 
 

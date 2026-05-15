@@ -59,8 +59,10 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
+import { useDialog } from '../composables/useDialog'
 
 const { t } = useI18n()
+const { showConfirm } = useDialog()
 
 interface Agent {
   name: string
@@ -119,7 +121,13 @@ async function mountSkill(agentName: string, skillName: string) {
     await api.mountSkill(agentName, skillName)
     await fetchData()
   } catch (e: any) {
-    alert(e.message || String(e))
+    await showConfirm({
+      title: t('common.error'),
+      message: e.message || String(e),
+      type: 'warning',
+      showCancel: false,
+      confirmText: t('common.confirm'),
+    })
   }
 }
 
@@ -128,7 +136,13 @@ async function unmountSkill(agentName: string, skillName: string) {
     await api.unmountSkill(agentName, skillName)
     await fetchData()
   } catch (e: any) {
-    alert(e.message || String(e))
+    await showConfirm({
+      title: t('common.error'),
+      message: e.message || String(e),
+      type: 'warning',
+      showCancel: false,
+      confirmText: t('common.confirm'),
+    })
   }
 }
 

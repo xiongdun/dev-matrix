@@ -1,20 +1,6 @@
-<!--
-  @file 活动列表组件
-  @description 展示最近活动记录的列表组件
-  @component ActivityList
-  @props
-    - activities: 活动数据数组
-
-  @example
-  ```vue
-  <template>
-    <ActivityList :activities="recentActivities" />
-  </template>
-  ```
--->
-
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { Zap, CheckCircle, Bot, Wrench, XCircle, ClipboardList } from 'lucide-vue-next'
 
 interface ActivityItem {
   id: string
@@ -45,41 +31,34 @@ const formatTime = (timestamp: string): string => {
   return t('activity.daysAgo', { n: days })
 }
 
-/**
- * 根据活动类型获取图标
- * @param {string} type - 活动类型
- * @returns {string} 图标字符
- */
-const getActivityIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    workflow: '⚡',
-    approval: '✅',
-    agent: '🤖',
-    skill: '🔧',
-    error: '❌',
-  }
-  return icons[type] || '📋'
+const iconMap: Record<string, any> = {
+  workflow: Zap,
+  approval: CheckCircle,
+  agent: Bot,
+  skill: Wrench,
+  error: XCircle,
+}
+
+const getActivityIcon = (type: string) => {
+  return iconMap[type] || ClipboardList
 }
 </script>
 
 <template>
   <div class="activity-list">
-    <!-- 空状态提示 -->
     <div v-if="activities.length === 0" class="empty-state">
       {{ t('activity.empty') }}
     </div>
-    <!-- 活动列表 -->
     <div
       v-for="activity in activities"
       :key="activity.id"
       class="activity-item"
     >
-      <!-- 活动图标 -->
-      <div class="activity-icon">{{ getActivityIcon(activity.type) }}</div>
+      <div class="activity-icon">
+        <component :is="getActivityIcon(activity.type)" :size="18" />
+      </div>
       <div class="activity-content">
-        <!-- 活动消息 -->
         <div class="activity-message">{{ activity.message }}</div>
-        <!-- 相对时间 -->
         <div class="activity-time">{{ formatTime(activity.timestamp) }}</div>
       </div>
     </div>
@@ -115,8 +94,11 @@ const getActivityIcon = (type: string): string => {
 }
 
 .activity-icon {
-  font-size: 1.25rem;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
 }
 
 .activity-content {

@@ -93,29 +93,38 @@ onUnmounted(() => {
 <style scoped>
 .context-menu {
   position: fixed;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 4px 0;
-  min-width: 120px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 1000;
+  overflow: hidden;
 }
 
 .context-menu-item {
-  padding: 8px 16px;
+  padding: 9px 16px;
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .context-menu-item:hover:not(.disabled) {
   background-color: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .context-menu-item.disabled {
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.context-menu-item + .context-menu-item {
+  border-top: 1px solid var(--border-color);
 }
 </style>

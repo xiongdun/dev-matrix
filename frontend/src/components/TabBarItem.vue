@@ -1,32 +1,19 @@
-<!--
-  @file Tab 标签项组件
-  @description 单个标签页的显示组件，支持激活状态和关闭按钮
-  @component TabBarItem
-  @props
-    - tab: Tab 对象
-    - active: 是否为当前激活标签
-  @emits
-    - click: 点击标签时触发
-    - close: 点击关闭按钮时触发
-    - contextmenu: 右键点击时触发
-
-  @example
-  ```vue
-  <template>
-    <TabBarItem
-      :tab="{ id: 'settings', title: 'Settings', path: '/settings', closable: true }"
-      :active="true"
-      @click="handleClick"
-      @close="handleClose"
-    />
-  </template>
-  ```
--->
-
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Tab } from '../composables/useTabs'
+import {
+  LayoutDashboard,
+  Bot,
+  Wrench,
+  GitBranch,
+  Workflow,
+  List,
+  Layers,
+  ClipboardCheck,
+  Settings,
+  X,
+} from 'lucide-vue-next'
 
 interface Props {
   tab: Tab
@@ -42,15 +29,18 @@ const emit = defineEmits<{
   (e: 'contextmenu', event: MouseEvent): void
 }>()
 
-const getTabIcon = (id: string): string => {
-  const icons: Record<string, string> = {
-    dashboard: '⊞',
-    agents: '◈',
-    skills: '◇',
-    settings: '⚙',
-  }
-  return icons[id] || '○'
+const iconMap: Record<string, any> = {
+  dashboard: LayoutDashboard,
+  agents: Bot,
+  skills: Wrench,
+  settings: Settings,
+  'workflow-list': List,
+  'workflow-editor': Workflow,
+  'workflow-instances': Layers,
+  workbench: ClipboardCheck,
 }
+
+const tabIcon = computed(() => iconMap[props.tab.id] || GitBranch)
 
 const displayTitle = computed(() => {
   const titleMap: Record<string, string> = {
@@ -60,6 +50,7 @@ const displayTitle = computed(() => {
     settings: t('sidebar.settings'),
     'workflow-list': t('sidebar.workflowList'),
     'workflow-editor': t('sidebar.workflowEditor'),
+    'workflow-instances': t('sidebar.workflowInstances'),
     workbench: t('sidebar.workbench'),
   }
   return titleMap[props.tab.id] || props.tab.title
@@ -73,7 +64,7 @@ const displayTitle = computed(() => {
     @click="emit('click')"
     @contextmenu="emit('contextmenu', $event)"
   >
-    <span class="tab-icon">{{ getTabIcon(tab.id) }}</span>
+    <component :is="tabIcon" class="tab-icon" :size="14" />
     <span class="tab-title">{{ displayTitle }}</span>
     <button
       v-if="tab.closable"
@@ -81,7 +72,7 @@ const displayTitle = computed(() => {
       @click.stop="emit('close')"
       :title="t('tabBar.closeTitle')"
     >
-      ×
+      <X :size="12" />
     </button>
   </div>
 </template>
@@ -125,7 +116,7 @@ const displayTitle = computed(() => {
 }
 
 .tab-icon {
-  font-size: 12px;
+  flex-shrink: 0;
   opacity: 0.7;
 }
 
@@ -144,7 +135,6 @@ const displayTitle = computed(() => {
   border: none;
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 14px;
   cursor: pointer;
   border-radius: 3px;
   margin-left: 4px;

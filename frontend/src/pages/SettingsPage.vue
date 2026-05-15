@@ -98,7 +98,7 @@ const handleThemeChange = (value: string) => {
 
     <div class="settings-actions">
       <button class="btn btn-secondary" @click="resetSettings">
-        {{ t('common.cancel') }}
+        {{ t('settings.resetToDefault') }}
       </button>
       <button class="btn btn-primary" @click="updateSettings(settings)">
         {{ t('common.save') }}

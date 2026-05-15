@@ -19,16 +19,22 @@ import router from './router'
 import i18n from './i18n'
 import './style.css'
 
-/**
- * 创建 Vue 应用实例
- * @returns {import('vue').App} Vue 应用实例
- */
+;(function initTheme() {
+  try {
+    const raw = localStorage.getItem('devmatrix-settings')
+    const theme = raw ? JSON.parse(raw).theme : 'auto'
+    const resolved = theme === 'auto'
+      ? window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+      : theme
+    document.documentElement.setAttribute('data-theme', resolved)
+  } catch {
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }
+})()
+
 const app = createApp(App)
 
-// 注册路由
 app.use(router)
-// 注册国际化
 app.use(i18n)
 
-// 挂载到 DOM
 app.mount('#app')

@@ -240,6 +240,20 @@ class BaseAgent(ABC):
         """
         return name in self._skills
 
+    def remove_skill(self, skill_name: str) -> bool:
+        """移除已组合的技能。
+
+        Args:
+            skill_name: 技能名称。
+
+        Returns:
+            bool: 是否成功移除。
+        """
+        if skill_name in self._skills:
+            del self._skills[skill_name]
+            return True
+        return False
+
     async def call_skill(self, name: str, context: Dict[str, Any]) -> "SkillResult":
         """按名称执行已组合的技能，带超时保护。
 

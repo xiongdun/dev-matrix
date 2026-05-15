@@ -17,31 +17,51 @@
 import { RouterView } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import TabBar from './components/TabBar.vue'
+import AppConfirm from './components/AppConfirm.vue'
+import AppPrompt from './components/AppPrompt.vue'
 import { useI18n } from 'vue-i18n'
+import { useDialog } from './composables/useDialog'
 
-/**
- * 国际化组合式函数
- * @returns {Object} i18n 实例
- */
 const { t } = useI18n()
+const { confirmState, promptState, confirmResult, promptResult } = useDialog()
 </script>
 
 <template>
   <div class="app-container">
-    <!-- 侧边栏导航 -->
     <Sidebar />
     <div class="main-content">
-      <!-- 顶部导航栏 -->
       <header class="top-nav">
         <h1>{{ t('app.title') }}</h1>
       </header>
-      <!-- Tab 标签栏 -->
       <TabBar />
-      <!-- 主内容区，路由视图 -->
       <main class="content-area">
         <RouterView />
       </main>
     </div>
+
+    <AppConfirm
+      v-model:visible="confirmState.visible"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :type="confirmState.type"
+      :confirm-text="confirmState.confirmText"
+      :cancel-text="confirmState.cancelText"
+      :show-cancel="confirmState.showCancel"
+      @confirm="confirmResult(true)"
+      @cancel="confirmResult(false)"
+    />
+
+    <AppPrompt
+      v-model:visible="promptState.visible"
+      :title="promptState.title"
+      :message="promptState.message"
+      :placeholder="promptState.placeholder"
+      :default-value="promptState.defaultValue"
+      :confirm-text="promptState.confirmText"
+      :cancel-text="promptState.cancelText"
+      @confirm="(v) => promptResult(v)"
+      @cancel="promptResult(null)"
+    />
   </div>
 </template>
 

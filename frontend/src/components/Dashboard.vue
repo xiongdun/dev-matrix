@@ -1,91 +1,59 @@
-<!--
-  @file 仪表盘组件
-  @description 应用主仪表盘，展示统计数据、最近活动和任务列表
-  @component Dashboard
-  @emits
-    - refresh: 用户请求刷新数据
-  @slots
-    - default: 主内容区
-
-  @example
-  ```vue
-  <template>
-    <Dashboard />
-  </template>
-  ```
--->
-
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import StatCard from './StatCard.vue'
 import ActivityList from './ActivityList.vue'
 import TaskList from './TaskList.vue'
+import { api } from '../api'
+import { Bot, Wrench, Hourglass, CheckCircle } from 'lucide-vue-next'
 
-/**
- * 国际化组合式函数
- * @returns {Object} i18n 实例
- */
 const { t } = useI18n()
 
-/**
- * 加载状态
- * @type {import('vue').Ref<boolean>}
- */
 const loading = ref(false)
 
-/**
- * 统计数据
- * @type {import('vue').Ref<Array<{label: string, value: number, icon: string}>>}
- */
 const stats = ref([
-  { label: t('dashboard.stats.totalAgents'), value: 0, icon: '🤖' },
-  { label: t('dashboard.stats.activeSkills'), value: 0, icon: '🔧' },
-  { label: t('dashboard.stats.pendingApprovals'), value: 0, icon: '⏳' },
-  { label: t('dashboard.stats.completedWorkflows'), value: 0, icon: '✅' },
+  { label: t('dashboard.stats.totalAgents'), value: 0, icon: Bot },
+  { label: t('dashboard.stats.activeSkills'), value: 0, icon: Wrench },
+  { label: t('dashboard.stats.pendingApprovals'), value: 0, icon: Hourglass },
+  { label: t('dashboard.stats.completedWorkflows'), value: 0, icon: CheckCircle },
 ])
 
-/**
- * 最近活动列表
- * @type {import('vue').Ref<Array<{id: string, type: string, message: string, timestamp: string}>>}
- */
+const now = new Date().toISOString()
+
 const activities = ref([
-  { id: '1', type: 'workflow', message: t('dashboard.mock.workflowCompleted'), timestamp: '2024-01-15T10:30:00Z' },
-  { id: '2', type: 'approval', message: t('dashboard.mock.approvalRequired'), timestamp: '2024-01-15T09:15:00Z' },
-  { id: '3', type: 'agent', message: t('dashboard.mock.agentProposal'), timestamp: '2024-01-15T08:45:00Z' },
+  { id: '1', type: 'workflow', message: t('dashboard.mock.workflowCompleted'), timestamp: now },
+  { id: '2', type: 'approval', message: t('dashboard.mock.approvalRequired'), timestamp: now },
+  { id: '3', type: 'agent', message: t('dashboard.mock.agentProposal'), timestamp: now },
 ])
 
-/**
- * 任务列表
- * @type {import('vue').Ref<Array<{id: string, title: string, status: string, priority: string}>>}
- */
 const tasks = ref([
   { id: '1', title: t('dashboard.mock.reviewPrd'), status: 'pending', priority: 'high' },
   { id: '2', title: t('dashboard.mock.mountSkill'), status: 'completed', priority: 'medium' },
   { id: '3', title: t('dashboard.mock.configureLlm'), status: 'in_progress', priority: 'low' },
 ])
 
-/**
- * 加载仪表盘数据
- * @returns {Promise<void>}
- */
 const loadDashboard = async () => {
   loading.value = true
   try {
-    // 模拟 API 调用，实际应从后端获取
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const [agentRes, skillRes, statsRes] = await Promise.allSettled([
+      api.getAgentDetails(),
+      api.getSkills(),
+      api.getWorkbenchStats(''),
+    ])
+    const agentCount = agentRes.status === 'fulfilled' ? (agentRes.value.agents?.length ?? 0) : 0
+    const skillCount = skillRes.status === 'fulfilled' ? (skillRes.value.skills?.length ?? 0) : 0
+    const pendingCount = statsRes.status === 'fulfilled' ? (statsRes.value.pending ?? 0) : 0
     stats.value = [
-      { label: t('dashboard.stats.totalAgents'), value: 5, icon: '🤖' },
-      { label: t('dashboard.stats.activeSkills'), value: 12, icon: '🔧' },
-      { label: t('dashboard.stats.pendingApprovals'), value: 3, icon: '⏳' },
-      { label: t('dashboard.stats.completedWorkflows'), value: 24, icon: '✅' },
+      { label: t('dashboard.stats.totalAgents'), value: agentCount, icon: Bot },
+      { label: t('dashboard.stats.activeSkills'), value: skillCount, icon: Wrench },
+      { label: t('dashboard.stats.pendingApprovals'), value: pendingCount, icon: Hourglass },
+      { label: t('dashboard.stats.completedWorkflows'), value: 0, icon: CheckCircle },
     ]
   } finally {
     loading.value = false
   }
 }
 
-// 组件挂载时加载数据
 onMounted(() => {
   loadDashboard()
 })
@@ -93,15 +61,12 @@ onMounted(() => {
 
 <template>
   <div class="dashboard">
-    <!-- 页面标题 -->
     <h2>{{ t('dashboard.title') }}</h2>
 
-    <!-- 加载状态 -->
     <div v-if="loading" class="loading">
       {{ t('common.loading') }}
     </div>
 
-    <!-- 统计数据卡片 -->
     <div v-else class="stats-grid">
       <StatCard
         v-for="stat in stats"
@@ -112,7 +77,6 @@ onMounted(() => {
       />
     </div>
 
-    <!-- 下方内容区：活动和任务 -->
     <div class="dashboard-content">
       <div class="section">
         <h3>{{ t('dashboard.recentActivity') }}</h3>

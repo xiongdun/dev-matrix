@@ -1,0 +1,32 @@
+name: auto-fix-flow
+version: "1.0.0"
+description: "Automated fix workflow for lint/type errors with auto-approval"
+category: auto_fix
+
+stages:
+  - id: analyze_code_impact
+    name: "Code Impact Analysis"
+    agent: architect
+    activity: analyze_code_impact
+    requires_approval: false
+    timeout_seconds: 120
+
+  - id: generate_patch
+    name: "Patch Generation"
+    agent: developer
+    activity: generate_patch
+    requires_approval: false
+    timeout_seconds: 300
+
+  - id: execute_tests
+    name: "Test Execution"
+    agent: qa
+    activity: execute_tests
+    requires_approval: false
+    timeout_seconds: 300
+
+settings:
+  default_timeout: 180
+  max_retries: 2
+  retry_delay: 3
+  auto_rollback_on_failure: true

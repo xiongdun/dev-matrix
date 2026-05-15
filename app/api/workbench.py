@@ -25,6 +25,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.events.bus import event_bus
@@ -102,7 +103,7 @@ async def list_tasks(
         return {"tasks": [_model_to_response(t) for t in tasks]}
     except Exception as exc:
         logger.exception("Failed to list workbench tasks")
-        raise HTTPException(status_code=500, detail=f"Failed to list tasks: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/tasks/{task_id}", response_model=WorkflowTaskResponse)
@@ -137,7 +138,7 @@ async def approve_task(task_id: int, db: Session = Depends(get_db)):
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to approve task %d", task_id)
-        raise HTTPException(status_code=500, detail=f"Failed to approve task: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post("/tasks/{task_id}/reject", response_model=WorkflowTaskResponse)
@@ -163,7 +164,7 @@ async def reject_task(
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to reject task %d", task_id)
-        raise HTTPException(status_code=500, detail=f"Failed to reject task: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post("/tasks/{task_id}/retry", response_model=WorkflowTaskResponse)
@@ -217,7 +218,7 @@ async def retry_task(
     except Exception as exc:
         db.rollback()
         logger.exception("Failed to retry task %d", task_id)
-        raise HTTPException(status_code=500, detail=f"Failed to retry task: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/stats", response_model=TaskStatsResponse)
@@ -226,15 +227,24 @@ async def get_stats(
     db: Session = Depends(get_db),
 ):
     try:
-        query = db.query(WorkflowTaskModel)
-        if role:
-            query = query.filter(WorkflowTaskModel.agent_role == role)
-        tasks = query.all()
-        pending = sum(1 for t in tasks if t.status in ("pending", "retrying"))
-        completed = sum(1 for t in tasks if t.status == "approved" or t.status == "completed")
-        rejected = sum(1 for t in tasks if t.status == "rejected")
+        base_filter = [WorkflowTaskModel.agent_role == role] if role else []
+        pending = db.query(func.count(WorkflowTaskModel.id)).filter(
+            *base_filter,
+            WorkflowTaskModel.status.in_(["pending", "retrying"])
+        ).scalar() or 0
+
+        completed = db.query(func.count(WorkflowTaskModel.id)).filter(
+            *base_filter,
+            WorkflowTaskModel.status.in_(["approved", "completed"])
+        ).scalar() or 0
+
+        rejected = db.query(func.count(WorkflowTaskModel.id)).filter(
+            *base_filter,
+            WorkflowTaskModel.status == "rejected"
+        ).scalar() or 0
+
         logger.info("Workbench stats (role=%s): pending=%d, completed=%d, rejected=%d", role, pending, completed, rejected)
         return TaskStatsResponse(pending=pending, completed=completed, rejected=rejected)
     except Exception as exc:
         logger.exception("Failed to get workbench stats")
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

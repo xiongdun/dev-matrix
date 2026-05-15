@@ -1,69 +1,29 @@
-<!--
-  @file 主题切换组件
-  @description 切换应用主题模式（浅色/深色/自动）
-  @component ThemeToggle
-  @emits
-    - change: 主题变化事件，参数为新模式
-  @props
-    - modelValue: 当前主题值
-
-  @example
-  ```vue
-  <template>
-    <ThemeToggle v-model="currentTheme" />
-  </template>
-  ```
--->
-
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Sun, Moon, Monitor } from 'lucide-vue-next'
 
-/**
- * 组件属性定义
- * @property {string} modelValue - 当前主题值
- */
 const props = defineProps<{
   modelValue: string
 }>()
 
-/**
- * 组件事件定义
- * @emits update:modelValue - 更新主题值
- */
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
 }>()
 
-/**
- * 国际化组合式函数
- * @returns {Object} i18n 实例
- */
 const { t } = useI18n()
 
-/**
- * 当前主题的计算属性
- * @type {import('vue').ComputedRef<string>}
- */
 const theme = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 })
 
-/**
- * 可用的主题选项
- * @type {Array<{value: string, label: string, icon: string}>}
- */
 const themes = [
-  { value: 'light', label: t('settings.theme.light'), icon: '☀️' },
-  { value: 'dark', label: t('settings.theme.dark'), icon: '🌙' },
-  { value: 'auto', label: t('settings.theme.auto'), icon: '🔄' },
+  { value: 'light', label: t('settings.theme.light'), icon: Sun },
+  { value: 'dark', label: t('settings.theme.dark'), icon: Moon },
+  { value: 'auto', label: t('settings.theme.auto'), icon: Monitor },
 ]
 
-/**
- * 设置主题
- * @param {string} value - 主题值
- */
 const setTheme = (value: string) => {
   theme.value = value
 }
@@ -71,7 +31,6 @@ const setTheme = (value: string) => {
 
 <template>
   <div class="theme-toggle">
-    <!-- 遍历渲染主题选项按钮 -->
     <button
       v-for="t in themes"
       :key="t.value"
@@ -79,7 +38,7 @@ const setTheme = (value: string) => {
       @click="setTheme(t.value)"
       :title="t.label"
     >
-      <span class="theme-icon">{{ t.icon }}</span>
+      <component :is="t.icon" class="theme-icon" :size="16" />
       <span class="theme-label">{{ t.label }}</span>
     </button>
   </div>
@@ -120,7 +79,7 @@ const setTheme = (value: string) => {
 }
 
 .theme-icon {
-  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .theme-label {

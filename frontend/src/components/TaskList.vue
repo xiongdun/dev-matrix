@@ -210,37 +210,37 @@ const handleDelete = (taskId: string) => {
 }
 
 .status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
 }
 
 .status-in-progress {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--status-progress-bg);
+  color: var(--status-progress-text);
 }
 
 .status-completed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--status-completed-bg);
+  color: var(--status-completed-text);
 }
 
 .status-failed {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--status-failed-bg);
+  color: var(--status-failed-text);
 }
 
 .priority-high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--priority-high-bg);
+  color: var(--priority-high-text);
 }
 
 .priority-medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--priority-medium-bg);
+  color: var(--priority-medium-text);
 }
 
 .priority-low {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--priority-low-bg);
+  color: var(--priority-low-text);
 }
 </style>

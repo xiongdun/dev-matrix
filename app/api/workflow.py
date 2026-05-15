@@ -23,18 +23,10 @@ from sqlalchemy.orm import Session
 from app.state.models import get_db
 from app.state.repository import StateRepository
 from app.state.schemas import ProjectState
+from app.api.schemas import ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-class ErrorResponse(BaseModel):
-    """错误响应模型。
-
-    Attributes:
-        detail: 错误详情。
-    """
-    detail: str
 
 
 class StartWorkflowPayload(BaseModel):
@@ -121,7 +113,7 @@ async def start_workflow(
         raise
     except Exception as exc:
         logger.exception("Failed to start workflow for project '%s'", project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to start workflow: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get(
@@ -161,4 +153,4 @@ async def get_workflow_status(
         raise
     except Exception as exc:
         logger.exception("Failed to get workflow status for project '%s'", project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to get workflow status: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

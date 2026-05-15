@@ -54,6 +54,12 @@ const routes = [
         component: () => import('./pages/WorkflowEditorPage.vue'),
         meta: { title: 'Workflow Editor', icon: 'workflow-editor' },
       },
+      {
+        path: 'instances',
+        name: 'workflow-instances',
+        component: () => import('./pages/WorkflowInstancePage.vue'),
+        meta: { title: 'Workflow Instances', icon: 'workflow-instances' },
+      },
     ],
   },
   {
@@ -61,6 +67,12 @@ const routes = [
     name: 'workbench',
     component: () => import('./pages/WorkbenchPage.vue'),
     meta: { title: 'Workbench', icon: 'workbench' },
+  },
+  {
+    path: '/workbench/task/:id',
+    name: 'task-detail',
+    component: () => import('./pages/TaskDetailPage.vue'),
+    meta: { title: 'Task Detail', icon: 'workbench' },
   },
   {
     path: '/settings',

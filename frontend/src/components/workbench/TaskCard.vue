@@ -15,7 +15,7 @@
 
     <div class="task-card__output-toggle" @click="outputExpanded = !outputExpanded">
       <span class="task-card__output-label">{{ t('workbench.output') }}</span>
-      <span class="task-card__expand-icon" :class="{ expanded: outputExpanded }">▾</span>
+      <ChevronDown class="task-card__expand-icon" :class="{ expanded: outputExpanded }" :size="14" />
     </div>
     <div v-if="outputExpanded" class="task-card__output-content">
       <pre>{{ formattedOutput }}</pre>
@@ -23,13 +23,13 @@
 
     <div class="task-card__actions">
       <button class="task-card__btn task-card__btn--approve" @click="emit('approve', task.id)">
-        ✅ {{ t('workbench.approve') }}
+        <CheckCircle :size="14" /> {{ t('workbench.approve') }}
       </button>
       <button class="task-card__btn task-card__btn--reject" @click="showRejectInput = !showRejectInput">
-        ↩️ {{ t('workbench.reject') }}
+        <Undo2 :size="14" /> {{ t('workbench.reject') }}
       </button>
       <button class="task-card__btn task-card__btn--retry" @click="showRetryInput = !showRetryInput">
-        🔄 {{ t('workbench.retry') }}
+        <RefreshCw :size="14" /> {{ t('workbench.retry') }}
       </button>
     </div>
 
@@ -56,6 +56,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ChevronDown, CheckCircle, Undo2, RefreshCw } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -216,7 +217,6 @@ const relativeTime = computed(() => {
 }
 
 .task-card__expand-icon {
-  font-size: 12px;
   transition: transform 0.2s ease;
 }
 
@@ -249,6 +249,9 @@ const relativeTime = computed(() => {
 }
 
 .task-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);

@@ -27,12 +27,14 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
+    const { headers: customHeaders, ...restOptions } = options || {}
     const response = await fetch(`${API_BASE}${url}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...customHeaders,
       },
       signal: controller.signal,
-      ...options,
+      ...restOptions,
     })
 
     clearTimeout(timeoutId)
@@ -166,17 +168,27 @@ export const api = {
 
   /** 获取工作流列表 */
   getWorkflows() {
-    return requestWithRetry<{ workflows: Array<{ id: number; name: string; description: string; version: string; status: string; created_at: string; updated_at: string }> }>('/workflow-config/')
+    return requestWithRetry<{ workflows: Array<{ id: number; name: string; description: string; version: string; status: string; is_template: boolean; category: string | null; created_at: string; updated_at: string }> }>('/workflow-config/')
+  },
+
+  /** 获取工作流模板列表 */
+  getWorkflowTemplates() {
+    return requestWithRetry<{ templates: Array<{ id: number; name: string; description: string; version: string; status: string; is_template: boolean; category: string | null; flow_json: string }> }>('/workflow-config/templates')
   },
 
   /** 获取单个工作流 */
   getWorkflow(id: number) {
-    return requestWithRetry<{ id: number; name: string; description: string; version: string; flow_json: string; status: string }>('/workflow-config/' + id)
+    return requestWithRetry<{ id: number; name: string; description: string; version: string; flow_json: string; status: string; is_template: boolean; category: string | null }>('/workflow-config/' + id)
   },
 
   /** 创建工作流 */
-  createWorkflow(data: { name: string; description?: string }) {
+  createWorkflow(data: { name: string; description?: string; flow_json?: string }) {
     return requestWithRetry<{ id: number; name: string }>('/workflow-config/', { method: 'POST', body: JSON.stringify(data) })
+  },
+
+  /** 从模板创建实例 */
+  instantiateTemplate(configId: number, projectId: string) {
+    return requestWithRetry<{ id: number; instance_id: string; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-config/' + configId + '/instantiate', { method: 'POST', body: JSON.stringify({ project_id: projectId }) })
   },
 
   /** 保存工作流 */
@@ -187,6 +199,22 @@ export const api = {
   /** 删除工作流 */
   deleteWorkflow(id: number) {
     return requestWithRetry<{ success: boolean }>('/workflow-config/' + id, { method: 'DELETE' })
+  },
+
+  /** 获取工作流实例列表 */
+  getWorkflowInstances(status?: string) {
+    const params = status ? `?status=${status}` : ''
+    return requestWithRetry<{ instances: Array<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string; started_at: string | null; completed_at: string | null }> }>('/workflow-instances/' + params)
+  },
+
+  /** 按 project_id 获取工作流实例 */
+  getWorkflowInstanceByProject(projectId: string) {
+    return requestWithRetry<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-instances/by-project/' + projectId)
+  },
+
+  /** 获取单个工作流实例 */
+  getWorkflowInstance(instanceId: string) {
+    return requestWithRetry<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-instances/' + instanceId)
   },
 
   getWorkbenchTasks(role: string) {
@@ -210,19 +238,38 @@ export const api = {
 
   subscribeToEvents(role?: string, onEvent?: (data: any) => void): () => void {
     const params = role ? `?role=${role}` : ''
-    const eventSource = new EventSource(`/events/stream${params}`)
+    let reconnectAttempts = 0
+    const maxReconnectAttempts = 10
+    let eventSource: EventSource | null = null
+    let closed = false
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onEvent?.(data)
-      } catch {}
+    const connect = () => {
+      if (closed) return
+      eventSource = new EventSource(`/events/stream${params}`)
+
+      eventSource.onmessage = (event) => {
+        reconnectAttempts = 0
+        try {
+          const data = JSON.parse(event.data)
+          onEvent?.(data)
+        } catch {}
+      }
+
+      eventSource.onerror = () => {
+        eventSource?.close()
+        if (!closed && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000)
+          setTimeout(connect, delay)
+        }
+      }
     }
 
-    eventSource.onerror = () => {
-      eventSource.close()
-    }
+    connect()
 
-    return () => eventSource.close()
+    return () => {
+      closed = true
+      eventSource?.close()
+    }
   },
 }

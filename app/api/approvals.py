@@ -19,24 +19,15 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.state.models import get_db
 from app.state.schemas import ProjectState, StateSnapshot
 from app.state.repository import StateRepository
+from app.api.schemas import ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-class ErrorResponse(BaseModel):
-    """错误响应模型。
-
-    Attributes:
-        detail: 错误详情。
-    """
-    detail: str
 
 
 @router.post(
@@ -86,7 +77,7 @@ async def submit_approval(
         raise
     except Exception as exc:
         logger.exception("Failed to submit approval for project '%s'", project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to submit approval: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get(
@@ -122,7 +113,7 @@ async def get_project_state(
         raise
     except Exception as exc:
         logger.exception("Failed to get project state for '%s'", project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to get project state: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get(
@@ -155,7 +146,7 @@ async def list_snapshots(
         return snapshots
     except Exception as exc:
         logger.exception("Failed to list snapshots for project '%s'", project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to list snapshots: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.post(
@@ -191,4 +182,4 @@ async def rollback_to_snapshot(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Failed to rollback project '%s' to snapshot %d", project_id, snapshot_id)
-        raise HTTPException(status_code=500, detail=f"Failed to rollback: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

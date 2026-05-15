@@ -23,18 +23,10 @@ from sqlalchemy.orm import Session
 from app.state.models import get_db, ProjectStateModel
 from app.state.schemas import ProjectState, ProjectStateCreate
 from app.state.repository import StateRepository
+from app.api.schemas import ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-class ErrorResponse(BaseModel):
-    """错误响应模型。
-
-    Attributes:
-        detail: 错误详情。
-    """
-    detail: str
 
 
 class PaginatedRequirementsResponse(BaseModel):
@@ -88,7 +80,7 @@ async def create_requirement(
         raise
     except Exception as exc:
         logger.exception("Failed to create requirement for project '%s'", req.project_id)
-        raise HTTPException(status_code=500, detail=f"Failed to create requirement: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get(
@@ -134,4 +126,4 @@ async def list_requirements(
         }
     except Exception as exc:
         logger.exception("Failed to list requirements")
-        raise HTTPException(status_code=500, detail=f"Failed to list requirements: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

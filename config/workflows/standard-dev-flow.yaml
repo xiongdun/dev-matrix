@@ -1,0 +1,53 @@
+name: standard-dev-flow
+version: "1.0.0"
+description: "Standard development workflow with full human approval checkpoints"
+category: standard
+
+stages:
+  - id: analyze_requirement
+    name: "Requirement Analysis"
+    agent: business_analyst
+    activity: analyze_requirement
+    requires_approval: true
+    timeout_seconds: 300
+
+  - id: generate_prd
+    name: "PRD Generation"
+    agent: product_manager
+    activity: generate_prd
+    requires_approval: true
+    timeout_seconds: 300
+
+  - id: analyze_code_impact
+    name: "Code Impact Analysis"
+    agent: architect
+    activity: analyze_code_impact
+    requires_approval: true
+    timeout_seconds: 300
+
+  - id: generate_patch
+    name: "Patch Generation"
+    agent: developer
+    activity: generate_patch
+    requires_approval: true
+    timeout_seconds: 600
+
+  - id: generate_tests
+    name: "Test Generation"
+    agent: qa
+    activity: generate_tests
+    requires_approval: true
+    timeout_seconds: 300
+
+  - id: execute_tests
+    name: "Test Execution"
+    agent: qa
+    activity: execute_tests
+    requires_approval: false
+    timeout_seconds: 600
+
+settings:
+  default_timeout: 300
+  max_retries: 3
+  retry_delay: 5
+  auto_rollback_on_failure: true
