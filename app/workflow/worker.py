@@ -1,3 +1,8 @@
+"""Temporal Worker 入口模块。
+
+启动 Temporal Worker，注册工作流和活动。
+"""
+
 import asyncio
 import logging
 
@@ -5,39 +10,24 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from app.config import get_settings
-from app.workflow.activities import (
-    analyze_requirement,
-    generate_prd,
-    analyze_code_impact,
-    generate_patch,
-    generate_tests,
-    execute_tests,
-)
+from app.workflow.activities import ACTIVITY_MAP
 from app.workflow.definitions import DevWorkflow
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 async def main():
     settings = get_settings()
-    client = await Client.connect(settings.temporal_host)
+    client = await Client.new(settings.temporal_host)
 
     worker = Worker(
         client,
         task_queue="devmatrix-task-queue",
         workflows=[DevWorkflow],
-        activities=[
-            analyze_requirement,
-            generate_prd,
-            analyze_code_impact,
-            generate_patch,
-            generate_tests,
-            execute_tests,
-        ],
+        activities=list(ACTIVITY_MAP.values()),
     )
 
-    logger.info("Starting Temporal worker on %s", settings.temporal_host)
+    logger.info("Starting Temporal Worker on %s", settings.temporal_host)
     await worker.run()
 
 

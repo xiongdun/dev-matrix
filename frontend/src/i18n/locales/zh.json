@@ -1,51 +1,56 @@
 {
   "app": {
-    "title": "DevMatrix",
-    "subtitle": "AI 软件开发操作系统"
+    "title": "DevMatrix"
   },
   "sidebar": {
     "dashboard": "仪表盘",
-    "requirements": "需求管理",
-    "approvals": "审批中心",
     "workflow": "工作流",
+    "workflowEditor": "编辑器",
+    "workflowList": "管理",
     "agents": "智能体管理",
     "skills": "技能管理",
-    "settings": "设置",
-    "collapse": "收起侧边栏",
-    "expand": "展开侧边栏"
+    "workbench": "工作台",
+    "settings": "设置"
   },
   "dashboard": {
     "title": "仪表盘",
     "stats": {
-      "activeAgents": "活跃智能体",
+      "totalAgents": "智能体总数",
+      "activeSkills": "活跃技能",
       "pendingApprovals": "待审批",
-      "completedTasks": "已完成任务",
-      "workflowRuns": "工作流运行"
+      "completedWorkflows": "已完成工作流"
     },
     "recentActivity": "最近活动",
-    "recentTasks": "最近任务"
-  },
-  "activity": {
-    "title": "最近活动",
-    "empty": "暂无活动",
-    "types": {
-      "requirement_created": "创建需求",
-      "approval_submitted": "提交审批",
-      "workflow_started": "启动工作流",
-      "agent_action": "智能体操作",
-      "snapshot_created": "创建快照"
+    "tasks": "任务",
+    "mock": {
+      "workflowCompleted": "项目 Alpha 工作流已完成",
+      "approvalRequired": "PRD v2 需要审批",
+      "agentProposal": "架构师生成了技术方案",
+      "reviewPrd": "审阅项目 Beta 的 PRD",
+      "mountSkill": "为架构师挂载代码搜索技能",
+      "configureLlm": "配置 LLM 提供商设置"
     }
   },
+  "activity": {
+    "empty": "暂无活动",
+    "justNow": "刚刚",
+    "minutesAgo": "{n}分钟前",
+    "hoursAgo": "{n}小时前",
+    "daysAgo": "{n}天前"
+  },
   "tasks": {
-    "title": "最近任务",
     "empty": "暂无任务",
+    "deleteTitle": "删除任务",
     "status": {
       "pending": "待处理",
-      "running": "运行中",
+      "in_progress": "进行中",
       "completed": "已完成",
-      "failed": "失败",
-      "approved": "已批准",
-      "rejected": "已拒绝"
+      "failed": "失败"
+    },
+    "priority": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
     }
   },
   "common": {
@@ -59,55 +64,40 @@
     "edit": "编辑",
     "create": "创建"
   },
+  "tabBar": {
+    "close": "关闭",
+    "closeOthers": "关闭其他",
+    "closeAll": "关闭所有",
+    "closeTitle": "关闭标签"
+  },
   "settings": {
     "title": "设置",
-    "save": "保存更改",
-    "saved": "设置已保存",
-    "appearance": {
-      "title": "外观",
-      "theme": "主题",
-      "themeDark": "深色",
-      "themeLight": "浅色",
-      "language": "语言",
-      "sidebar": "侧边栏默认状态",
-      "sidebarExpanded": "展开",
-      "sidebarCollapsed": "收起"
-    },
-    "llm": {
-      "title": "LLM 配置",
-      "provider": "默认提供商",
-      "apiKey": "API 密钥",
-      "show": "显示",
-      "hide": "隐藏",
-      "model": "模型",
-      "strategy": "路由策略",
-      "strategyQuality": "质量优先",
-      "strategyCost": "成本优先",
-      "strategyConfig": "配置驱动"
-    },
-    "workflow": {
-      "title": "工作流",
-      "approvalMode": "审批模式",
-      "approvalManual": "人工审批",
-      "approvalAuto": "自动通过",
-      "timeout": "活动超时（秒）",
-      "retryCount": "重试次数"
-    },
-    "notifications": {
-      "title": "通知",
-      "workflowCompleted": "工作流完成",
-      "approvalRequired": "需要审批",
-      "agentFailed": "智能体失败",
-      "webhookUrl": "Webhook 地址"
-    },
-    "about": {
-      "title": "关于",
-      "version": "版本",
-      "backend": "后端状态",
-      "connected": "已连接",
-      "disconnected": "未连接",
-      "github": "GitHub"
-    }
+    "subtitle": "配置应用偏好和 LLM 设置",
+    "appearance": "外观",
+    "appearanceDesc": "自定义应用的外观和风格",
+    "themeLabel": "主题",
+    "themeDesc": "选择您偏好的颜色主题",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeAuto": "跟随系统",
+    "language": "语言",
+    "languageDesc": "选择界面语言",
+    "languageZh": "中文",
+    "languageEn": "English",
+    "notifications": "通知",
+    "notificationsDesc": "接收重要事件的通知",
+    "notificationsLabel": "启用通知",
+    "llm": "LLM 配置",
+    "defaultProviderLabel": "默认提供商",
+    "defaultProviderDesc": "选择默认 LLM 提供商",
+    "providerOpenai": "OpenAI",
+    "providerAnthropic": "Anthropic",
+    "defaultModelLabel": "默认模型",
+    "defaultModelDesc": "选择默认 LLM 模型",
+    "modelGpt4": "GPT-4",
+    "modelGpt35Turbo": "GPT-3.5 Turbo",
+    "modelClaude3Opus": "Claude 3 Opus",
+    "modelClaude3Sonnet": "Claude 3 Sonnet"
   },
   "agents": {
     "title": "智能体管理",
@@ -116,6 +106,7 @@
     "noSkills": "暂无技能",
     "selectSkill": "选择技能",
     "mount": "挂载",
+    "unmountTitle": "卸载",
     "status": {
       "idle": "空闲",
       "active": "活跃",
@@ -132,5 +123,55 @@
     "uploadHint": "支持 JSON 格式",
     "uploadSuccess": "技能 {name} 上传并注册成功",
     "errorInvalidFile": "请上传有效的 JSON 文件"
+  },
+  "workflow": {
+    "title": "工作流管理",
+    "subtitle": "管理和编辑工作流配置",
+    "name": "名称",
+    "description": "描述",
+    "version": "版本",
+    "status": "状态",
+    "createdAt": "创建时间",
+    "actions": "操作",
+    "create": "新建工作流",
+    "empty": "暂无工作流",
+    "confirmDelete": "确认删除工作流「{name}」？",
+    "editor": "编辑器",
+    "newWorkflow": "新建工作流",
+    "namePlaceholder": "输入工作流名称",
+    "nameRequired": "请输入工作流名称",
+    "agents": "智能体",
+    "saving": "保存中...",
+    "saveSuccess": "保存成功",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "statusDraft": "草稿",
+    "statusActive": "启用",
+    "statusArchived": "归档"
+  },
+  "workbench": {
+    "title": "工作台",
+    "subtitle": "查看和处理分配给您的任务",
+    "roleBA": "业务分析师",
+    "rolePM": "产品经理",
+    "roleArchitect": "架构师",
+    "roleDeveloper": "开发者",
+    "roleQA": "测试",
+    "pending": "待处理",
+    "completed": "已完成",
+    "rejected": "已打回",
+    "noTasks": "暂无待处理任务",
+    "approve": "确认通过",
+    "reject": "打回",
+    "retry": "AI 重试",
+    "rejectReason": "打回原因",
+    "retryFeedback": "重试反馈（可选）",
+    "submit": "提交",
+    "cancel": "取消",
+    "output": "产出物",
+    "timeJustNow": "刚刚",
+    "timeMinutesAgo": "{n}分钟前",
+    "timeHoursAgo": "{n}小时前",
+    "timeDaysAgo": "{n}天前"
   }
 }

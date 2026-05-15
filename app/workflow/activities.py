@@ -1,225 +1,194 @@
-from typing import Any, Dict
+"""工作流活动模块。
 
-from app.agents.business_analyst import BusinessAnalystAgent
-from app.agents.product_manager import ProductManagerAgent
-from app.agents.architect import ArchitectAgent
-from app.agents.developer import DeveloperAgent
-from app.agents.qa import QAAgent
+定义 Temporal 工作流中执行的活动函数。
+每个活动对应工作流中的一个原子操作。
+
+主要活动：
+    - create_state_snapshot: 创建状态快照
+    - send_approval_request: 发送审批请求
+    - execute_agent_task: 执行 Agent 任务
+    - wait_for_approval: 等待审批结果
+    - rollback_state: 回滚状态
+    - notify_completion: 通知完成
+"""
+
+import asyncio
+import json
+import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+from app.agents.base import Proposal
 from app.events.bus import event_bus
-from app.events.types import Event
-from app.llm.router import LLMRouter
+from app.events.types import Event, EventTypes
+from app.state.models import get_db, WorkflowTaskModel
 from app.state.repository import StateRepository
-from app.utils.audit import AuditLogger, AuditLevel
-from app.workflow.pipeline.executor import ActivityContext
+from app.state.statemachine import StateMachine, ProjectStatus
+
+logger = logging.getLogger(__name__)
 
 
-audit_logger = AuditLogger()
-
-# Global singletons for reuse within the worker process
-_llm_router = None
-_state_repo = None
-
-
-def _get_llm_router():
-    global _llm_router
-    if _llm_router is None:
-        _llm_router = LLMRouter()
-    return _llm_router
+def _get_repo() -> StateRepository:
+    from app.llm.router import LLMRouter
+    db = next(get_db())
+    return StateRepository(db)
 
 
-def _get_state_repo():
-    global _state_repo
-    if _state_repo is None:
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from app.config import get_settings
-
-        settings = get_settings()
-        engine = create_engine(settings.database_url)
-        SessionLocal = sessionmaker(bind=engine)
-        db = SessionLocal()
-        _state_repo = StateRepository(db)
-    return _state_repo
+async def create_state_snapshot(project_id: str, **kwargs) -> Dict[str, Any]:
+    repo = _get_repo()
+    try:
+        snapshot = repo.create_snapshot(project_id)
+        logger.info("Created snapshot %d for project %s", snapshot.id, project_id)
+        return {"snapshot_id": snapshot.id, "project_id": project_id}
+    except Exception as exc:
+        logger.exception("Failed to create snapshot for project %s", project_id)
+        return {"error": str(exc)}
 
 
-def _create_agent(agent_class, skills=None):
-    """Factory: create agent with reused dependencies and optional skills."""
-    agent = agent_class(
-        llm_router=_get_llm_router(),
-        state_repository=_get_state_repo(),
+async def send_approval_request(
+    project_id: str, stage_id: str, stage_name: str, agent_role: str, **kwargs
+) -> Dict[str, Any]:
+    event = Event(
+        type=EventTypes.APPROVAL_REQUIRED,
+        payload={"project_id": project_id, "stage_id": stage_id, "stage_name": stage_name, "agent_role": agent_role},
+        source="workflow",
+        project_id=project_id,
     )
-    if skills:
-        for skill in skills:
-            agent.use_skill(skill)
-    return agent
+    event_bus.publish(event)
+    logger.info("Sent approval request for project %s stage %s", project_id, stage_id)
+    return {"status": "approval_requested", "project_id": project_id, "stage_id": stage_id}
 
 
-async def analyze_requirement(context: ActivityContext) -> Dict[str, Any]:
-    """Business Analyst activity: analyze user requirements."""
-    requirement = context.inputs.get("requirement", "")
-    if not requirement:
-        raise ValueError("No requirement provided")
+async def execute_agent_task(
+    project_id: str,
+    stage_id: str,
+    stage_name: str,
+    agent_role: str,
+    agent_name: str,
+    context: Dict[str, Any],
+    **kwargs,
+) -> Dict[str, Any]:
+    from app.core.registry.agent_registry import agent_registry
+    from app.llm.router import LLMRouter
 
-    agent = _create_agent(BusinessAnalystAgent)
+    db = next(get_db())
+    repo = StateRepository(db)
+    router = LLMRouter()
 
-    proposal = await agent.generate_proposal(
-        project_id=context.project_id,
-        context={"requirement": requirement},
-    )
+    try:
+        try:
+            agent_cls = agent_registry.get(agent_name)
+        except KeyError:
+            raise ValueError(f"Agent '{agent_name}' not found in registry")
 
-    audit_logger.log_agent_action(
-        agent_name="business_analyst",
-        action="analyze_requirement",
-        project_id=context.project_id,
-        details={"proposal_length": len(proposal.content)},
-    )
+        agent = agent_cls(llm_router=router, state_repository=repo)
 
+        status = StateMachine.stage_to_status(stage_id)
+        repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", status)
+
+        proposal = await agent.run(project_id, context)
+
+        current_state = repo.get_state(project_id)
+        state_dict = json.loads(current_state.state_json) if current_state and current_state.state_json else {}
+        state_dict[stage_id] = {
+            "agent": agent_name,
+            "content": proposal.content,
+            "metadata": proposal.metadata,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        repo.update_state(project_id, json.dumps(state_dict, ensure_ascii=False), status)
+
+        task = WorkflowTaskModel(
+            project_id=project_id,
+            stage_id=stage_id,
+            stage_name=stage_name,
+            agent_role=agent_role,
+            status="pending",
+            output_json=json.dumps({"content": proposal.content, "metadata": proposal.metadata}, ensure_ascii=False),
+            arrived_at=datetime.utcnow(),
+        )
+        db.add(task)
+        db.commit()
+
+        logger.info("Agent %s executed for project %s stage %s", agent_name, project_id, stage_id)
+        return {
+            "status": "completed",
+            "project_id": project_id,
+            "stage_id": stage_id,
+            "proposal_content": proposal.content,
+            "proposal_metadata": proposal.metadata,
+            "task_id": task.id,
+        }
+    except Exception as exc:
+        logger.exception("Agent %s failed for project %s stage %s", agent_name, project_id, stage_id)
+        repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", ProjectStatus.FAILED.value)
+        return {"status": "failed", "error": str(exc), "project_id": project_id, "stage_id": stage_id}
+
+
+async def wait_for_approval(
+    project_id: str, task_id: int, timeout_seconds: int = 86400, **kwargs
+) -> Dict[str, Any]:
+    db = next(get_db())
+    poll_interval = 3
+    elapsed = 0
+
+    while elapsed < timeout_seconds:
+        task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
+        if task is None:
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+            continue
+
+        if task.status == "approved":
+            logger.info("Task %d approved for project %s", task_id, project_id)
+            return {"status": "approved", "task_id": task_id}
+
+        if task.status == "rejected":
+            logger.info("Task %d rejected for project %s", task_id, project_id)
+            return {"status": "rejected", "task_id": task_id, "feedback": task.feedback}
+
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+
+    logger.warning("Approval timeout for task %d project %s", task_id, project_id)
+    return {"status": "timeout", "task_id": task_id}
+
+
+async def rollback_state(project_id: str, snapshot_id: int, **kwargs) -> Dict[str, Any]:
+    repo = _get_repo()
+    try:
+        repo.rollback_to_snapshot(project_id, snapshot_id)
+        event_bus.publish(Event(
+            type=EventTypes.ROLLBACK_PERFORMED,
+            payload={"project_id": project_id, "snapshot_id": snapshot_id},
+            source="workflow",
+            project_id=project_id,
+        ))
+        logger.info("Rolled back project %s to snapshot %d", project_id, snapshot_id)
+        return {"status": "rolled_back", "project_id": project_id, "snapshot_id": snapshot_id}
+    except Exception as exc:
+        logger.exception("Rollback failed for project %s", project_id)
+        return {"status": "failed", "error": str(exc)}
+
+
+async def notify_completion(project_id: str, **kwargs) -> Dict[str, Any]:
     event_bus.publish(Event(
-        type="requirement.analyzed",
-        payload={
-            "project_id": context.project_id,
-            "proposal": proposal.content,
-        },
+        type=EventTypes.WORKFLOW_COMPLETED,
+        payload={"project_id": project_id},
+        source="workflow",
+        project_id=project_id,
     ))
-
-    return {
-        "analysis": proposal.content,
-        "metadata": proposal.metadata,
-    }
-
-
-async def generate_prd(context: ActivityContext) -> Dict[str, Any]:
-    """Product Manager activity: generate PRD from analysis."""
-    analysis = context.inputs.get("previous_output", {}).get("analysis", "")
-    if not analysis:
-        raise ValueError("No analysis provided")
-
-    agent = _create_agent(ProductManagerAgent)
-
-    proposal = await agent.generate_proposal(
-        project_id=context.project_id,
-        context={"analysis": analysis},
-    )
-
-    audit_logger.log_agent_action(
-        agent_name="product_manager",
-        action="generate_prd",
-        project_id=context.project_id,
-        details={"proposal_length": len(proposal.content)},
-    )
-
-    return {
-        "prd": proposal.content,
-        "metadata": proposal.metadata,
-    }
-
-
-async def analyze_code_impact(context: ActivityContext) -> Dict[str, Any]:
-    """Architect activity: analyze code impact and propose design."""
-    prd = context.inputs.get("previous_output", {}).get("prd", "")
-    if not prd:
-        raise ValueError("No PRD provided")
-
-    from app.skills.code_search import CodeSearchSkill
-    agent = _create_agent(
-        ArchitectAgent,
-        skills=[CodeSearchSkill()] if context.inputs.get("repo_path") else None,
-    )
-
-    proposal = await agent.generate_proposal(
-        project_id=context.project_id,
-        context={"prd": prd},
-    )
-
-    audit_logger.log_agent_action(
-        agent_name="architect",
-        action="analyze_code_impact",
-        project_id=context.project_id,
-        details={"proposal_length": len(proposal.content)},
-    )
-
-    return {
-        "architecture": proposal.content,
-        "metadata": proposal.metadata,
-    }
-
-
-async def generate_patch(context: ActivityContext) -> Dict[str, Any]:
-    """Developer activity: generate code patch."""
-    architecture = context.inputs.get("previous_output", {}).get("architecture", "")
-    if not architecture:
-        raise ValueError("No architecture provided")
-
-    agent = _create_agent(DeveloperAgent)
-
-    proposal = await agent.generate_proposal(
-        project_id=context.project_id,
-        context={"architecture": architecture},
-    )
-
-    audit_logger.log_agent_action(
-        agent_name="developer",
-        action="generate_patch",
-        project_id=context.project_id,
-        details={"proposal_length": len(proposal.content)},
-    )
-
-    return {
-        "patch": proposal.content,
-        "metadata": proposal.metadata,
-    }
-
-
-async def generate_tests(context: ActivityContext) -> Dict[str, Any]:
-    """QA activity: generate test plan and test cases."""
-    patch = context.inputs.get("previous_output", {}).get("patch", "")
-    if not patch:
-        raise ValueError("No patch provided")
-
-    agent = _create_agent(QAAgent)
-
-    proposal = await agent.generate_proposal(
-        project_id=context.project_id,
-        context={"patch": patch},
-    )
-
-    audit_logger.log_agent_action(
-        agent_name="qa",
-        action="generate_tests",
-        project_id=context.project_id,
-        details={"proposal_length": len(proposal.content)},
-    )
-
-    return {
-        "tests": proposal.content,
-        "metadata": proposal.metadata,
-    }
-
-
-async def execute_tests(context: ActivityContext) -> Dict[str, Any]:
-    """QA activity: execute generated tests."""
-    tests = context.inputs.get("previous_output", {}).get("tests", "")
-    if not tests:
-        raise ValueError("No tests provided")
-
-    audit_logger.log_agent_action(
-        agent_name="qa",
-        action="execute_tests",
-        project_id=context.project_id,
-        details={"test_length": len(tests)},
-    )
-
-    return {
-        "executed": True,
-        "results": "Tests executed (placeholder implementation)",
-    }
+    repo = _get_repo()
+    repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", ProjectStatus.COMPLETED.value)
+    logger.info("Workflow completed for project %s", project_id)
+    return {"status": "completed", "project_id": project_id}
 
 
 ACTIVITY_MAP = {
-    "analyze_requirement": analyze_requirement,
-    "generate_prd": generate_prd,
-    "analyze_code_impact": analyze_code_impact,
-    "generate_patch": generate_patch,
-    "generate_tests": generate_tests,
-    "execute_tests": execute_tests,
+    "create_state_snapshot": create_state_snapshot,
+    "send_approval_request": send_approval_request,
+    "execute_agent_task": execute_agent_task,
+    "wait_for_approval": wait_for_approval,
+    "rollback_state": rollback_state,
+    "notify_completion": notify_completion,
 }

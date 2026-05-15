@@ -9,7 +9,8 @@ class BusinessAnalystAgent(BaseAgent):
     description = "Analyzes raw requirements and produces structured requirement documents"
 
     async def generate_proposal(self, project_id: str, context: Dict[str, Any]) -> Proposal:
-        raw_input = context.get("raw_input", "")
+        state = self.read_state(project_id)
+        raw_input = context.get("raw_input") or state.get("raw_input") or state.get("requirement", "")
         prompt = (
             f"You are a Business Analyst. Analyze the following requirement and produce "
             f"a structured requirement document with: functional requirements, "

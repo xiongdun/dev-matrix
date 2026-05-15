@@ -1,39 +1,129 @@
-<template>
-  <button class="theme-toggle" @click="toggleTheme" :title="isDark ? 'Switch to Light' : 'Switch to Dark'">
-    <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="5"/>
-      <line x1="12" y1="1" x2="12" y2="3"/>
-      <line x1="12" y1="21" x2="12" y2="23"/>
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-      <line x1="1" y1="12" x2="3" y2="12"/>
-      <line x1="21" y1="12" x2="23" y2="12"/>
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-    </svg>
-    <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-    </svg>
-  </button>
-</template>
+<!--
+  @file 主题切换组件
+  @description 切换应用主题模式（浅色/深色/自动）
+  @component ThemeToggle
+  @emits
+    - change: 主题变化事件，参数为新模式
+  @props
+    - modelValue: 当前主题值
+
+  @example
+  ```vue
+  <template>
+    <ThemeToggle v-model="currentTheme" />
+  </template>
+  ```
+-->
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const isDark = ref(true)
+/**
+ * 组件属性定义
+ * @property {string} modelValue - 当前主题值
+ */
+const props = defineProps<{
+  modelValue: string
+}>()
 
-function toggleTheme() {
-  isDark.value = !isDark.value
-  const theme = isDark.value ? 'dark' : 'light'
-  document.documentElement.setAttribute('data-theme', theme)
-  localStorage.setItem('devmatrix-theme', theme)
+/**
+ * 组件事件定义
+ * @emits update:modelValue - 更新主题值
+ */
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+}>()
+
+/**
+ * 国际化组合式函数
+ * @returns {Object} i18n 实例
+ */
+const { t } = useI18n()
+
+/**
+ * 当前主题的计算属性
+ * @type {import('vue').ComputedRef<string>}
+ */
+const theme = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value),
+})
+
+/**
+ * 可用的主题选项
+ * @type {Array<{value: string, label: string, icon: string}>}
+ */
+const themes = [
+  { value: 'light', label: t('settings.theme.light'), icon: '☀️' },
+  { value: 'dark', label: t('settings.theme.dark'), icon: '🌙' },
+  { value: 'auto', label: t('settings.theme.auto'), icon: '🔄' },
+]
+
+/**
+ * 设置主题
+ * @param {string} value - 主题值
+ */
+const setTheme = (value: string) => {
+  theme.value = value
+}
+</script>
+
+<template>
+  <div class="theme-toggle">
+    <!-- 遍历渲染主题选项按钮 -->
+    <button
+      v-for="t in themes"
+      :key="t.value"
+      :class="['theme-btn', { active: theme === t.value }]"
+      @click="setTheme(t.value)"
+      :title="t.label"
+    >
+      <span class="theme-icon">{{ t.icon }}</span>
+      <span class="theme-label">{{ t.label }}</span>
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.theme-toggle {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--surface-color);
+  border-radius: 8px;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
 }
 
-onMounted(() => {
-  const saved = localStorage.getItem('devmatrix-theme')
-  if (saved === 'light') {
-    isDark.value = false
-    document.documentElement.setAttribute('data-theme', 'light')
-  }
-})
-</script>
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.theme-btn:hover {
+  background: var(--hover-color);
+  color: var(--text-primary);
+}
+
+.theme-btn.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.theme-icon {
+  font-size: 1rem;
+}
+
+.theme-label {
+  font-weight: 500;
+}
+</style>

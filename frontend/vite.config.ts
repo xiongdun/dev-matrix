@@ -26,6 +26,22 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/workflow-config': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/workbench': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/events': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/lifecycle': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

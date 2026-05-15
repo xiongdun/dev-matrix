@@ -29,7 +29,7 @@
           <div v-if="agent.skills.length" class="skill-tags">
             <span v-for="skill in agent.skills" :key="skill" class="skill-tag">
               {{ skill }}
-              <button class="skill-remove" @click="unmountSkill(agent.name, skill)" title="Unmount">×</button>
+              <button class="skill-remove" @click="unmountSkill(agent.name, skill)" :title="t('agents.unmountTitle')">×</button>
             </span>
           </div>
           <div v-else class="skills-empty">{{ t('agents.noSkills') }}</div>

@@ -1,239 +1,148 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useSettings } from '../composables/useSettings'
+import SettingsSection from '../components/settings/SettingsSection.vue'
+import SettingItem from '../components/settings/SettingItem.vue'
+
+const { t, locale } = useI18n()
+const { settings, updateSettings, resetSettings } = useSettings()
+
+const languageOptions = computed(() => [
+  { value: 'zh', label: t('settings.languageZh') },
+  { value: 'en', label: t('settings.languageEn') },
+])
+
+const llmProviderOptions = computed(() => [
+  { value: 'openai', label: t('settings.providerOpenai') },
+  { value: 'anthropic', label: t('settings.providerAnthropic') },
+])
+
+const llmModelOptions = computed(() => [
+  { value: 'gpt-4', label: t('settings.modelGpt4') },
+  { value: 'gpt-3.5-turbo', label: t('settings.modelGpt35Turbo') },
+  { value: 'claude-3-opus-20240229', label: t('settings.modelClaude3Opus') },
+  { value: 'claude-3-sonnet-20240229', label: t('settings.modelClaude3Sonnet') },
+])
+
+const handleLanguageChange = (value: string) => {
+  locale.value = value
+  updateSettings({ language: value })
+}
+
+const handleThemeChange = (value: string) => {
+  updateSettings({ theme: value as 'light' | 'dark' | 'auto' })
+}
+</script>
+
 <template>
   <div>
     <div class="dashboard-header">
       <div>
         <h1>{{ t('settings.title') }}</h1>
+        <p>{{ t('settings.subtitle') }}</p>
       </div>
-      <button
-        class="theme-toggle"
-        @click="saveSettings"
-        :disabled="!isDirty"
-        :style="{ opacity: isDirty ? 1 : 0.5 }"
-      >
-        {{ t('settings.save') }}
-      </button>
     </div>
 
-    <SettingsSection :title="t('settings.appearance.title')">
+    <SettingsSection :title="t('settings.appearance')" :description="t('settings.appearanceDesc')">
       <SettingItem
-        :label="t('settings.appearance.theme')"
+        :label="t('settings.themeLabel')"
+        :description="t('settings.themeDesc')"
         type="select"
-        v-model="form.appearance.theme"
-        :options="themeOptions"
+        v-model="settings.theme"
+        :options="[
+          { value: 'light', label: t('settings.themeLight') },
+          { value: 'dark', label: t('settings.themeDark') },
+          { value: 'auto', label: t('settings.themeAuto') },
+        ]"
+        @update:modelValue="handleThemeChange"
       />
+    </SettingsSection>
+
+    <SettingsSection :title="t('settings.language')" :description="t('settings.languageDesc')">
       <SettingItem
-        :label="t('settings.appearance.language')"
+        :label="t('settings.language')"
+        :description="t('settings.languageDesc')"
         type="select"
-        v-model="form.appearance.language"
+        :modelValue="settings.language"
         :options="languageOptions"
-      />
-      <SettingItem
-        :label="t('settings.appearance.sidebar')"
-        type="select"
-        v-model="sidebarCollapsedValue"
-        :options="sidebarOptions"
+        @update:modelValue="handleLanguageChange"
       />
     </SettingsSection>
 
-    <SettingsSection :title="t('settings.llm.title')">
+    <SettingsSection :title="t('settings.notifications')" :description="t('settings.notificationsDesc')">
       <SettingItem
-        :label="t('settings.llm.provider')"
-        type="select"
-        v-model="form.llm.provider"
-        :options="providerOptions"
-      />
-      <SettingItem
-        :label="t('settings.llm.apiKey')"
-        type="password"
-        v-model="form.llm.apiKey"
-        :placeholder="'sk-...'"
-      />
-      <SettingItem
-        :label="t('settings.llm.model')"
-        type="select"
-        v-model="form.llm.model"
-        :options="modelOptions"
-      />
-      <SettingItem
-        :label="t('settings.llm.strategy')"
-        type="select"
-        v-model="form.llm.strategy"
-        :options="strategyOptions"
+        :label="t('settings.notificationsLabel')"
+        :description="t('settings.notificationsDesc')"
+        type="checkbox"
+        v-model="settings.notifications"
       />
     </SettingsSection>
 
-    <SettingsSection :title="t('settings.workflow.title')">
+    <SettingsSection :title="t('settings.llm')" :description="t('settings.defaultProviderDesc')">
       <SettingItem
-        :label="t('settings.workflow.approvalMode')"
+        :label="t('settings.defaultProviderLabel')"
+        :description="t('settings.defaultProviderDesc')"
         type="select"
-        v-model="form.workflow.approvalMode"
-        :options="approvalOptions"
+        v-model="settings.defaultLLMProvider"
+        :options="llmProviderOptions"
       />
       <SettingItem
-        :label="t('settings.workflow.timeout')"
-        type="number"
-        v-model="form.workflow.timeout"
-        :min="5"
-        :max="300"
-      />
-      <SettingItem
-        :label="t('settings.workflow.retryCount')"
-        type="number"
-        v-model="form.workflow.retryCount"
-        :min="0"
-        :max="10"
+        :label="t('settings.defaultModelLabel')"
+        :description="t('settings.defaultModelDesc')"
+        type="select"
+        v-model="settings.defaultLLMModel"
+        :options="llmModelOptions"
       />
     </SettingsSection>
 
-    <SettingsSection :title="t('settings.notifications.title')">
-      <SettingItem
-        :label="t('settings.notifications.workflowCompleted')"
-        type="toggle"
-        v-model="form.notifications.workflowCompleted"
-      />
-      <SettingItem
-        :label="t('settings.notifications.approvalRequired')"
-        type="toggle"
-        v-model="form.notifications.approvalRequired"
-      />
-      <SettingItem
-        :label="t('settings.notifications.agentFailed')"
-        type="toggle"
-        v-model="form.notifications.agentFailed"
-      />
-      <SettingItem
-        :label="t('settings.notifications.webhookUrl')"
-        type="text"
-        v-model="form.notifications.webhookUrl"
-        :placeholder="'https://...'"
-      />
-    </SettingsSection>
-
-    <SettingsSection :title="t('settings.about.title')">
-      <SettingItem
-        :label="t('settings.about.version')"
-        type="text"
-        v-model="version"
-        :disabled="true"
-      />
-      <SettingItem
-        :label="t('settings.about.backend')"
-        type="text"
-        :model-value="backendStatus"
-        :disabled="true"
-      />
-    </SettingsSection>
-
-    <div v-if="showToast" class="toast">{{ t('settings.saved') }}</div>
+    <div class="settings-actions">
+      <button class="btn btn-secondary" @click="resetSettings">
+        {{ t('common.cancel') }}
+      </button>
+      <button class="btn btn-primary" @click="updateSettings(settings)">
+        {{ t('common.save') }}
+      </button>
+    </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import SettingsSection from '../components/settings/SettingsSection.vue'
-import SettingItem from '../components/settings/SettingItem.vue'
-import { useSettings, settings as globalSettings } from '../composables/useSettings'
-
-const { t, locale } = useI18n()
-const { settings } = useSettings()
-
-const form = reactive(JSON.parse(JSON.stringify(settings)))
-const showToast = ref(false)
-const version = ref('1.0.0')
-const backendStatus = ref(t('settings.about.connected'))
-
-const isDirty = computed(() => {
-  return JSON.stringify(form) !== JSON.stringify(settings)
-})
-
-const sidebarCollapsedValue = computed({
-  get: () => (form.appearance.sidebarCollapsed ? 'collapsed' : 'expanded'),
-  set: (val: string) => {
-    form.appearance.sidebarCollapsed = val === 'collapsed'
-  },
-})
-
-const themeOptions = [
-  { value: 'dark', label: t('settings.appearance.themeDark') },
-  { value: 'light', label: t('settings.appearance.themeLight') },
-]
-
-const languageOptions = [
-  { value: 'zh', label: '中文' },
-  { value: 'en', label: 'English' },
-]
-
-const sidebarOptions = [
-  { value: 'expanded', label: t('settings.appearance.sidebarExpanded') },
-  { value: 'collapsed', label: t('settings.appearance.sidebarCollapsed') },
-]
-
-const providerOptions = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-]
-
-const modelOptions = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-  { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-]
-
-const strategyOptions = [
-  { value: 'quality_first', label: t('settings.llm.strategyQuality') },
-  { value: 'cost_first', label: t('settings.llm.strategyCost') },
-  { value: 'config_driven', label: t('settings.llm.strategyConfig') },
-]
-
-const approvalOptions = [
-  { value: 'manual', label: t('settings.workflow.approvalManual') },
-  { value: 'auto', label: t('settings.workflow.approvalAuto') },
-]
-
-function saveSettings() {
-  Object.assign(globalSettings, JSON.parse(JSON.stringify(form)))
-  showToast.value = true
-  setTimeout(() => {
-    showToast.value = false
-  }, 2000)
-}
-
-// Apply theme immediately
-watch(() => form.appearance.theme, (theme) => {
-  document.documentElement.setAttribute('data-theme', theme)
-})
-
-// Apply language immediately
-watch(() => form.appearance.language, (lang) => {
-  locale.value = lang
-  localStorage.setItem('devmatrix-language', lang)
-})
-</script>
-
 <style scoped>
-.toast {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  background-color: var(--accent-green);
-  color: white;
-  padding: 12px 20px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
+.settings-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-color-dark);
+}
+
+.btn-secondary {
+  background: var(--surface-color);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--hover-color);
 }
 </style>

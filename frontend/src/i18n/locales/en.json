@@ -1,51 +1,56 @@
 {
   "app": {
-    "title": "DevMatrix",
-    "subtitle": "AI Software Development Operating System"
+    "title": "DevMatrix"
   },
   "sidebar": {
     "dashboard": "Dashboard",
-    "requirements": "Requirements",
-    "approvals": "Approvals",
     "workflow": "Workflow",
+    "workflowEditor": "Editor",
+    "workflowList": "Management",
     "agents": "Agents",
     "skills": "Skills",
-    "settings": "Settings",
-    "collapse": "Collapse Sidebar",
-    "expand": "Expand Sidebar"
+    "workbench": "Workbench",
+    "settings": "Settings"
   },
   "dashboard": {
     "title": "Dashboard",
     "stats": {
-      "activeAgents": "Active Agents",
+      "totalAgents": "Total Agents",
+      "activeSkills": "Active Skills",
       "pendingApprovals": "Pending Approvals",
-      "completedTasks": "Completed Tasks",
-      "workflowRuns": "Workflow Runs"
+      "completedWorkflows": "Completed Workflows"
     },
     "recentActivity": "Recent Activity",
-    "recentTasks": "Recent Tasks"
-  },
-  "activity": {
-    "title": "Recent Activity",
-    "empty": "No activity yet",
-    "types": {
-      "requirement_created": "Requirement Created",
-      "approval_submitted": "Approval Submitted",
-      "workflow_started": "Workflow Started",
-      "agent_action": "Agent Action",
-      "snapshot_created": "Snapshot Created"
+    "tasks": "Tasks",
+    "mock": {
+      "workflowCompleted": "Workflow completed for project Alpha",
+      "approvalRequired": "Approval required for PRD v2",
+      "agentProposal": "Agent \"architect\" generated proposal",
+      "reviewPrd": "Review PRD for Project Beta",
+      "mountSkill": "Mount code_search skill to architect",
+      "configureLlm": "Configure LLM provider settings"
     }
   },
+  "activity": {
+    "empty": "No recent activity",
+    "justNow": "Just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago"
+  },
   "tasks": {
-    "title": "Recent Tasks",
-    "empty": "No tasks yet",
+    "empty": "No tasks",
+    "deleteTitle": "Delete task",
     "status": {
       "pending": "Pending",
-      "running": "Running",
+      "in_progress": "In Progress",
       "completed": "Completed",
-      "failed": "Failed",
-      "approved": "Approved",
-      "rejected": "Rejected"
+      "failed": "Failed"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
     }
   },
   "common": {
@@ -59,55 +64,40 @@
     "edit": "Edit",
     "create": "Create"
   },
+  "tabBar": {
+    "close": "Close",
+    "closeOthers": "Close Others",
+    "closeAll": "Close All",
+    "closeTitle": "Close Tab"
+  },
   "settings": {
     "title": "Settings",
-    "save": "Save Changes",
-    "saved": "Settings Saved",
-    "appearance": {
-      "title": "Appearance",
-      "theme": "Theme",
-      "themeDark": "Dark",
-      "themeLight": "Light",
-      "language": "Language",
-      "sidebar": "Sidebar Default State",
-      "sidebarExpanded": "Expanded",
-      "sidebarCollapsed": "Collapsed"
-    },
-    "llm": {
-      "title": "LLM Configuration",
-      "provider": "Default Provider",
-      "apiKey": "API Key",
-      "show": "Show",
-      "hide": "Hide",
-      "model": "Model",
-      "strategy": "Routing Strategy",
-      "strategyQuality": "Quality First",
-      "strategyCost": "Cost First",
-      "strategyConfig": "Config Driven"
-    },
-    "workflow": {
-      "title": "Workflow",
-      "approvalMode": "Approval Mode",
-      "approvalManual": "Manual Approval",
-      "approvalAuto": "Auto Approve",
-      "timeout": "Activity Timeout (seconds)",
-      "retryCount": "Retry Count"
-    },
-    "notifications": {
-      "title": "Notifications",
-      "workflowCompleted": "Workflow Completed",
-      "approvalRequired": "Approval Required",
-      "agentFailed": "Agent Failed",
-      "webhookUrl": "Webhook URL"
-    },
-    "about": {
-      "title": "About",
-      "version": "Version",
-      "backend": "Backend Status",
-      "connected": "Connected",
-      "disconnected": "Disconnected",
-      "github": "GitHub"
-    }
+    "subtitle": "Configure application preferences and LLM settings",
+    "appearance": "Appearance",
+    "appearanceDesc": "Customize the look and feel of the application",
+    "themeLabel": "Theme",
+    "themeDesc": "Choose your preferred color theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "Auto",
+    "language": "Language",
+    "languageDesc": "Select the interface language",
+    "languageZh": "中文",
+    "languageEn": "English",
+    "notifications": "Notifications",
+    "notificationsDesc": "Receive notifications for important events",
+    "notificationsLabel": "Enable Notifications",
+    "llm": "LLM Configuration",
+    "defaultProviderLabel": "Default Provider",
+    "defaultProviderDesc": "Select the default LLM provider",
+    "providerOpenai": "OpenAI",
+    "providerAnthropic": "Anthropic",
+    "defaultModelLabel": "Default Model",
+    "defaultModelDesc": "Select the default LLM model",
+    "modelGpt4": "GPT-4",
+    "modelGpt35Turbo": "GPT-3.5 Turbo",
+    "modelClaude3Opus": "Claude 3 Opus",
+    "modelClaude3Sonnet": "Claude 3 Sonnet"
   },
   "agents": {
     "title": "Agent Management",
@@ -116,6 +106,7 @@
     "noSkills": "No skills mounted",
     "selectSkill": "Select skill",
     "mount": "Mount",
+    "unmountTitle": "Unmount",
     "status": {
       "idle": "Idle",
       "active": "Active",
@@ -132,5 +123,55 @@
     "uploadHint": "JSON format supported",
     "uploadSuccess": "Skill {name} uploaded and registered successfully",
     "errorInvalidFile": "Please upload a valid JSON file"
+  },
+  "workflow": {
+    "title": "Workflow Management",
+    "subtitle": "Manage and edit workflow configurations",
+    "name": "Name",
+    "description": "Description",
+    "version": "Version",
+    "status": "Status",
+    "createdAt": "Created At",
+    "actions": "Actions",
+    "create": "New Workflow",
+    "empty": "No workflows yet",
+    "confirmDelete": "Delete workflow \"{name}\"?",
+    "editor": "Editor",
+    "newWorkflow": "New Workflow",
+    "namePlaceholder": "Enter workflow name",
+    "nameRequired": "Workflow name is required",
+    "agents": "Agents",
+    "saving": "Saving...",
+    "saveSuccess": "Saved successfully",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
+    "statusDraft": "Draft",
+    "statusActive": "Active",
+    "statusArchived": "Archived"
+  },
+  "workbench": {
+    "title": "Workbench",
+    "subtitle": "View and process tasks assigned to you",
+    "roleBA": "Business Analyst",
+    "rolePM": "Product Manager",
+    "roleArchitect": "Architect",
+    "roleDeveloper": "Developer",
+    "roleQA": "QA",
+    "pending": "Pending",
+    "completed": "Completed",
+    "rejected": "Rejected",
+    "noTasks": "No pending tasks",
+    "approve": "Approve",
+    "reject": "Reject",
+    "retry": "AI Retry",
+    "rejectReason": "Reject Reason",
+    "retryFeedback": "Retry Feedback (optional)",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "output": "Output",
+    "timeJustNow": "Just now",
+    "timeMinutesAgo": "{n}m ago",
+    "timeHoursAgo": "{n}h ago",
+    "timeDaysAgo": "{n}d ago"
   }
 }

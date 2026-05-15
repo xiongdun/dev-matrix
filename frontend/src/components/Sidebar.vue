@@ -1,77 +1,178 @@
-<template>
-  <aside :class="['sidebar', { collapsed }]">
-    <div class="sidebar-header" @click="handleToggle">
-      <div class="sidebar-logo">DM</div>
-      <span class="sidebar-title">{{ $t('app.title') }}</span>
-    </div>
+<!--
+  @file 侧边栏组件
+  @description 应用主导航侧边栏，包含路由链接和主题切换
+  @component Sidebar
+  @emits
+    - toggle: 侧边栏展开/收起状态变化
+  @slots
+    - default: 导航内容区
 
-    <nav class="sidebar-nav">
-      <router-link
-        v-for="item in menuItems"
-        :key="item.key"
-        :to="item.path"
-        :class="['nav-item', { active: $route.path === item.path }]"
-      >
-        <span class="nav-icon">
-          <svg v-if="item.icon === 'dashboard'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-          </svg>
-          <svg v-else-if="item.icon === 'requirements'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-          </svg>
-          <svg v-else-if="item.icon === 'approvals'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          <svg v-else-if="item.icon === 'workflow'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="3" width="16" height="4" rx="1"/><rect x="4" y="11" width="16" height="4" rx="1"/><rect x="4" y="19" width="16" height="4" rx="1"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="16" y1="15" x2="16" y2="19"/>
-          </svg>
-          <svg v-else-if="item.icon === 'agents'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <svg v-else-if="item.icon === 'skills'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <svg v-else-if="item.icon === 'settings'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </span>
-        <span class="nav-label">{{ $t(item.labelKey) }}</span>
-      </router-link>
-    </nav>
-
-    <div class="sidebar-toggle" @click="handleToggle" :title="collapsed ? $t('sidebar.expand') : $t('sidebar.collapse')">
-      <svg v-if="collapsed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
-      </svg>
-      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
-      </svg>
-    </div>
-  </aside>
-</template>
+  @example
+  ```vue
+  <template>
+    <Sidebar />
+  </template>
+  ```
+-->
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { useTabs } from '../composables/useTabs'
 
-const props = defineProps<{
-  collapsed: boolean
-}>()
+const { t } = useI18n()
 
-const emit = defineEmits<{
-  toggle: []
-}>()
+const router = useRouter()
+const route = useRoute()
+const { addTab, activeTabId } = useTabs()
 
-const menuItems = [
-  { key: 'dashboard', icon: 'dashboard', labelKey: 'sidebar.dashboard', path: '/' },
-  { key: 'requirements', icon: 'requirements', labelKey: 'sidebar.requirements', path: '/requirements' },
-  { key: 'approvals', icon: 'approvals', labelKey: 'sidebar.approvals', path: '/approvals' },
-  { key: 'workflow', icon: 'workflow', labelKey: 'sidebar.workflow', path: '/workflow' },
-  { key: 'agents', icon: 'agents', labelKey: 'sidebar.agents', path: '/agents' },
-  { key: 'skills', icon: 'skills', labelKey: 'sidebar.skills', path: '/skills' },
-  { key: 'settings', icon: 'settings', labelKey: 'sidebar.settings', path: '/settings' },
+interface NavItem {
+  id: string
+  path: string
+  title: string
+  icon: string
+  children?: NavItem[]
+}
+
+const workflowExpanded = ref(true)
+
+const navItems: NavItem[] = [
+  { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: '📊' },
+  { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: '🤖' },
+  { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: '🔧' },
+  {
+    id: 'workflow',
+    path: '/workflow',
+    title: 'sidebar.workflow',
+    icon: '🔄',
+    children: [
+      { id: 'workflow-editor', path: '/workflow/editor', title: 'sidebar.workflowEditor', icon: '✏️' },
+      { id: 'workflow-list', path: '/workflow/list', title: 'sidebar.workflowList', icon: '📋' },
+    ],
+  },
+  { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: '📋' },
+  { id: 'settings', path: '/settings', title: 'sidebar.settings', icon: '⚙️' },
 ]
 
-function handleToggle() {
-  emit('toggle')
+const navigateTo = (item: NavItem) => {
+  if (item.children) {
+    workflowExpanded.value = !workflowExpanded.value
+    return
+  }
+  const title = t(item.title)
+  addTab(item.id, title, item.path)
+}
+
+const navigateToChild = (child: NavItem) => {
+  const title = t(child.title)
+  addTab(child.id, title, child.path)
+}
+
+const isActive = (path: string) => {
+  return route.path === path || route.path.startsWith(path + '/')
+}
+
+const isParentActive = (item: NavItem) => {
+  if (!item.children) return false
+  return route.path.startsWith(item.path)
 }
 </script>
+
+<template>
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <template v-for="item in navItems" :key="item.id">
+        <div
+          class="nav-item"
+          :class="{ active: item.children ? isParentActive(item) : isActive(item.path), 'parent-active': isParentActive(item) }"
+          @click="navigateTo(item)"
+        >
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span class="nav-label">{{ t(item.title) }}</span>
+          <span v-if="item.children" class="nav-expand" :class="{ expanded: workflowExpanded }">▾</span>
+        </div>
+        <div v-if="item.children && workflowExpanded" class="nav-children">
+          <div
+            v-for="child in item.children"
+            :key="child.id"
+            class="nav-item nav-child"
+            :class="{ active: isActive(child.path) }"
+            @click="navigateToChild(child)"
+          >
+            <span class="nav-icon">{{ child.icon }}</span>
+            <span class="nav-label">{{ t(child.title) }}</span>
+          </div>
+        </div>
+      </template>
+    </nav>
+  </aside>
+</template>
+
+<style scoped>
+.sidebar {
+  width: 240px;
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav {
+  padding: 1rem 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background: var(--hover-color);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.nav-item.parent-active {
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+}
+
+.nav-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.nav-expand {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.nav-expand.expanded {
+  transform: rotate(180deg);
+}
+
+.nav-children {
+  padding-left: 1rem;
+}
+
+.nav-child {
+  padding: 0.5rem 1.5rem 0.5rem 2rem;
+}
+</style>
