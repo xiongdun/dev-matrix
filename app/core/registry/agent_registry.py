@@ -16,7 +16,7 @@
     ```
 """
 
-from typing import Type
+from typing import Type, Optional
 
 from app.core.registry.base import Registry
 from app.agents.base import BaseAgent
@@ -25,7 +25,7 @@ from app.agents.base import BaseAgent
 agent_registry: Registry[BaseAgent] = Registry()
 
 
-def register_agent(name: str = None):
+def register_agent(name: Optional[str] = None):
     """Agent 注册装饰器。
 
     将 Agent 类注册到全局 Agent 注册表。
@@ -43,18 +43,20 @@ def register_agent(name: str = None):
             name = "my_agent"
         ```
     """
+
     def decorator(cls: Type[BaseAgent]) -> Type[BaseAgent]:
         agent_registry.register(name or cls.__name__, cls)
         return cls
+
     return decorator
 
 
-# 导入并注册所有内置 Agent
-from app.agents.business_analyst import BusinessAnalystAgent
-from app.agents.product_manager import ProductManagerAgent
-from app.agents.architect import ArchitectAgent
-from app.agents.developer import DeveloperAgent
-from app.agents.qa import QAAgent
+# 导入并注册所有内置 Agent  # noqa: E402
+from app.agents.business_analyst import BusinessAnalystAgent  # noqa: E402
+from app.agents.product_manager import ProductManagerAgent  # noqa: E402
+from app.agents.architect import ArchitectAgent  # noqa: E402
+from app.agents.developer import DeveloperAgent  # noqa: E402
+from app.agents.qa import QAAgent  # noqa: E402
 
 agent_registry.register("business_analyst", BusinessAnalystAgent)
 agent_registry.register("product_manager", ProductManagerAgent)

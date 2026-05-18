@@ -16,7 +16,7 @@
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from app.config import get_settings
 from app.llm.client import LLMClient, OpenAIClient, AnthropicClient
@@ -70,7 +70,9 @@ class LLMRouter:
         if settings.anthropic_api_key:
             self._clients["anthropic"] = AnthropicClient(
                 api_key=settings.anthropic_api_key,
-                model=self.model if self.provider == "anthropic" else "claude-3-opus-20240229",
+                model=self.model
+                if self.provider == "anthropic"
+                else "claude-3-opus-20240229",
             )
             logger.debug("Initialized Anthropic client")
         if not self._clients:
@@ -110,15 +112,17 @@ class LLMRouter:
 
         available = list(self._clients.keys())
         logger.error(
-            "No LLM client available for provider=%s, strategy=%s. Available clients: %s",
+            "No LLM client available for provider=%s, strategy=%s. "
+            "Available clients: %s",
             self.provider,
             self.strategy,
             available,
         )
         raise RuntimeError(
-            f"No LLM client available for provider='{self.provider}', strategy='{self.strategy}'. "
-            f"Available clients: {available or 'none'}. "
-            f"Please check that the corresponding API key is configured."
+            f"No LLM client available for provider='{self.provider}', "
+            f"strategy='{self.strategy}'. Available clients: "
+            f"{available or 'none'}. Please check that the corresponding "
+            f"API key is configured."
         )
 
     async def complete(self, prompt: str, **kwargs) -> str:
@@ -138,7 +142,11 @@ class LLMRouter:
         logger.info("LLM complete via %s, prompt_length=%d", client.name, len(prompt))
         try:
             result = await client.complete(prompt, **kwargs)
-            logger.info("LLM complete success via %s, result_length=%d", client.name, len(result))
+            logger.info(
+                "LLM complete success via %s, result_length=%d",
+                client.name,
+                len(result),
+            )
             return result
         except Exception as exc:
             logger.error("LLM complete failed via %s: %s", client.name, exc)
@@ -161,7 +169,9 @@ class LLMRouter:
         logger.info("LLM chat via %s, messages=%d", client.name, len(messages))
         try:
             result = await client.chat(messages, **kwargs)
-            logger.info("LLM chat success via %s, result_length=%d", client.name, len(result))
+            logger.info(
+                "LLM chat success via %s, result_length=%d", client.name, len(result)
+            )
             return result
         except Exception as exc:
             logger.error("LLM chat failed via %s: %s", client.name, exc)

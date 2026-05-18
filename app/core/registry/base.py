@@ -19,7 +19,7 @@
     ```
 """
 
-from typing import Dict, Type, Callable, Any, TypeVar, Generic
+from typing import Dict, Type, Callable, TypeVar, Generic, Optional
 
 T = TypeVar("T")
 
@@ -72,7 +72,9 @@ class Registry(Generic[T]):
             KeyError: 名称未在注册表中找到时抛出。
         """
         if not isinstance(name, str):
-            raise TypeError(f"Registry name must be a string, got {type(name).__name__}")
+            raise TypeError(
+                f"Registry name must be a string, got {type(name).__name__}"
+            )
         if name not in self._items:
             raise KeyError(f"Item '{name}' not found in registry")
         return self._items[name]
@@ -106,7 +108,7 @@ class Registry(Generic[T]):
             del self._items[name]
 
 
-def register_in(registry: Registry, name: str = None) -> Callable:
+def register_in(registry: Registry, name: Optional[str] = None) -> Callable:
     """注册装饰器，将类注册到指定注册表。
 
     Args:
@@ -125,7 +127,9 @@ def register_in(registry: Registry, name: str = None) -> Callable:
             pass
         ```
     """
+
     def decorator(cls: Type) -> Type:
         registry.register(name or cls.__name__, cls)
         return cls
+
     return decorator

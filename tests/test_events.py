@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 
 from app.events.bus import EventBus
 from app.events.types import Event, EventTypes

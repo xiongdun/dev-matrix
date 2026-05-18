@@ -2,8 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, ProjectStateModel, StateSnapshotModel
-from app.state.schemas import ProjectStateCreate
+from app.state.models import Base
 from app.state.repository import StateRepository
 
 

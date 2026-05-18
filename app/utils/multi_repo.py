@@ -1,6 +1,6 @@
 import os
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -46,6 +46,8 @@ class MultiRepoManager:
         config = self._repos.get(name)
         if not config:
             raise ValueError(f"Repository '{name}' not registered")
+        if config.local_path is None:
+            raise ValueError(f"Repository '{name}' has no local_path")
 
         local_path = Path(config.local_path)
         if local_path.exists():
@@ -72,6 +74,8 @@ class MultiRepoManager:
         config = self._repos.get(name)
         if not config:
             raise ValueError(f"Repository '{name}' not registered")
+        if config.local_path is None:
+            raise ValueError(f"Repository '{name}' has no local_path")
 
         local_path = Path(config.local_path)
         if not local_path.exists():
@@ -98,6 +102,8 @@ class MultiRepoManager:
         config = self._repos.get(name)
         if not config:
             raise ValueError(f"Repository '{name}' not registered")
+        if config.local_path is None:
+            raise ValueError(f"Repository '{name}' has no local_path")
 
         local_path = Path(config.local_path)
         if not local_path.exists():
@@ -122,7 +128,9 @@ class MultiRepoManager:
                 if len(parts) > 1:
                     tracking = parts[1]
                     if "[ahead " in tracking:
-                        ahead_str = tracking.split("[ahead ")[1].split(",")[0].split("]")[0]
+                        ahead_str = (
+                            tracking.split("[ahead ")[1].split(",")[0].split("]")[0]
+                        )
                         ahead = int(ahead_str)
                     if "[behind " in tracking:
                         behind_str = tracking.split("[behind ")[1].split("]")[0]
@@ -159,7 +167,9 @@ class MultiRepoManager:
             capture_output=True,
         )
 
-    def commit_changes(self, name: str, message: str, files: Optional[List[str]] = None) -> None:
+    def commit_changes(
+        self, name: str, message: str, files: Optional[List[str]] = None
+    ) -> None:
         local_path = self.get_local_path(name)
         if not local_path or not local_path.exists():
             raise ValueError(f"Repository '{name}' not cloned")

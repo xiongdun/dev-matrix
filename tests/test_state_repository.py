@@ -1,8 +1,5 @@
 import pytest
 
-from app.state.repository import StateRepository
-from app.state.models import ProjectStateModel, StateSnapshotModel
-
 
 class TestStateRepository:
     def test_get_state_not_found(self, state_repo):
@@ -72,7 +69,9 @@ class TestStateRepository:
 
     def test_rollback_to_snapshot_not_found(self, state_repo, db_session):
         state_repo.update_state("proj-1", '{"v": 1}', "running")
-        with pytest.raises(ValueError, match="Snapshot 999 not found for project proj-1"):
+        with pytest.raises(
+            ValueError, match="Snapshot 999 not found for project proj-1"
+        ):
             state_repo.rollback_to_snapshot("proj-1", 999)
 
     def test_rollback_to_snapshot_wrong_project(self, state_repo, db_session):
@@ -80,5 +79,7 @@ class TestStateRepository:
         snapshot = state_repo.create_snapshot("proj-1")
         state_repo.update_state("proj-2", '{"v": 2}', "running")
 
-        with pytest.raises(ValueError, match=f"Snapshot {snapshot.id} not found for project proj-2"):
+        with pytest.raises(
+            ValueError, match=f"Snapshot {snapshot.id} not found for project proj-2"
+        ):
             state_repo.rollback_to_snapshot("proj-2", snapshot.id)

@@ -71,7 +71,7 @@ class CodeSearchSkill(BaseSkill):
 
             # 创建检索器并执行搜索
             retriever = CodeRetriever(indexer)
-            results = retriever.search(query, top_k=5)
+            results = retriever.search(query, top_k=5)  # type: ignore[attr-defined]
 
             return SkillResult(
                 output=results,

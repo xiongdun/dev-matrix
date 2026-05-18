@@ -5,16 +5,6 @@
 
 主要类：
     - ArchitectAgent: 架构师 Agent，执行架构设计任务。
-
-使用示例：
-    ```python
-    from app.agents.architect import ArchitectAgent
-    from app.llm.router import LLMRouter
-    from app.state.repository import StateRepository
-
-    agent = ArchitectAgent(llm_router=router, state_repository=repo)
-    proposal = await agent.generate_proposal("proj_1", {"repo_path": "/path/to/repo"})
-    ```
 """
 
 from typing import Any, Dict
@@ -31,6 +21,7 @@ class ArchitectAgent(BaseAgent):
     Attributes:
         name: Agent 名称，固定为 "architect"。
         description: Agent 描述。
+        system_prompt: Agent 的系统提示词。
 
     Example:
         ```python
@@ -44,8 +35,16 @@ class ArchitectAgent(BaseAgent):
 
     name = "architect"
     description = "Performs code impact analysis and designs technical solutions"
+    system_prompt = (
+        "You are an expert Software Architect. Your role is to analyze technical "
+        "impact and design solutions based on PRD documents. Include: system design, "
+        "component diagram, API design, data model changes, and affected files. "
+        "Be thorough and precise."
+    )
 
-    async def generate_proposal(self, project_id: str, context: Dict[str, Any]) -> Proposal:
+    async def generate_proposal(
+        self, project_id: str, context: Dict[str, Any]
+    ) -> Proposal:
         """生成架构设计提案。
 
         读取项目状态中的 PRD，可选地检索相关代码上下文，
@@ -66,10 +65,13 @@ class ArchitectAgent(BaseAgent):
         code_context = ""
         if self.has_skill("code_search") and repo_path:
             try:
-                result = await self.call_skill("code_search", {
-                    "query": prd,
-                    "repo_path": repo_path,
-                })
+                result = await self.call_skill(
+                    "code_search",
+                    {
+                        "query": prd,
+                        "repo_path": repo_path,
+                    },
+                )
                 if result.success:
                     code_context = f"\n\nRelevant code context:\n{result.output}"
             except Exception:
@@ -77,21 +79,32 @@ class ArchitectAgent(BaseAgent):
 
         # 构建提示词
         prompt = (
-            f"You are a Software Architect. Based on the following PRD, analyze the "
-            f"technical impact and design a solution. Include: system design, "
-            f"component diagram, API design, data model changes, and affected files."
-            f"{code_context}\n\n"
+            f"Based on the following PRD, analyze the technical impact and design a "
+            f"solution. Include: system design, component diagram, API design, data "
+            f"model changes, and affected files.{code_context}\n\n"
             f"PRD:\n{prd}\n\n"
             f"Repository: {repo_path}"
         )
-        response = await self.llm_router.complete(prompt)
+
+        # 优先使用 SDK，回退到 LLMRouter
+        if self._sdk_options is not None:
+            response = await self.sdk_query(prompt=prompt, max_turns=3)
+        else:
+            response = await self.llm_router.complete(prompt)
+
         return Proposal(
             agent_name=self.name,
             content=response,
-            metadata={"phase": "architecture_design", "used_code_search": bool(code_context)},
+            metadata={
+                "phase": "architecture_design",
+                "used_code_search": bool(code_context),
+                "sdk_used": self._sdk_options is not None,
+            },
         )
 
-    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
+    async def validate_output(
+        self, project_id: str, proposal: Proposal
+    ) -> ValidationResult:
         """验证架构提案是否包含必要章节。
 
         检查提案内容是否包含 "design" 和 "api" 关键字。

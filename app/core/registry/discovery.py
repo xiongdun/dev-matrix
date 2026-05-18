@@ -24,7 +24,9 @@ from typing import List, Type
 from app.core.registry.base import Registry
 
 
-def discover_and_register(package_name: str, registry: Registry, base_class: Type) -> List[str]:
+def discover_and_register(
+    package_name: str, registry: Registry, base_class: Type
+) -> List[str]:
     """自动扫描包中的类并注册到注册表。
 
     遍历指定包的所有模块，查找继承自 base_class 的类，
@@ -45,7 +47,9 @@ def discover_and_register(package_name: str, registry: Registry, base_class: Typ
         return registered
 
     # 遍历包中的所有模块
-    for _, module_name, is_pkg in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
+    for _, module_name, is_pkg in pkgutil.iter_modules(
+        package.__path__, package.__name__ + "."
+    ):
         if is_pkg:
             continue
         try:

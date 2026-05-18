@@ -1,9 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 from app.main import app
-from app.api.registry import router as registry_router
 from app.core.registry.agent_registry import agent_registry
 from app.skills.registry import _global_registry as skill_registry
 from app.agents.base import BaseAgent, Proposal, ValidationResult
@@ -103,7 +101,6 @@ class TestAPIRegistry:
         assert "not mounted" in response.json()["detail"]
 
     def test_upload_skill(self, client, clean_registries, tmp_path, monkeypatch):
-        import os
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
         monkeypatch.setattr(
@@ -133,8 +130,9 @@ class UploadedSkill(BaseSkill):
         assert data["success"] is True
         assert data["name"] == "uploaded_skill"
 
-    def test_upload_skill_duplicate(self, client, clean_registries, tmp_path, monkeypatch):
-        import os
+    def test_upload_skill_duplicate(
+        self, client, clean_registries, tmp_path, monkeypatch
+    ):
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
         monkeypatch.setattr(
@@ -175,8 +173,9 @@ class UploadedSkill(BaseSkill):
         response = client.post("/registry/skills/upload", json=payload)
         assert response.status_code in (400, 500)
 
-    def test_upload_skill_no_base_skill(self, client, clean_registries, tmp_path, monkeypatch):
-        import os
+    def test_upload_skill_no_base_skill(
+        self, client, clean_registries, tmp_path, monkeypatch
+    ):
         custom_dir = tmp_path / "custom"
         custom_dir.mkdir()
         monkeypatch.setattr(

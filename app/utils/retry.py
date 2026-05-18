@@ -19,7 +19,7 @@ import asyncio
 import logging
 import random
 from functools import wraps
-from typing import Callable, Tuple, Type
+from typing import Callable, Tuple, Type, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def retry_with_backoff(
     base_delay: float = 1.0,
     max_delay: float = 60.0,
     exceptions: Tuple[Type[Exception], ...] = (Exception,),
-    on_retry: Callable[[Exception, int, float], None] = None,
+    on_retry: Optional[Callable[[Exception, int, float], None]] = None,
 ):
     """指数退避重试装饰器。
 
@@ -57,6 +57,7 @@ def retry_with_backoff(
             return await http_client.get("/api/data")
         ```
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -73,11 +74,12 @@ def retry_with_backoff(
                         )
                         raise
                     # 计算指数退避延迟，添加随机抖动
-                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    delay = min(base_delay * (2**attempt), max_delay)
                     jitter = random.uniform(0, delay * 0.1)
                     sleep_time = delay + jitter
                     logger.warning(
-                        "Function '%s' failed (attempt %d/%d): %s. Retrying in %.2fs...",
+                        "Function '%s' failed (attempt %d/%d): %s. "
+                        "Retrying in %.2fs...",
                         func.__name__,
                         attempt + 1,
                         max_retries,
@@ -105,11 +107,12 @@ def retry_with_backoff(
                         )
                         raise
                     # 计算指数退避延迟，添加随机抖动
-                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    delay = min(base_delay * (2**attempt), max_delay)
                     jitter = random.uniform(0, delay * 0.1)
                     sleep_time = delay + jitter
                     logger.warning(
-                        "Function '%s' failed (attempt %d/%d): %s. Retrying in %.2fs...",
+                        "Function '%s' failed (attempt %d/%d): %s. "
+                        "Retrying in %.2fs...",
                         func.__name__,
                         attempt + 1,
                         max_retries,
@@ -120,6 +123,7 @@ def retry_with_backoff(
                         on_retry(exc, attempt + 1, sleep_time)
                     # 同步函数使用 time.sleep
                     import time
+
                     time.sleep(sleep_time)
             # 不可达，但保留作为安全网
             return None

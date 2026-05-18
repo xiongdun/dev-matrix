@@ -41,7 +41,17 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.state.models import init_db
-from app.api import requirements, approvals, workflow, registry, workflow_config, workbench, events, lifecycle, workflow_instance
+from app.api import (
+    requirements,
+    approvals,
+    workflow,
+    registry,
+    workflow_config,
+    workbench,
+    events,
+    lifecycle,
+    workflow_instance,
+)
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill
 from app.core.registry.discovery import discover_and_register
@@ -54,6 +64,7 @@ class ErrorResponse(BaseModel):
         detail: 错误详情描述。
         request_id: 关联的请求 ID，用于追踪。
     """
+
     detail: str
     request_id: str | None = None
 
@@ -112,24 +123,25 @@ async def lifespan(app: FastAPI):
     try:
         init_db()
         logger.info("Database initialized")
-    except Exception as exc:
+    except Exception:
         logger.exception("Database initialization failed")
         raise
     try:
         from app.state.models import get_db
         from app.api.workflow_config import seed_templates
+
         db = next(get_db())
         try:
             seed_templates(db)
         finally:
             db.close()
-    except Exception as exc:
+    except Exception:
         logger.exception("Template seeding failed")
         raise
     try:
         discover_and_register("app.skills", skill_registry, BaseSkill)
         logger.info("Skill discovery completed")
-    except Exception as exc:
+    except Exception:
         logger.exception("Skill discovery failed")
         raise
     yield
@@ -237,11 +249,15 @@ app.include_router(requirements.router, prefix="/requirements", tags=["requireme
 app.include_router(approvals.router, prefix="/approvals", tags=["approvals"])
 app.include_router(workflow.router, prefix="/workflow", tags=["workflow"])
 app.include_router(registry.router, prefix="/registry", tags=["registry"])
-app.include_router(workflow_config.router, prefix="/workflow-config", tags=["workflow-config"])
+app.include_router(
+    workflow_config.router, prefix="/workflow-config", tags=["workflow-config"]
+)
 app.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
 app.include_router(events.router, prefix="/events", tags=["events"])
 app.include_router(lifecycle.router, prefix="/lifecycle", tags=["lifecycle"])
-app.include_router(workflow_instance.router, prefix="/workflow-instances", tags=["workflow-instances"])
+app.include_router(
+    workflow_instance.router, prefix="/workflow-instances", tags=["workflow-instances"]
+)
 
 
 @app.get("/health")

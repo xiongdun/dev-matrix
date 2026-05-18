@@ -71,6 +71,7 @@ class TestBaseSkill:
     @pytest.mark.asyncio
     async def test_execute_with_timeout_timeout(self, monkeypatch):
         import app.skills.base as base_module
+
         monkeypatch.setattr(base_module, "DEFAULT_SKILL_TIMEOUT", 0.01)
 
         class SlowSkill(BaseSkill):
@@ -78,6 +79,7 @@ class TestBaseSkill:
 
             async def execute(self, context):
                 import asyncio
+
                 await asyncio.sleep(10)
                 return SkillResult(output="too late")
 

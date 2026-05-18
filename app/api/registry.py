@@ -33,7 +33,7 @@ from app.core.registry.agent_registry import agent_registry
 from app.core.registry.llm_registry import llm_registry
 from app.api.schemas import ErrorResponse
 from app.skills.registry import _global_registry as skill_registry
-from app.skills.base import BaseSkill, SkillConfig
+from app.skills.base import BaseSkill
 from app.llm.router import LLMRouter
 from app.state.repository import StateRepository
 from app.state.models import get_db
@@ -53,6 +53,7 @@ class AgentInfoResponse(BaseModel):
         name: Agent 名称。
         description: Agent 描述。
     """
+
     name: str
     description: str
 
@@ -66,6 +67,7 @@ class AgentDetailResponse(AgentInfoResponse):
         status: Agent 当前状态。
         skills: 已挂载的技能列表。
     """
+
     status: str
     skills: List[str]
 
@@ -78,6 +80,7 @@ class SkillInfoResponse(BaseModel):
         description: 技能描述。
         used_by: 使用该技能的 Agent 列表。
     """
+
     name: str
     description: str
     used_by: List[str] = []
@@ -92,7 +95,10 @@ class SkillUploadPayload(BaseModel):
         code: 技能代码字符串，至少 1 个字符。
         config: 技能配置字典，可选。
     """
-    name: str = Field(..., min_length=1, max_length=128, pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+    name: str = Field(
+        ..., min_length=1, max_length=128, pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*$"
+    )
     description: str = Field(..., min_length=1)
     code: str = Field(..., min_length=1)
     config: Dict[str, Any] = {}
@@ -106,6 +112,7 @@ class SkillUploadResponse(BaseModel):
         name: 上传的技能名称。
         description: 上传的技能描述。
     """
+
     success: bool
     name: str
     description: str
@@ -119,6 +126,7 @@ class MountSkillResponse(BaseModel):
         agent: Agent 名称。
         skill: 技能名称。
     """
+
     success: bool
     agent: str
     skill: str
@@ -131,10 +139,9 @@ class ProviderResponse(BaseModel):
         name: 提供商名称。
         description: 提供商描述。
     """
+
     name: str
     description: str
-
-
 
 
 def _get_or_create_agent(agent_name: str) -> Any:
@@ -158,8 +165,12 @@ def _get_or_create_agent(agent_name: str) -> Any:
     try:
         db = next(get_db())
     except Exception as exc:
-        logger.exception("Database connection failed when creating agent '%s'", agent_name)
-        raise HTTPException(status_code=503, detail="Database connection failed") from exc
+        logger.exception(
+            "Database connection failed when creating agent '%s'", agent_name
+        )
+        raise HTTPException(
+            status_code=503, detail="Database connection failed"
+        ) from exc
     llm_router = LLMRouter()
     state_repo = StateRepository(db)
     agent = agent_cls(llm_router=llm_router, state_repository=state_repo)
@@ -180,8 +191,8 @@ async def list_agents() -> Dict[str, List[AgentInfoResponse]]:
         HTTPException: 查询失败时返回 500 错误。
     """
     try:
-        agents = [
-            {"name": name, "description": cls.description}
+        agents: List[AgentInfoResponse] = [
+            AgentInfoResponse(name=name, description=cls.description)
             for name, cls in agent_registry.list().items()
         ]
         logger.info("Listed %d agents", len(agents))
@@ -202,26 +213,30 @@ async def list_agent_details() -> Dict[str, List[AgentDetailResponse]]:
         HTTPException: 查询失败时返回 500 错误。
     """
     try:
-        agents: List[Dict[str, Any]] = []
+        agents: List[AgentDetailResponse] = []
         for name, cls in agent_registry.list().items():
             try:
                 agent = _get_or_create_agent(name)
-                agents.append({
-                    "name": name,
-                    "description": cls.description,
-                    "status": _agent_status.get(name, "idle"),
-                    "skills": agent.list_skills(),
-                })
+                agents.append(
+                    AgentDetailResponse(
+                        name=name,
+                        description=cls.description,
+                        status=_agent_status.get(name, "idle"),
+                        skills=agent.list_skills(),
+                    )
+                )
             except HTTPException:
                 raise
             except Exception as exc:
                 logger.error("Failed to get details for agent '%s': %s", name, exc)
-                agents.append({
-                    "name": name,
-                    "description": cls.description,
-                    "status": "error",
-                    "skills": [],
-                })
+                agents.append(
+                    AgentDetailResponse(
+                        name=name,
+                        description=cls.description,
+                        status="error",
+                        skills=[],
+                    )
+                )
         logger.info("Listed details for %d agents", len(agents))
         return {"agents": agents}
     except HTTPException:
@@ -282,11 +297,13 @@ async def mount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
         skill = skill_cls()
         agent.use_skill(skill)
     except Exception as exc:
-        logger.exception("Failed to mount skill '%s' on agent '%s'", skill_name, agent_name)
+        logger.exception(
+            "Failed to mount skill '%s' on agent '%s'", skill_name, agent_name
+        )
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Mounted skill '%s' on agent '%s'", skill_name, agent_name)
-    return {"success": True, "agent": agent_name, "skill": skill_name}
+    return MountSkillResponse(success=True, agent=agent_name, skill=skill_name)
 
 
 @router.delete(
@@ -320,7 +337,9 @@ async def unmount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
 
     if not agent.has_skill(skill_name):
         logger.warning(
-            "Unmount skill failed: skill '%s' not mounted on agent '%s'", skill_name, agent_name
+            "Unmount skill failed: skill '%s' not mounted on agent '%s'",
+            skill_name,
+            agent_name,
         )
         raise HTTPException(
             status_code=404,
@@ -330,11 +349,13 @@ async def unmount_skill(agent_name: str, skill_name: str) -> MountSkillResponse:
     try:
         agent.remove_skill(skill_name)
     except Exception as exc:
-        logger.exception("Failed to unmount skill '%s' from agent '%s'", skill_name, agent_name)
+        logger.exception(
+            "Failed to unmount skill '%s' from agent '%s'", skill_name, agent_name
+        )
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Unmounted skill '%s' from agent '%s'", skill_name, agent_name)
-    return {"success": True, "agent": agent_name, "skill": skill_name}
+    return MountSkillResponse(success=True, agent=agent_name, skill=skill_name)
 
 
 @router.get("/skills", response_model=Dict[str, List[SkillInfoResponse]])
@@ -348,11 +369,11 @@ async def list_skills() -> Dict[str, List[SkillInfoResponse]]:
         HTTPException: 查询失败时返回 500 错误。
     """
     try:
-        skills = [
-            {"name": name, "description": cls.description}
+        skills: List[SkillInfoResponse] = [
+            SkillInfoResponse(name=name, description=cls.description)
             for name, cls in skill_registry.list().items()
         ]
-        skill_to_agents: Dict[str, List[str]] = {s["name"]: [] for s in skills}
+        skill_to_agents: Dict[str, List[str]] = {s.name: [] for s in skills}
         for agent_name, _ in agent_registry.list().items():
             try:
                 agent = _get_or_create_agent(agent_name)
@@ -360,10 +381,12 @@ async def list_skills() -> Dict[str, List[SkillInfoResponse]]:
                     if sk_name in skill_to_agents:
                         skill_to_agents[sk_name].append(agent_name)
             except Exception as exc:
-                logger.error("Failed to list skills for agent '%s': %s", agent_name, exc)
+                logger.error(
+                    "Failed to list skills for agent '%s': %s", agent_name, exc
+                )
 
         for s in skills:
-            s["used_by"] = skill_to_agents.get(s["name"], [])
+            s.used_by = skill_to_agents.get(s.name, [])
 
         logger.info("Listed %d skills", len(skills))
         return {"skills": skills}
@@ -428,7 +451,11 @@ def _validate_skill_code(code: str) -> None:
 @router.post(
     "/skills/upload",
     response_model=SkillUploadResponse,
-    responses={400: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+    responses={
+        400: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
     """上传并注册自定义技能。
@@ -446,13 +473,17 @@ async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
     """
     _validate_skill_code(payload.code)
 
-    custom_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "skills", "custom")
+    custom_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "skills", "custom"
+    )
     os.makedirs(custom_dir, exist_ok=True)
 
     file_path = os.path.join(custom_dir, f"{payload.name}.py")
     if os.path.exists(file_path):
         logger.warning("Upload skill failed: skill '%s' already exists", payload.name)
-        raise HTTPException(status_code=409, detail=f"Skill '{payload.name}' already exists")
+        raise HTTPException(
+            status_code=409, detail=f"Skill '{payload.name}' already exists"
+        )
 
     try:
         with open(file_path, "w", encoding="utf-8") as f:
@@ -476,12 +507,19 @@ async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
         skill_cls = None
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
-            if isinstance(attr, type) and issubclass(attr, BaseSkill) and attr is not BaseSkill:
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, BaseSkill)
+                and attr is not BaseSkill
+            ):
                 skill_cls = attr
                 break
 
         if skill_cls is None:
-            logger.warning("No class extending BaseSkill found in uploaded code for '%s'", payload.name)
+            logger.warning(
+                "No class extending BaseSkill found in uploaded code for '%s'",
+                payload.name,
+            )
             os.remove(file_path)
             del sys.modules[module_name]
             raise HTTPException(
@@ -503,7 +541,7 @@ async def upload_skill(payload: SkillUploadPayload) -> SkillUploadResponse:
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     logger.info("Uploaded and registered skill '%s'", payload.name)
-    return {"success": True, "name": payload.name, "description": payload.description}
+    return SkillUploadResponse(success=True, name=payload.name, description=payload.description)
 
 
 @router.get("/llm-providers", response_model=Dict[str, List[ProviderResponse]])
@@ -517,8 +555,8 @@ async def list_llm_providers() -> Dict[str, List[ProviderResponse]]:
         HTTPException: 查询失败时返回 500 错误。
     """
     try:
-        providers = [
-            {"name": name, "description": cls.name}
+        providers: List[ProviderResponse] = [
+            ProviderResponse(name=name, description=cls.name)
             for name, cls in llm_registry.list().items()
         ]
         logger.info("Listed %d LLM providers", len(providers))

@@ -1,12 +1,10 @@
-import asyncio
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, ProjectStateModel, StateSnapshotModel
+from app.state.models import Base
 from app.state.repository import StateRepository
 from app.events.bus import EventBus
-from app.llm.router import LLMRouter
 
 
 @pytest.fixture

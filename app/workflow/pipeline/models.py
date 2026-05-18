@@ -115,11 +115,16 @@ class PipelineConfig:
         Returns:
             PipelineConfig: 流水线配置实例。
         """
+        stages: List[PipelineStage] = []
+        for s in data.get("stages", []):
+            stage = PipelineStage.from_dict(s)
+            if stage is not None:
+                stages.append(stage)
         return cls(
             name=data["name"],
             version=data.get("version", "1.0.0"),
             description=data.get("description", ""),
-            stages=[PipelineStage.from_dict(s) for s in data.get("stages", [])],
+            stages=stages,
             settings=data.get("settings", {}),
         )
 
@@ -176,7 +181,12 @@ class PipelineConfig:
         if not stage:
             return []
         if stage.next_stages:
-            return [self.get_stage(sid) for sid in stage.next_stages if self.get_stage(sid)]
+            next_stages: List[PipelineStage] = []
+            for sid in stage.next_stages:
+                next_stage = self.get_stage(sid)
+                if next_stage is not None:
+                    next_stages.append(next_stage)
+            return next_stages
         idx = self.stages.index(stage)
         if idx + 1 < len(self.stages):
             return [self.stages[idx + 1]]

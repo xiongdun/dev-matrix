@@ -17,14 +17,12 @@
     ```
 """
 
-import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from sqlalchemy.orm import Session
 
 from app.state.models import ProjectStateModel, StateSnapshotModel
-from app.state.schemas import ProjectStateCreate
 
 
 class StateRepository:
@@ -68,7 +66,12 @@ class StateRepository:
         )
 
     def update_state(
-        self, project_id: str, state_json: str, status: Optional[str] = None, expected_version: Optional[int] = None, skip_transition_check: bool = False
+        self,
+        project_id: str,
+        state_json: str,
+        status: Optional[str] = None,
+        expected_version: Optional[int] = None,
+        skip_transition_check: bool = False,
     ) -> ProjectStateModel:
         state = self.get_state(project_id)
         if state is None:
@@ -76,11 +79,15 @@ class StateRepository:
             self.db.add(state)
 
         if expected_version is not None and state.version != expected_version:
-            raise ValueError(f"Optimistic lock conflict: expected version {expected_version}, actual {state.version}")
+            raise ValueError(
+                f"Optimistic lock conflict: expected version {expected_version}, "
+                f"actual {state.version}"
+            )
 
         if status is not None and state.status != status and not skip_transition_check:
             from app.state.statemachine import StateMachine
-            current = state.status or "pending"
+
+            current = cast(str, state.status) or "pending"
             try:
                 if not StateMachine.can_transition(current, status):
                     raise ValueError(f"Invalid state transition: {current} -> {status}")
@@ -88,23 +95,25 @@ class StateRepository:
                 if current not in ("pending",) and current != status:
                     pass
 
-        state.state_json = state_json
+        state.state_json = state_json  # type: ignore[assignment]
         if status is not None:
-            state.status = status
-        state.version = (state.version or 0) + 1
-        state.updated_at = datetime.utcnow()
+            state.status = status  # type: ignore[assignment]
+        state.version = (cast(Optional[int], state.version) or 0) + 1  # type: ignore[assignment]
+        state.updated_at = datetime.utcnow()  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(state)
         return state
 
-    def create_snapshot(self, project_id: str, stage_id: Optional[str] = None) -> StateSnapshotModel:
+    def create_snapshot(
+        self, project_id: str, stage_id: Optional[str] = None
+    ) -> StateSnapshotModel:
         state = self.get_state(project_id)
         if state is None:
             raise ValueError(f"Project {project_id} not found")
         snapshot = StateSnapshotModel(
             project_id=project_id,
-            state_json=state.state_json,
-            status=state.status,
+            state_json=cast(str, state.state_json),
+            status=cast(str, state.status),
             stage_id=stage_id,
         )
         self.db.add(snapshot)
@@ -128,7 +137,9 @@ class StateRepository:
             .all()
         )
 
-    def rollback_to_snapshot(self, project_id: str, snapshot_id: int) -> ProjectStateModel:
+    def rollback_to_snapshot(
+        self, project_id: str, snapshot_id: int
+    ) -> ProjectStateModel:
         """将项目状态回滚到指定快照。
 
         Args:
@@ -150,10 +161,12 @@ class StateRepository:
             .first()
         )
         if snapshot is None:
-            raise ValueError(f"Snapshot {snapshot_id} not found for project {project_id}")
+            raise ValueError(
+                f"Snapshot {snapshot_id} not found for project {project_id}"
+            )
         return self.update_state(
             project_id=project_id,
-            state_json=snapshot.state_json,
-            status=snapshot.status,
+            state_json=cast(str, snapshot.state_json),
+            status=cast(str, snapshot.status),
             skip_transition_check=True,
         )

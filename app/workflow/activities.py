@@ -16,9 +16,8 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, cast
 
-from app.agents.base import Proposal
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
 from app.state.models import get_db, WorkflowTaskModel
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 def _get_repo() -> StateRepository:
-    from app.llm.router import LLMRouter
     db = next(get_db())
     return StateRepository(db)
 
@@ -38,8 +36,9 @@ async def create_state_snapshot(project_id: str, **kwargs) -> Dict[str, Any]:
     repo = _get_repo()
     try:
         snapshot = repo.create_snapshot(project_id)
-        logger.info("Created snapshot %d for project %s", snapshot.id, project_id)
-        return {"snapshot_id": snapshot.id, "project_id": project_id}
+        snapshot_id = cast(int, snapshot.id)
+        logger.info("Created snapshot %d for project %s", snapshot_id, project_id)
+        return {"snapshot_id": snapshot_id, "project_id": project_id}
     except Exception as exc:
         logger.exception("Failed to create snapshot for project %s", project_id)
         return {"error": str(exc)}
@@ -50,13 +49,22 @@ async def send_approval_request(
 ) -> Dict[str, Any]:
     event = Event(
         type=EventTypes.APPROVAL_REQUIRED,
-        payload={"project_id": project_id, "stage_id": stage_id, "stage_name": stage_name, "agent_role": agent_role},
+        payload={
+            "project_id": project_id,
+            "stage_id": stage_id,
+            "stage_name": stage_name,
+            "agent_role": agent_role,
+        },
         source="workflow",
         project_id=project_id,
     )
-    event_bus.publish(event)
+    await event_bus.publish(event)
     logger.info("Sent approval request for project %s stage %s", project_id, stage_id)
-    return {"status": "approval_requested", "project_id": project_id, "stage_id": stage_id}
+    return {
+        "status": "approval_requested",
+        "project_id": project_id,
+        "stage_id": stage_id,
+    }
 
 
 async def execute_agent_task(
@@ -84,19 +92,31 @@ async def execute_agent_task(
         agent = agent_cls(llm_router=router, state_repository=repo)
 
         status = StateMachine.stage_to_status(stage_id)
-        repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", status)
+        current_state = repo.get_state(project_id)
+        state_json = "{}"
+        if current_state is not None and current_state.state_json is not None:
+            state_json = str(current_state.state_json)
+        repo.update_state(
+            project_id,
+            state_json,
+            status,
+        )
 
         proposal = await agent.run(project_id, context)
 
         current_state = repo.get_state(project_id)
-        state_dict = json.loads(current_state.state_json) if current_state and current_state.state_json else {}
+        state_dict: Dict[str, Any] = {}
+        if current_state is not None and current_state.state_json is not None:
+            state_dict = json.loads(str(current_state.state_json))
         state_dict[stage_id] = {
             "agent": agent_name,
             "content": proposal.content,
             "metadata": proposal.metadata,
             "timestamp": datetime.utcnow().isoformat(),
         }
-        repo.update_state(project_id, json.dumps(state_dict, ensure_ascii=False), status)
+        repo.update_state(
+            project_id, json.dumps(state_dict, ensure_ascii=False), status
+        )
 
         task = WorkflowTaskModel(
             project_id=project_id,
@@ -104,25 +124,49 @@ async def execute_agent_task(
             stage_name=stage_name,
             agent_role=agent_role,
             status="pending",
-            output_json=json.dumps({"content": proposal.content, "metadata": proposal.metadata}, ensure_ascii=False),
+            output_json=json.dumps(
+                {"content": proposal.content, "metadata": proposal.metadata},
+                ensure_ascii=False,
+            ),
             arrived_at=datetime.utcnow(),
         )
         db.add(task)
         db.commit()
 
-        logger.info("Agent %s executed for project %s stage %s", agent_name, project_id, stage_id)
+        logger.info(
+            "Agent %s executed for project %s stage %s",
+            agent_name,
+            project_id,
+            stage_id,
+        )
+        task_id = cast(int, task.id)
         return {
             "status": "completed",
             "project_id": project_id,
             "stage_id": stage_id,
             "proposal_content": proposal.content,
             "proposal_metadata": proposal.metadata,
-            "task_id": task.id,
+            "task_id": task_id,
         }
     except Exception as exc:
-        logger.exception("Agent %s failed for project %s stage %s", agent_name, project_id, stage_id)
-        repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", ProjectStatus.FAILED.value)
-        return {"status": "failed", "error": str(exc), "project_id": project_id, "stage_id": stage_id}
+        logger.exception(
+            "Agent %s failed for project %s stage %s", agent_name, project_id, stage_id
+        )
+        current_state = repo.get_state(project_id)
+        state_json = "{}"
+        if current_state is not None and current_state.state_json is not None:
+            state_json = str(current_state.state_json)
+        repo.update_state(
+            project_id,
+            state_json,
+            ProjectStatus.FAILED.value,
+        )
+        return {
+            "status": "failed",
+            "error": str(exc),
+            "project_id": project_id,
+            "stage_id": stage_id,
+        }
 
 
 async def wait_for_approval(
@@ -133,7 +177,9 @@ async def wait_for_approval(
     elapsed = 0
 
     while elapsed < timeout_seconds:
-        task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
+        task = (
+            db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
+        )
         if task is None:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
@@ -158,28 +204,44 @@ async def rollback_state(project_id: str, snapshot_id: int, **kwargs) -> Dict[st
     repo = _get_repo()
     try:
         repo.rollback_to_snapshot(project_id, snapshot_id)
-        event_bus.publish(Event(
-            type=EventTypes.ROLLBACK_PERFORMED,
-            payload={"project_id": project_id, "snapshot_id": snapshot_id},
-            source="workflow",
-            project_id=project_id,
-        ))
+        await event_bus.publish(
+            Event(
+                type=EventTypes.ROLLBACK_PERFORMED,
+                payload={"project_id": project_id, "snapshot_id": snapshot_id},
+                source="workflow",
+                project_id=project_id,
+            )
+        )
         logger.info("Rolled back project %s to snapshot %d", project_id, snapshot_id)
-        return {"status": "rolled_back", "project_id": project_id, "snapshot_id": snapshot_id}
+        return {
+            "status": "rolled_back",
+            "project_id": project_id,
+            "snapshot_id": snapshot_id,
+        }
     except Exception as exc:
         logger.exception("Rollback failed for project %s", project_id)
         return {"status": "failed", "error": str(exc)}
 
 
 async def notify_completion(project_id: str, **kwargs) -> Dict[str, Any]:
-    event_bus.publish(Event(
-        type=EventTypes.WORKFLOW_COMPLETED,
-        payload={"project_id": project_id},
-        source="workflow",
-        project_id=project_id,
-    ))
+    await event_bus.publish(
+        Event(
+            type=EventTypes.WORKFLOW_COMPLETED,
+            payload={"project_id": project_id},
+            source="workflow",
+            project_id=project_id,
+        )
+    )
     repo = _get_repo()
-    repo.update_state(project_id, repo.get_state(project_id).state_json if repo.get_state(project_id) else "{}", ProjectStatus.COMPLETED.value)
+    current_state = repo.get_state(project_id)
+    state_json = "{}"
+    if current_state is not None and current_state.state_json is not None:
+        state_json = str(current_state.state_json)
+    repo.update_state(
+        project_id,
+        state_json,
+        ProjectStatus.COMPLETED.value,
+    )
     logger.info("Workflow completed for project %s", project_id)
     return {"status": "completed", "project_id": project_id}
 

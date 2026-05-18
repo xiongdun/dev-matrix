@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from app.code_intelligence.indexer import CodeIndexer, CodeSymbol, FileIndex
+from app.code_intelligence.indexer import CodeIndexer, CodeSymbol
 
 
 @dataclass
@@ -16,7 +16,9 @@ class CodeRetriever:
     def __init__(self, indexer: CodeIndexer):
         self.indexer = indexer
 
-    def _read_snippet(self, file_path: str, line_start: int, line_end: int, context: int = 3) -> str:
+    def _read_snippet(
+        self, file_path: str, line_start: int, line_end: int, context: int = 3
+    ) -> str:
         full_path = self.indexer.root_path / file_path
         try:
             lines = full_path.read_text(encoding="utf-8").splitlines()
@@ -74,21 +76,30 @@ class CodeRetriever:
                     snippet = self._read_snippet(
                         symbol.file_path, symbol.line_start, symbol.line_end
                     )
-                    candidates.append(RetrievalResult(symbol=symbol, score=score, snippet=snippet))
+                    candidates.append(
+                        RetrievalResult(symbol=symbol, score=score, snippet=snippet)
+                    )
 
         candidates.sort(key=lambda r: r.score, reverse=True)
         return candidates[:top_k]
 
-    def retrieve_by_signature(self, signature_hint: str, top_k: int = 5) -> List[RetrievalResult]:
+    def retrieve_by_signature(
+        self, signature_hint: str, top_k: int = 5
+    ) -> List[RetrievalResult]:
         results = []
         all_symbols = self.indexer.get_all_symbols()
         for symbol_list in all_symbols.values():
             for symbol in symbol_list:
-                if symbol.signature and signature_hint.lower() in symbol.signature.lower():
+                if (
+                    symbol.signature
+                    and signature_hint.lower() in symbol.signature.lower()
+                ):
                     snippet = self._read_snippet(
                         symbol.file_path, symbol.line_start, symbol.line_end
                     )
-                    results.append(RetrievalResult(symbol=symbol, score=5.0, snippet=snippet))
+                    results.append(
+                        RetrievalResult(symbol=symbol, score=5.0, snippet=snippet)
+                    )
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:top_k]
@@ -107,7 +118,9 @@ class CodeRetriever:
                         snippet = self._read_snippet(
                             found.file_path, found.line_start, found.line_end
                         )
-                        related[key] = RetrievalResult(symbol=found, score=3.0, snippet=snippet)
+                        related[key] = RetrievalResult(
+                            symbol=found, score=3.0, snippet=snippet
+                        )
 
             all_symbols = self.indexer.get_all_symbols()
             for symbol_list in all_symbols.values():
@@ -118,7 +131,9 @@ class CodeRetriever:
                             snippet = self._read_snippet(
                                 other.file_path, other.line_start, other.line_end
                             )
-                            related[key] = RetrievalResult(symbol=other, score=2.0, snippet=snippet)
+                            related[key] = RetrievalResult(
+                                symbol=other, score=2.0, snippet=snippet
+                            )
 
         return sorted(related.values(), key=lambda r: r.score, reverse=True)
 

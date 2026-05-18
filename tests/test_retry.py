@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 
 from app.utils.retry import retry_with_backoff
 

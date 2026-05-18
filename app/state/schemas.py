@@ -17,7 +17,7 @@
 """
 
 from datetime import datetime
-from typing import Optional, Any, Dict
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -38,6 +38,7 @@ class ProjectStateBase(BaseModel):
 
 class ProjectStateCreate(ProjectStateBase):
     """项目状态创建模式，继承自 ProjectStateBase，无额外字段。"""
+
     pass
 
 

@@ -41,6 +41,7 @@ class SkillResult:
         success: 是否执行成功。
         error: 错误信息，成功时为 None。
     """
+
     output: Any
     metadata: Dict[str, Any] = field(default_factory=dict)
     success: bool = True
@@ -56,6 +57,7 @@ class SkillConfig:
         retry_count: 失败重试次数。
         parameters: 附加参数字典。
     """
+
     timeout: int = 30
     retry_count: int = 0
     parameters: Dict[str, Any] = field(default_factory=dict)
@@ -128,7 +130,7 @@ class BaseSkill(ABC):
         timeout = getattr(self.config, "timeout", None) or DEFAULT_SKILL_TIMEOUT
         try:
             return await asyncio.wait_for(self.execute(context), timeout=timeout)
-        except asyncio.TimeoutError as exc:
+        except asyncio.TimeoutError:
             logger.error(
                 "Skill '%s' execution timed out after %.1fs",
                 self.name,

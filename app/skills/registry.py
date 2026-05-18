@@ -71,10 +71,12 @@ class SkillRegistry(Registry[BaseSkill]):
             Dict: 发现的技能名称到类的映射。
         """
         from app.core.registry.discovery import discover_and_register
-        return discover_and_register(package, self, BaseSkill)
+
+        registered = discover_and_register(package, self, BaseSkill)
+        return {name: self.get(name) for name in registered}
 
 
-def register_skill(name: str = None, registry: SkillRegistry = None):
+def register_skill(name: Optional[str] = None, registry: Optional[SkillRegistry] = None):
     """技能注册装饰器。
 
     将技能类注册到指定或全局注册表。
@@ -93,10 +95,12 @@ def register_skill(name: str = None, registry: SkillRegistry = None):
             name = "my_skill"
         ```
     """
+
     def decorator(cls: Type[BaseSkill]) -> Type[BaseSkill]:
         reg = registry or _global_registry
         reg.register(name or cls.name, cls)
         return cls
+
     return decorator
 
 

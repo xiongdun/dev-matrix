@@ -9,7 +9,7 @@
 """
 
 from enum import Enum
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, cast
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,25 @@ TRANSITIONS: dict[str, Set[str]] = {
     ProjectStatus.PENDING: {ProjectStatus.ANALYZING, ProjectStatus.FAILED},
     ProjectStatus.ANALYZING: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.FAILED},
     ProjectStatus.AWAITING_APPROVAL: {ProjectStatus.APPROVED, ProjectStatus.REJECTED},
-    ProjectStatus.APPROVED: {ProjectStatus.GENERATING_PRD, ProjectStatus.DESIGNING, ProjectStatus.DEVELOPING, ProjectStatus.TESTING, ProjectStatus.COMPLETED},
+    ProjectStatus.APPROVED: {
+        ProjectStatus.GENERATING_PRD,
+        ProjectStatus.DESIGNING,
+        ProjectStatus.DEVELOPING,
+        ProjectStatus.TESTING,
+        ProjectStatus.COMPLETED,
+    },
     ProjectStatus.REJECTED: {ProjectStatus.ANALYZING, ProjectStatus.AWAITING_APPROVAL},
-    ProjectStatus.GENERATING_PRD: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.FAILED},
+    ProjectStatus.GENERATING_PRD: {
+        ProjectStatus.AWAITING_APPROVAL,
+        ProjectStatus.FAILED,
+    },
     ProjectStatus.DESIGNING: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.FAILED},
     ProjectStatus.DEVELOPING: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.FAILED},
-    ProjectStatus.TESTING: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.COMPLETED, ProjectStatus.FAILED},
+    ProjectStatus.TESTING: {
+        ProjectStatus.AWAITING_APPROVAL,
+        ProjectStatus.COMPLETED,
+        ProjectStatus.FAILED,
+    },
     ProjectStatus.COMPLETED: set(),
     ProjectStatus.FAILED: {ProjectStatus.PENDING, ProjectStatus.ROLLBACK},
     ProjectStatus.ROLLBACK: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.PENDING},
@@ -82,7 +95,8 @@ class StateMachine:
     @staticmethod
     def get_allowed_transitions(status: str) -> List[str]:
         from_enum = ProjectStatus(status)
-        return [s.value for s in TRANSITIONS.get(from_enum, set())]
+        allowed = TRANSITIONS.get(from_enum, set())
+        return [cast(str, getattr(s, "value", s)) for s in allowed]
 
     @staticmethod
     def stage_to_status(stage_id: str) -> str:

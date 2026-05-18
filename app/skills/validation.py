@@ -18,7 +18,7 @@
     ```
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from app.skills.base import BaseSkill, SkillResult
 

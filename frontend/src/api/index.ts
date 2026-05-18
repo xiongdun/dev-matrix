@@ -126,9 +126,9 @@ export const api = {
     })
   },
 
-  /** 启动工作流 */
-  startWorkflow(projectId: string, data: { repo_path: string; raw_input: string }) {
-    return requestWithRetry<{ workflow_id: string }>(`/workflow/${projectId}/start`, {
+  /** 启动工作流（统一入口，优先 Temporal，降级 Pipeline） */
+  startWorkflow(projectId: string, data: { repo_path: string; raw_input: string; flow_json?: string; template_id?: number }) {
+    return requestWithRetry<{ project_id: string; status: string; engine: string; workflow_id: string }>(`/workflow/${projectId}/start`, {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -186,9 +186,9 @@ export const api = {
     return requestWithRetry<{ id: number; name: string }>('/workflow-config/', { method: 'POST', body: JSON.stringify(data) })
   },
 
-  /** 从模板创建实例 */
-  instantiateTemplate(configId: number, projectId: string) {
-    return requestWithRetry<{ id: number; instance_id: string; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-config/' + configId + '/instantiate', { method: 'POST', body: JSON.stringify({ project_id: projectId }) })
+  /** 从模板创建实例（自动启动工作流） */
+  instantiateTemplate(configId: number, projectId: string, context?: Record<string, unknown>) {
+    return requestWithRetry<{ id: number; instance_id: string; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-config/' + configId + '/instantiate', { method: 'POST', body: JSON.stringify({ project_id: projectId, context: context || {} }) })
   },
 
   /** 保存工作流 */

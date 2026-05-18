@@ -19,7 +19,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import httpx
 
@@ -113,7 +113,12 @@ class OpenAIClient(LLMClient):
         max_retries=3,
         base_delay=1.0,
         max_delay=30.0,
-        exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError),
+        exceptions=(
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.NetworkError,
+        ),
     )
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """多轮对话。
@@ -164,7 +169,7 @@ class OpenAIClient(LLMClient):
                 exc.response.text,
             )
             raise
-        except httpx.TimeoutException as exc:
+        except httpx.TimeoutException:
             logger.error("OpenAI API timeout after 60s")
             raise
         except httpx.ConnectError as exc:
@@ -173,7 +178,7 @@ class OpenAIClient(LLMClient):
         except httpx.NetworkError as exc:
             logger.error("OpenAI API network error: %s", exc)
             raise
-        except Exception as exc:
+        except Exception:
             logger.exception("Unexpected error calling OpenAI API")
             raise
 
@@ -205,7 +210,9 @@ class AnthropicClient(LLMClient):
 
     name = "anthropic"
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-3-opus-20240229"):
+    def __init__(
+        self, api_key: Optional[str] = None, model: str = "claude-3-opus-20240229"
+    ):
         """初始化 Anthropic 客户端。
 
         Args:
@@ -234,7 +241,12 @@ class AnthropicClient(LLMClient):
         max_retries=3,
         base_delay=1.0,
         max_delay=30.0,
-        exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError),
+        exceptions=(
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.NetworkError,
+        ),
     )
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """多轮对话。
@@ -286,7 +298,7 @@ class AnthropicClient(LLMClient):
                 exc.response.text,
             )
             raise
-        except httpx.TimeoutException as exc:
+        except httpx.TimeoutException:
             logger.error("Anthropic API timeout after 60s")
             raise
         except httpx.ConnectError as exc:
@@ -295,7 +307,7 @@ class AnthropicClient(LLMClient):
         except httpx.NetworkError as exc:
             logger.error("Anthropic API network error: %s", exc)
             raise
-        except Exception as exc:
+        except Exception:
             logger.exception("Unexpected error calling Anthropic API")
             raise
 

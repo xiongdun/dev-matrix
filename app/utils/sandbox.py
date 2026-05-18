@@ -1,9 +1,6 @@
 import asyncio
-import os
 import shutil
-import subprocess
 import tempfile
-import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,18 +63,28 @@ class DockerSandbox(AbstractSandbox):
 
         network_flag = "--network=none" if not self.network else ""
         cmd = [
-            "docker", "run", "-d", "--rm",
-            "-m", self.memory_limit,
-            "--cpus", self.cpu_limit,
+            "docker",
+            "run",
+            "-d",
+            "--rm",
+            "-m",
+            self.memory_limit,
+            "--cpus",
+            self.cpu_limit,
         ]
         if network_flag:
             cmd.extend(network_flag.split())
-        cmd.extend([
-            "-v", f"{self._temp_dir}:/workspace",
-            "-w", "/workspace",
-            self.image,
-            "sleep", "3600",
-        ])
+        cmd.extend(
+            [
+                "-v",
+                f"{self._temp_dir}:/workspace",
+                "-w",
+                "/workspace",
+                self.image,
+                "sleep",
+                "3600",
+            ]
+        )
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -139,12 +146,16 @@ class DockerSandbox(AbstractSandbox):
 
     async def write_file(self, path: str, content: str) -> None:
         await self._ensure_container()
+        if self._temp_dir is None:
+            raise RuntimeError("temp_dir is not initialized")
         local_path = self._temp_dir / path.lstrip("/")
         local_path.parent.mkdir(parents=True, exist_ok=True)
         local_path.write_text(content, encoding="utf-8")
 
     async def read_file(self, path: str) -> str:
         await self._ensure_container()
+        if self._temp_dir is None:
+            raise RuntimeError("temp_dir is not initialized")
         local_path = self._temp_dir / path.lstrip("/")
         if not local_path.exists():
             raise FileNotFoundError(f"File not found: {path}")
@@ -153,7 +164,11 @@ class DockerSandbox(AbstractSandbox):
     async def cleanup(self) -> None:
         if self.container_id:
             proc = await asyncio.create_subprocess_exec(
-                "docker", "stop", "-t", "0", self.container_id,
+                "docker",
+                "stop",
+                "-t",
+                "0",
+                self.container_id,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -208,11 +223,15 @@ class FirecrackerSandbox(AbstractSandbox):
 
     async def write_file(self, path: str, content: str) -> None:
         await self._start_microvm()
-        raise NotImplementedError("Firecracker file operations require agent integration")
+        raise NotImplementedError(
+            "Firecracker file operations require agent integration"
+        )
 
     async def read_file(self, path: str) -> str:
         await self._start_microvm()
-        raise NotImplementedError("Firecracker file operations require agent integration")
+        raise NotImplementedError(
+            "Firecracker file operations require agent integration"
+        )
 
     async def cleanup(self) -> None:
         if self._temp_dir and self._temp_dir.exists():

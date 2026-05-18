@@ -24,7 +24,7 @@ import logging
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,7 @@ class AuditLogger:
         Returns:
             list: 审计日志列表。
         """
-        logs = []
+        logs: List[Dict[str, Any]] = []
         if not self.log_file.exists():
             return logs
 

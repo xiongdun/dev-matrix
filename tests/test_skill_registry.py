@@ -1,5 +1,3 @@
-import pytest
-
 from app.skills.base import BaseSkill, SkillResult, SkillConfig
 from app.skills.registry import SkillRegistry, register_skill
 
@@ -8,7 +6,7 @@ class TestSkillRegistry:
     def test_discover_skills(self):
         reg = SkillRegistry()
         discovered = reg.discover("app.skills")
-        assert isinstance(discovered, list)
+        assert isinstance(discovered, dict)
         assert len(discovered) > 0
 
     def test_create_skill(self):

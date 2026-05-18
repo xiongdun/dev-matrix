@@ -6,7 +6,7 @@
 import asyncio
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -21,7 +21,7 @@ router = APIRouter()
 class SSESubscriber:
     def __init__(self, role: Optional[str] = None):
         self.role = role
-        self._queue = asyncio.Queue()
+        self._queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
     async def put(self, data: dict):
         await self._queue.put(data)
@@ -48,7 +48,11 @@ def _on_event(event):
             event_role = event.payload.get("agent_role", "")
             if event_role and sub.role != event_role:
                 continue
-        asyncio.get_running_loop().create_task(sub.put(payload))
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(sub.put(payload))
+        except RuntimeError:
+            pass
 
 
 _bus_listener_attached = False
@@ -88,7 +92,7 @@ async def event_stream(
                 if data:
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                 else:
-                    yield f": keepalive\n\n"
+                    yield ": keepalive\n\n"
         except asyncio.CancelledError:
             pass
         finally:

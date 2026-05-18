@@ -6,12 +6,12 @@ from temporalio.worker import Worker
 
 from app.config import get_settings
 from app.workflow.activities import (
-    analyze_requirement,
-    generate_prd,
-    analyze_code_impact,
-    generate_patch,
-    generate_tests,
-    execute_tests,
+    create_state_snapshot,
+    send_approval_request,
+    execute_agent_task,
+    wait_for_approval,
+    rollback_state,
+    notify_completion,
 )
 from app.workflow.definitions import DevWorkflow
 
@@ -28,12 +28,12 @@ async def main():
         task_queue="devmatrix-task-queue",
         workflows=[DevWorkflow],
         activities=[
-            analyze_requirement,
-            generate_prd,
-            analyze_code_impact,
-            generate_patch,
-            generate_tests,
-            execute_tests,
+            create_state_snapshot,
+            send_approval_request,
+            execute_agent_task,
+            wait_for_approval,
+            rollback_state,
+            notify_completion,
         ],
     )
 

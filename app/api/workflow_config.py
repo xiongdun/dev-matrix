@@ -18,7 +18,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
@@ -37,14 +37,33 @@ _WORKFLOW_DIR = os.path.join(
 )
 
 PRESET_TEMPLATES = [
-    {"name": "standard-dev-flow", "category": "standard",
-     "description": "Standard development workflow with full human approval checkpoints"},
-    {"name": "hotfix-flow", "category": "hotfix",
-     "description": "Emergency hotfix workflow with minimal approval steps for rapid deployment"},
-    {"name": "db-change-flow", "category": "db_change",
-     "description": "Database change workflow with mandatory architecture review and dual approval"},
-    {"name": "auto-fix-flow", "category": "auto_fix",
-     "description": "Automated fix workflow for lint/type errors with auto-approval"},
+    {
+        "name": "standard-dev-flow",
+        "category": "standard",
+        "description": (
+            "Standard development workflow with full human approval checkpoints"
+        ),
+    },
+    {
+        "name": "hotfix-flow",
+        "category": "hotfix",
+        "description": (
+            "Emergency hotfix workflow with minimal approval steps for rapid deployment"
+        ),
+    },
+    {
+        "name": "db-change-flow",
+        "category": "db_change",
+        "description": (
+            "Database change workflow with mandatory architecture review and "
+            "dual approval"
+        ),
+    },
+    {
+        "name": "auto-fix-flow",
+        "category": "auto_fix",
+        "description": "Automated fix workflow for lint/type errors with auto-approval",
+    },
 ]
 
 
@@ -88,6 +107,7 @@ class SyncYamlResponse(BaseModel):
 
 class InstantiateRequest(BaseModel):
     project_id: str = Field(..., min_length=1, max_length=64)
+    context: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowInstanceResponse(BaseModel):
@@ -111,50 +131,55 @@ class WorkflowInstanceResponse(BaseModel):
 
 def _model_to_response(model: WorkflowConfigModel) -> WorkflowConfigResponse:
     return WorkflowConfigResponse(
-        id=model.id,
-        name=model.name,
-        description=model.description,
-        version=model.version,
-        flow_json=model.flow_json,
-        yaml_path=model.yaml_path,
-        status=model.status,
+        id=cast(int, model.id),
+        name=cast(str, model.name),
+        description=cast(str, model.description),
+        version=cast(str, model.version),
+        flow_json=cast(str, model.flow_json),
+        yaml_path=cast(Optional[str], model.yaml_path),
+        status=cast(str, model.status),
         is_template=bool(model.is_template),
-        category=model.category,
-        created_at=model.created_at,
-        updated_at=model.updated_at,
+        category=cast(Optional[str], model.category),
+        created_at=cast(Optional[datetime], model.created_at),
+        updated_at=cast(Optional[datetime], model.updated_at),
     )
 
 
 def _instance_to_response(model: WorkflowInstanceModel) -> WorkflowInstanceResponse:
-    participants = json.loads(model.participants) if model.participants else []
-    artifacts = json.loads(model.artifacts) if model.artifacts else []
+    participants_raw = cast(Optional[str], model.participants)
+    artifacts_raw = cast(Optional[str], model.artifacts)
+    participants = json.loads(participants_raw) if participants_raw else []
+    artifacts = json.loads(artifacts_raw) if artifacts_raw else []
     return WorkflowInstanceResponse(
-        id=model.id,
-        instance_id=model.instance_id,
-        template_id=model.template_id,
-        project_id=model.project_id,
-        current_state=model.current_state,
+        id=cast(int, model.id),
+        instance_id=cast(str, model.instance_id),
+        template_id=cast(Optional[int], model.template_id),
+        project_id=cast(str, model.project_id),
+        current_state=cast(str, model.current_state),
         participants=participants,
         artifacts=artifacts,
-        status=model.status,
-        context_json=model.context_json,
-        started_at=model.started_at,
-        completed_at=model.completed_at,
-        created_at=model.created_at,
-        updated_at=model.updated_at,
+        status=cast(str, model.status),
+        context_json=cast(str, model.context_json),
+        started_at=cast(Optional[datetime], model.started_at),
+        completed_at=cast(Optional[datetime], model.completed_at),
+        created_at=cast(Optional[datetime], model.created_at),
+        updated_at=cast(Optional[datetime], model.updated_at),
     )
 
 
 def _generate_instance_id(db: Session) -> str:
     year = datetime.utcnow().year
     prefix = f"WF-{year}-"
-    last = db.query(WorkflowInstanceModel).filter(
-        WorkflowInstanceModel.instance_id.like(f"{prefix}%")
-    ).order_by(WorkflowInstanceModel.id.desc()).first()
+    last = (
+        db.query(WorkflowInstanceModel)
+        .filter(WorkflowInstanceModel.instance_id.like(f"{prefix}%"))
+        .order_by(WorkflowInstanceModel.id.desc())
+        .first()
+    )
     seq = 1
     if last and last.instance_id.startswith(prefix):
         try:
-            seq = int(last.instance_id[len(prefix):]) + 1
+            seq = int(last.instance_id[len(prefix) :]) + 1
         except ValueError:
             seq = 1
     return f"{prefix}{seq:03d}"
@@ -177,9 +202,11 @@ def _extract_participants(flow_json_str: str) -> List[str]:
 def seed_templates(db: Session) -> None:
     """将预置模板 YAML 文件同步到数据库（幂等）。"""
     for tpl_info in PRESET_TEMPLATES:
-        existing = db.query(WorkflowConfigModel).filter(
-            WorkflowConfigModel.name == tpl_info["name"]
-        ).first()
+        existing = (
+            db.query(WorkflowConfigModel)
+            .filter(WorkflowConfigModel.name == tpl_info["name"])
+            .first()
+        )
         if existing is not None:
             continue
 
@@ -193,26 +220,32 @@ def seed_templates(db: Session) -> None:
                 nodes = []
                 edges = []
                 for i, s in enumerate(stages):
-                    nodes.append({
-                        "id": s["id"],
-                        "type": "agentNode",
-                        "position": {"x": 250, "y": i * 120},
-                        "data": {
+                    nodes.append(
+                        {
                             "id": s["id"],
-                            "name": s.get("name", s["id"]),
-                            "agent": s.get("agent", ""),
-                            "activity": s.get("activity", s["id"]),
-                            "requires_approval": s.get("requires_approval", True),
-                            "timeout_seconds": s.get("timeout_seconds", 300),
-                        },
-                    })
+                            "type": "agentNode",
+                            "position": {"x": 250, "y": i * 120},
+                            "data": {
+                                "id": s["id"],
+                                "name": s.get("name", s["id"]),
+                                "agent": s.get("agent", ""),
+                                "activity": s.get("activity", s["id"]),
+                                "requires_approval": s.get("requires_approval", True),
+                                "timeout_seconds": s.get("timeout_seconds", 300),
+                            },
+                        }
+                    )
                     if i > 0:
-                        edges.append({
-                            "id": f"e-{stages[i-1]['id']}-{s['id']}",
-                            "source": stages[i - 1]["id"],
-                            "target": s["id"],
-                        })
-                flow_json = json.dumps({"nodes": nodes, "edges": edges}, ensure_ascii=False)
+                        edges.append(
+                            {
+                                "id": f"e-{stages[i - 1]['id']}-{s['id']}",
+                                "source": stages[i - 1]["id"],
+                                "target": s["id"],
+                            }
+                        )
+                flow_json = json.dumps(
+                    {"nodes": nodes, "edges": edges}, ensure_ascii=False
+                )
             except Exception:
                 logger.exception("Failed to load template YAML: %s", yaml_path)
 
@@ -236,7 +269,9 @@ def seed_templates(db: Session) -> None:
         logger.exception("Template seeding failed")
 
 
-def _flow_json_to_pipeline(flow_json_str: str, name: str, version: str, description: str) -> Dict[str, Any]:
+def _flow_json_to_pipeline(
+    flow_json_str: str, name: str, version: str, description: str
+) -> Dict[str, Any]:
     try:
         flow = json.loads(flow_json_str)
     except json.JSONDecodeError:
@@ -301,9 +336,12 @@ def _flow_json_to_pipeline(flow_json_str: str, name: str, version: str, descript
 @router.get("/templates", response_model=Dict[str, List[WorkflowConfigResponse]])
 async def list_templates(db: Session = Depends(get_db)):
     try:
-        templates = db.query(WorkflowConfigModel).filter(
-            WorkflowConfigModel.is_template == 1
-        ).order_by(WorkflowConfigModel.id.asc()).all()
+        templates = (
+            db.query(WorkflowConfigModel)
+            .filter(WorkflowConfigModel.is_template == 1)
+            .order_by(WorkflowConfigModel.id.asc())
+            .all()
+        )
         logger.info("Listed %d workflow templates", len(templates))
         return {"templates": [_model_to_response(t) for t in templates]}
     except Exception as exc:
@@ -314,7 +352,9 @@ async def list_templates(db: Session = Depends(get_db)):
 @router.get("/", response_model=Dict[str, List[WorkflowConfigResponse]])
 async def list_workflow_configs(db: Session = Depends(get_db)):
     try:
-        configs = db.query(WorkflowConfigModel).order_by(WorkflowConfigModel.id.desc()).all()
+        configs = (
+            db.query(WorkflowConfigModel).order_by(WorkflowConfigModel.id.desc()).all()
+        )
         logger.info("Listed %d workflow configs", len(configs))
         return {"workflows": [_model_to_response(c) for c in configs]}
     except Exception as exc:
@@ -324,17 +364,32 @@ async def list_workflow_configs(db: Session = Depends(get_db)):
 
 @router.get("/{config_id}", response_model=WorkflowConfigResponse)
 async def get_workflow_config(config_id: int, db: Session = Depends(get_db)):
-    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+    config = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.id == config_id)
+        .first()
+    )
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Workflow config {config_id} not found"
+        )
     return _model_to_response(config)
 
 
 @router.post("/", response_model=WorkflowConfigResponse, status_code=201)
-async def create_workflow_config(payload: WorkflowConfigCreate, db: Session = Depends(get_db)):
-    existing = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.name == payload.name).first()
+async def create_workflow_config(
+    payload: WorkflowConfigCreate, db: Session = Depends(get_db)
+):
+    existing = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.name == payload.name)
+        .first()
+    )
     if existing is not None:
-        raise HTTPException(status_code=409, detail=f"Workflow config with name '{payload.name}' already exists")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Workflow config with name '{payload.name}' already exists",
+        )
     try:
         config = WorkflowConfigModel(
             name=payload.name,
@@ -354,38 +409,76 @@ async def create_workflow_config(payload: WorkflowConfigCreate, db: Session = De
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
-@router.post("/{config_id}/instantiate", response_model=WorkflowInstanceResponse, status_code=201)
-async def instantiate_template(config_id: int, payload: InstantiateRequest, db: Session = Depends(get_db)):
-    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+@router.post(
+    "/{config_id}/instantiate", response_model=WorkflowInstanceResponse, status_code=201
+)
+async def instantiate_template(
+    config_id: int, payload: InstantiateRequest, db: Session = Depends(get_db)
+):
+    config = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.id == config_id)
+        .first()
+    )
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Workflow config {config_id} not found"
+        )
 
-    existing = db.query(WorkflowInstanceModel).filter(
-        WorkflowInstanceModel.project_id == payload.project_id,
-        WorkflowInstanceModel.status.in_(["running", "paused"]),
-    ).first()
+    existing = (
+        db.query(WorkflowInstanceModel)
+        .filter(
+            WorkflowInstanceModel.project_id == payload.project_id,
+            WorkflowInstanceModel.status.in_(["running", "paused"]),
+        )
+        .first()
+    )
     if existing is not None:
-        raise HTTPException(status_code=409, detail=f"Project '{payload.project_id}' already has an active instance ({existing.instance_id})")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Project '{payload.project_id}' already has an active instance "
+                f"({existing.instance_id})"
+            ),
+        )
 
-    participants = _extract_participants(config.flow_json)
+    flow_json_val = cast(str, config.flow_json)
+    participants = _extract_participants(flow_json_val)
     instance_id = _generate_instance_id(db)
 
     try:
         instance = WorkflowInstanceModel(
             instance_id=instance_id,
-            template_id=config.id,
+            template_id=cast(Optional[int], config.id),
             project_id=payload.project_id,
             current_state="PENDING",
             participants=json.dumps(participants, ensure_ascii=False),
             artifacts="[]",
             status="running",
-            context_json="{}",
+            context_json=json.dumps(payload.context, ensure_ascii=False),
             started_at=datetime.utcnow(),
         )
         db.add(instance)
         db.commit()
         db.refresh(instance)
-        logger.info("Created instance %s from template '%s' for project %s", instance_id, config.name, payload.project_id)
+        logger.info(
+            "Created instance %s from template '%s' for project %s",
+            instance_id,
+            config.name,
+            payload.project_id,
+        )
+
+        # 使用统一引擎启动工作流
+        from app.workflow.engine import WorkflowEngine
+
+        engine = WorkflowEngine()
+        await engine.start_workflow(
+            project_id=payload.project_id,
+            flow_json=flow_json_val,
+            context=payload.context,
+            template_id=cast(Optional[int], config.id),
+        )
+
         return _instance_to_response(instance)
     except Exception as exc:
         db.rollback()
@@ -394,15 +487,30 @@ async def instantiate_template(config_id: int, payload: InstantiateRequest, db: 
 
 
 @router.put("/{config_id}", response_model=WorkflowConfigResponse)
-async def update_workflow_config(config_id: int, payload: WorkflowConfigUpdate, db: Session = Depends(get_db)):
-    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+async def update_workflow_config(
+    config_id: int, payload: WorkflowConfigUpdate, db: Session = Depends(get_db)
+):
+    config = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.id == config_id)
+        .first()
+    )
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Workflow config {config_id} not found"
+        )
 
     if payload.name is not None and payload.name != config.name:
-        existing = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.name == payload.name).first()
+        existing = (
+            db.query(WorkflowConfigModel)
+            .filter(WorkflowConfigModel.name == payload.name)
+            .first()
+        )
         if existing is not None:
-            raise HTTPException(status_code=409, detail=f"Workflow config with name '{payload.name}' already exists")
+            raise HTTPException(
+                status_code=409,
+                detail=f"Workflow config with name '{payload.name}' already exists",
+            )
 
     try:
         update_data = payload.model_dump(exclude_unset=True)
@@ -420,9 +528,15 @@ async def update_workflow_config(config_id: int, payload: WorkflowConfigUpdate, 
 
 @router.delete("/{config_id}", response_model=Dict[str, bool])
 async def delete_workflow_config(config_id: int, db: Session = Depends(get_db)):
-    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+    config = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.id == config_id)
+        .first()
+    )
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Workflow config {config_id} not found"
+        )
     if config.is_template:
         raise HTTPException(status_code=403, detail="Cannot delete preset template")
     try:
@@ -438,32 +552,50 @@ async def delete_workflow_config(config_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{config_id}/sync-yaml", response_model=SyncYamlResponse)
 async def sync_yaml(config_id: int, db: Session = Depends(get_db)):
-    config = db.query(WorkflowConfigModel).filter(WorkflowConfigModel.id == config_id).first()
+    config = (
+        db.query(WorkflowConfigModel)
+        .filter(WorkflowConfigModel.id == config_id)
+        .first()
+    )
     if config is None:
-        raise HTTPException(status_code=404, detail=f"Workflow config {config_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Workflow config {config_id} not found"
+        )
 
+    flow_json_val = cast(str, config.flow_json)
+    name_val = cast(str, config.name)
+    version_val = cast(str, config.version)
+    description_val = cast(str, config.description)
     try:
         pipeline = _flow_json_to_pipeline(
-            config.flow_json, config.name, config.version, config.description
+            flow_json_val, name_val, version_val, description_val
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     os.makedirs(_WORKFLOW_DIR, exist_ok=True)
 
-    safe_name = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in config.name)
+    safe_name = "".join(
+        c if c.isalnum() or c in ("_", "-") else "_" for c in name_val
+    )
     yaml_filename = f"{safe_name}.yaml"
     yaml_path = os.path.join(_WORKFLOW_DIR, yaml_filename)
 
     try:
         with open(yaml_path, "w", encoding="utf-8") as f:
-            yaml.dump(pipeline, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+            yaml.dump(
+                pipeline,
+                f,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+            )
     except OSError as exc:
         logger.exception("Failed to write YAML file '%s'", yaml_path)
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     try:
-        config.yaml_path = yaml_path
+        config.yaml_path = yaml_path  # type: ignore[assignment]
         db.commit()
         db.refresh(config)
     except Exception as exc:

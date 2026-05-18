@@ -21,7 +21,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
 from app.state.models import WorkflowTaskModel, get_db
+from app.state.repository import StateRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,19 +72,19 @@ class TaskStatsResponse(BaseModel):
 
 def _model_to_response(model: WorkflowTaskModel) -> WorkflowTaskResponse:
     return WorkflowTaskResponse(
-        id=model.id,
-        project_id=model.project_id,
-        workflow_id=model.workflow_id,
-        stage_id=model.stage_id,
-        stage_name=model.stage_name,
-        agent_role=model.agent_role,
-        status=model.status,
-        output_json=model.output_json,
-        feedback=model.feedback,
-        arrived_at=model.arrived_at,
-        processed_at=model.processed_at,
-        created_at=model.created_at,
-        updated_at=model.updated_at,
+        id=cast(int, model.id),
+        project_id=cast(str, model.project_id),
+        workflow_id=cast(Optional[int], model.workflow_id),
+        stage_id=cast(str, model.stage_id),
+        stage_name=cast(str, model.stage_name),
+        agent_role=cast(str, model.agent_role),
+        status=cast(str, model.status),
+        output_json=cast(str, model.output_json),
+        feedback=cast(Optional[str], model.feedback),
+        arrived_at=cast(Optional[datetime], model.arrived_at),
+        processed_at=cast(Optional[datetime], model.processed_at),
+        created_at=cast(Optional[datetime], model.created_at),
+        updated_at=cast(Optional[datetime], model.updated_at),
     )
 
 
@@ -120,20 +121,35 @@ async def approve_task(task_id: int, db: Session = Depends(get_db)):
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     if task.status not in ("pending", "retrying"):
-        raise HTTPException(status_code=400, detail=f"Task {task_id} cannot be approved in status '{task.status}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Task {task_id} cannot be approved in status '{task.status}'",
+        )
     try:
-        task.status = "approved"
-        task.processed_at = datetime.utcnow()
+        # type: ignore[assignment]
+        task.status = "approved"  # type: ignore[assignment]
+        task.processed_at = datetime.utcnow()  # type: ignore[assignment]
         db.commit()
         db.refresh(task)
 
-        event_bus.publish(Event(
-            type=EventTypes.APPROVAL_APPROVED,
-            payload={"project_id": task.project_id, "stage_id": task.stage_id, "task_id": task.id},
-            source="workbench",
-            project_id=task.project_id,
-        ))
-        logger.info("Approved task %d (project=%s, stage=%s)", task.id, task.project_id, task.stage_id)
+        await event_bus.publish(
+            Event(
+                type=EventTypes.APPROVAL_APPROVED,
+                payload={
+                    "project_id": cast(str, task.project_id),
+                    "stage_id": cast(str, task.stage_id),
+                    "task_id": cast(int, task.id),
+                },
+                source="workbench",
+                project_id=cast(str, task.project_id),
+            )
+        )
+        logger.info(
+            "Approved task %d (project=%s, stage=%s)",
+            cast(int, task.id),
+            cast(str, task.project_id),
+            cast(str, task.stage_id),
+        )
         return _model_to_response(task)
     except Exception as exc:
         db.rollback()
@@ -151,15 +167,23 @@ async def reject_task(
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     if task.status not in ("pending", "retrying"):
-        raise HTTPException(status_code=400, detail=f"Task {task_id} cannot be rejected in status '{task.status}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Task {task_id} cannot be rejected in status '{task.status}'",
+        )
     try:
-        task.status = "rejected"
-        task.processed_at = datetime.utcnow()
+        task.status = "rejected"  # type: ignore[assignment]
+        task.processed_at = datetime.utcnow()  # type: ignore[assignment]
         if payload and payload.comment:
-            task.feedback = payload.comment
+            task.feedback = payload.comment  # type: ignore[assignment]
         db.commit()
         db.refresh(task)
-        logger.info("Rejected task %d (project=%s, stage=%s)", task.id, task.project_id, task.stage_id)
+        logger.info(
+            "Rejected task %d (project=%s, stage=%s)",
+            cast(int, task.id),
+            cast(str, task.project_id),
+            cast(str, task.stage_id),
+        )
         return _model_to_response(task)
     except Exception as exc:
         db.rollback()
@@ -177,12 +201,18 @@ async def retry_task(
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     if task.status != "rejected":
-        raise HTTPException(status_code=400, detail=f"Task {task_id} can only be retried from 'rejected' status, current: '{task.status}'")
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Task {task_id} can only be retried from 'rejected' status, "
+                f"current: '{task.status}'"
+            ),
+        )
     try:
-        task.status = "retrying"
-        task.processed_at = datetime.utcnow()
+        task.status = "retrying"  # type: ignore[assignment]
+        task.processed_at = datetime.utcnow()  # type: ignore[assignment]
         if payload and payload.feedback:
-            task.feedback = payload.feedback
+            task.feedback = payload.feedback  # type: ignore[assignment]
         db.commit()
         db.refresh(task)
 
@@ -191,7 +221,7 @@ async def retry_task(
             from app.llm.router import LLMRouter
 
             try:
-                agent_cls = agent_registry.get(task.agent_role)
+                agent_cls = agent_registry.get(cast(str, task.agent_role))
             except KeyError:
                 agent_cls = None
 
@@ -199,18 +229,31 @@ async def retry_task(
                 router = LLMRouter()
                 repo = StateRepository(db)
                 agent = agent_cls(llm_router=router, state_repository=repo)
-                context = {"feedback": task.feedback, "previous_output": json.loads(task.output_json) if task.output_json else {}}
-                proposal = await agent.run(task.project_id, context)
+                output_json_val = cast(str, task.output_json)
+                context: Dict[str, Any] = {
+                    "feedback": task.feedback,
+                    "previous_output": json.loads(output_json_val)
+                    if output_json_val
+                    else {},
+                }
+                proposal = await agent.run(cast(str, task.project_id), context)
 
-                task.output_json = json.dumps({"content": proposal.content, "metadata": proposal.metadata}, ensure_ascii=False)
-                task.status = "pending"
-                task.feedback = None
+                task.output_json = json.dumps(  # type: ignore[assignment]
+                    {"content": proposal.content, "metadata": proposal.metadata},
+                    ensure_ascii=False,
+                )
+                task.status = "pending"  # type: ignore[assignment]
+                task.feedback = None  # type: ignore[assignment]
                 db.commit()
                 db.refresh(task)
-                logger.info("Agent re-executed for task %d, new proposal generated", task.id)
+                logger.info(
+                    "Agent re-executed for task %d, new proposal generated", cast(int, task.id)
+                )
         except Exception as agent_exc:
-            logger.exception("Agent re-execution failed for task %d: %s", task.id, agent_exc)
-            task.status = "rejected"
+            logger.exception(
+                "Agent re-execution failed for task %d: %s", cast(int, task.id), agent_exc
+            )
+            task.status = "rejected"  # type: ignore[assignment]
             db.commit()
             db.refresh(task)
 
@@ -228,23 +271,39 @@ async def get_stats(
 ):
     try:
         base_filter = [WorkflowTaskModel.agent_role == role] if role else []
-        pending = db.query(func.count(WorkflowTaskModel.id)).filter(
-            *base_filter,
-            WorkflowTaskModel.status.in_(["pending", "retrying"])
-        ).scalar() or 0
+        pending = (
+            db.query(func.count(WorkflowTaskModel.id))
+            .filter(*base_filter, WorkflowTaskModel.status.in_(["pending", "retrying"]))
+            .scalar()
+            or 0
+        )
 
-        completed = db.query(func.count(WorkflowTaskModel.id)).filter(
-            *base_filter,
-            WorkflowTaskModel.status.in_(["approved", "completed"])
-        ).scalar() or 0
+        completed = (
+            db.query(func.count(WorkflowTaskModel.id))
+            .filter(
+                *base_filter, WorkflowTaskModel.status.in_(["approved", "completed"])
+            )
+            .scalar()
+            or 0
+        )
 
-        rejected = db.query(func.count(WorkflowTaskModel.id)).filter(
-            *base_filter,
-            WorkflowTaskModel.status == "rejected"
-        ).scalar() or 0
+        rejected = (
+            db.query(func.count(WorkflowTaskModel.id))
+            .filter(*base_filter, WorkflowTaskModel.status == "rejected")
+            .scalar()
+            or 0
+        )
 
-        logger.info("Workbench stats (role=%s): pending=%d, completed=%d, rejected=%d", role, pending, completed, rejected)
-        return TaskStatsResponse(pending=pending, completed=completed, rejected=rejected)
+        logger.info(
+            "Workbench stats (role=%s): pending=%d, completed=%d, rejected=%d",
+            role,
+            pending,
+            completed,
+            rejected,
+        )
+        return TaskStatsResponse(
+            pending=pending, completed=completed, rejected=rejected
+        )
     except Exception as exc:
         logger.exception("Failed to get workbench stats")
         raise HTTPException(status_code=500, detail="Internal server error") from exc

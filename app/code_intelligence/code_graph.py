@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from app.code_intelligence.indexer import CodeIndexer, CodeSymbol
+from app.code_intelligence.indexer import CodeIndexer
 
 
 @dataclass
@@ -93,7 +92,9 @@ class CodeGraphBuilder:
             ],
         }
 
-    def get_neighbors(self, node_id: str, relation: Optional[str] = None) -> List[GraphNode]:
+    def get_neighbors(
+        self, node_id: str, relation: Optional[str] = None
+    ) -> List[GraphNode]:
         neighbor_ids: Set[str] = set()
         for edge in self._edges:
             if edge.source == node_id:
@@ -104,7 +105,9 @@ class CodeGraphBuilder:
                     neighbor_ids.add(edge.source)
         return [self._nodes[nid] for nid in neighbor_ids if nid in self._nodes]
 
-    def find_paths(self, start_id: str, end_id: str, max_depth: int = 5) -> List[List[str]]:
+    def find_paths(
+        self, start_id: str, end_id: str, max_depth: int = 5
+    ) -> List[List[str]]:
         paths: List[List[str]] = []
         visited: Set[str] = set()
 
@@ -149,7 +152,9 @@ class AbstractCodeGraph(ABC):
         pass
 
     @abstractmethod
-    def query_neighbors(self, node_id: str, relation: Optional[str] = None) -> List[GraphNode]:
+    def query_neighbors(
+        self, node_id: str, relation: Optional[str] = None
+    ) -> List[GraphNode]:
         pass
 
     @abstractmethod
@@ -177,12 +182,18 @@ class InMemoryCodeGraph(AbstractCodeGraph):
     def get_node(self, node_id: str) -> Optional[GraphNode]:
         return self._nodes.get(node_id)
 
-    def query_neighbors(self, node_id: str, relation: Optional[str] = None) -> List[GraphNode]:
+    def query_neighbors(
+        self, node_id: str, relation: Optional[str] = None
+    ) -> List[GraphNode]:
         neighbor_ids: Set[str] = set()
         for edge in self._edges:
-            if edge.source == node_id and (relation is None or edge.relation == relation):
+            if edge.source == node_id and (
+                relation is None or edge.relation == relation
+            ):
                 neighbor_ids.add(edge.target)
-            elif edge.target == node_id and (relation is None or edge.relation == relation):
+            elif edge.target == node_id and (
+                relation is None or edge.relation == relation
+            ):
                 neighbor_ids.add(edge.source)
         return [self._nodes[nid] for nid in neighbor_ids if nid in self._nodes]
 
@@ -201,10 +212,16 @@ class Neo4jCodeGraph(AbstractCodeGraph):
     def connect(self) -> None:
         try:
             from neo4j import GraphDatabase
-            self._driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
-            self._driver.verify_connectivity()
+
+            self._driver = GraphDatabase.driver(
+                self.uri, auth=(self.user, self.password)
+            )
+            if self._driver is not None:
+                self._driver.verify_connectivity()
         except ImportError:
-            raise RuntimeError("neo4j package not installed. Install with: pip install neo4j")
+            raise RuntimeError(
+                "neo4j package not installed. Install with: pip install neo4j"
+            )
 
     def close(self) -> None:
         if self._driver:
@@ -251,11 +268,17 @@ class Neo4jCodeGraph(AbstractCodeGraph):
                     id=data["id"],
                     label=data["label"],
                     node_type=data["type"],
-                    properties={k: v for k, v in data.items() if k not in ("id", "label", "type")},
+                    properties={
+                        k: v
+                        for k, v in data.items()
+                        if k not in ("id", "label", "type")
+                    },
                 )
             return None
 
-    def query_neighbors(self, node_id: str, relation: Optional[str] = None) -> List[GraphNode]:
+    def query_neighbors(
+        self, node_id: str, relation: Optional[str] = None
+    ) -> List[GraphNode]:
         if not self._driver:
             raise RuntimeError("Graph not connected")
         with self._driver.session() as session:
@@ -278,7 +301,11 @@ class Neo4jCodeGraph(AbstractCodeGraph):
                         id=data["id"],
                         label=data["label"],
                         node_type=data["type"],
-                        properties={k: v for k, v in data.items() if k not in ("id", "label", "type")},
+                        properties={
+                            k: v
+                            for k, v in data.items()
+                            if k not in ("id", "label", "type")
+                        },
                     )
                 )
             return nodes

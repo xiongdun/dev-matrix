@@ -38,13 +38,18 @@ class PaginatedRequirementsResponse(BaseModel):
         offset: 跳过记录数。
         items: 需求列表。
     """
+
     total: int
     limit: int
     offset: int
     items: List[ProjectState]
 
 
-@router.post("/", response_model=ProjectState, responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
+@router.post(
+    "/",
+    response_model=ProjectState,
+    responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
 async def create_requirement(
     req: ProjectStateCreate,
     db: Session = Depends(get_db),
@@ -67,7 +72,9 @@ async def create_requirement(
         repo = StateRepository(db)
         existing = repo.get_state(req.project_id)
         if existing:
-            logger.warning("Create requirement failed: project '%s' already exists", req.project_id)
+            logger.warning(
+                "Create requirement failed: project '%s' already exists", req.project_id
+            )
             raise HTTPException(status_code=400, detail="Project already exists")
         state = repo.update_state(
             project_id=req.project_id,
@@ -79,7 +86,9 @@ async def create_requirement(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Failed to create requirement for project '%s'", req.project_id)
+        logger.exception(
+            "Failed to create requirement for project '%s'", req.project_id
+        )
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
@@ -90,7 +99,9 @@ async def create_requirement(
 )
 async def list_requirements(
     db: Session = Depends(get_db),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of items to return"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of items to return"
+    ),
     offset: int = Query(0, ge=0, description="Number of items to skip"),
 ):
     """分页列出所有项目需求。
@@ -117,7 +128,13 @@ async def list_requirements(
             .limit(limit)
             .all()
         )
-        logger.info("Listed %d/%d requirements (limit=%d, offset=%d)", len(states), total, limit, offset)
+        logger.info(
+            "Listed %d/%d requirements (limit=%d, offset=%d)",
+            len(states),
+            total,
+            limit,
+            offset,
+        )
         return {
             "total": total,
             "limit": limit,

@@ -16,7 +16,7 @@
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -61,12 +61,15 @@ async def submit_approval(
         repo = StateRepository(db)
         state = repo.get_state(project_id)
         if state is None:
-            logger.warning("Approval submission failed: project '%s' not found", project_id)
+            logger.warning(
+                "Approval submission failed: project '%s' not found", project_id
+            )
             raise HTTPException(status_code=404, detail="Project not found")
         repo.create_snapshot(project_id)
+        state_json = cast(str, state.state_json)
         updated = repo.update_state(
             project_id=project_id,
-            state_json=state.state_json,
+            state_json=state_json,
             status=f"approval_{status}",
         )
         logger.info("Submitted approval '%s' for project '%s'", status, project_id)
@@ -105,7 +108,9 @@ async def get_project_state(
         repo = StateRepository(db)
         state = repo.get_state(project_id)
         if state is None:
-            logger.warning("Get project state failed: project '%s' not found", project_id)
+            logger.warning(
+                "Get project state failed: project '%s' not found", project_id
+            )
             raise HTTPException(status_code=404, detail="Project not found")
         logger.debug("Retrieved state for project '%s'", project_id)
         return state
@@ -178,8 +183,15 @@ async def rollback_to_snapshot(
         logger.info("Rolled back project '%s' to snapshot %d", project_id, snapshot_id)
         return state
     except ValueError as exc:
-        logger.warning("Rollback failed for project '%s' to snapshot %d: %s", project_id, snapshot_id, exc)
+        logger.warning(
+            "Rollback failed for project '%s' to snapshot %d: %s",
+            project_id,
+            snapshot_id,
+            exc,
+        )
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception("Failed to rollback project '%s' to snapshot %d", project_id, snapshot_id)
+        logger.exception(
+            "Failed to rollback project '%s' to snapshot %d", project_id, snapshot_id
+        )
         raise HTTPException(status_code=500, detail="Internal server error") from exc

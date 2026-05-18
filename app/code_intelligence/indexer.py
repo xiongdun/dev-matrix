@@ -1,9 +1,8 @@
 import ast
 import hashlib
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -84,13 +83,17 @@ class CodeIndexer:
 
                 symbol = CodeSymbol(
                     name=node.name,
-                    symbol_type="function" if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) else "class",
+                    symbol_type="function"
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    else "class",
                     file_path=str(file_path.relative_to(self.root_path)),
                     line_start=node.lineno,
                     line_end=line_end or node.lineno,
                     docstring=docstring,
                     signature=signature,
-                    content_hash=self._compute_hash(ast.unparse(node) if hasattr(ast, "unparse") else ""),
+                    content_hash=self._compute_hash(
+                        ast.unparse(node) if hasattr(ast, "unparse") else ""
+                    ),
                 )
                 symbols.append(symbol)
 
@@ -134,7 +137,9 @@ class CodeIndexer:
             elif target.is_dir():
                 for file_path in target.rglob("*"):
                     if file_path.is_file() and not any(
-                        part.startswith(".") or part in {"__pycache__", "node_modules", ".git", "venv", ".venv"}
+                        part.startswith(".")
+                        or part
+                        in {"__pycache__", "node_modules", ".git", "venv", ".venv"}
                         for part in file_path.parts
                     ):
                         result = self._index_file(file_path)

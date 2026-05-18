@@ -21,9 +21,7 @@
     ```
 """
 
-import json
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     create_engine,
@@ -34,11 +32,13 @@ from sqlalchemy import (
     DateTime,
     event,
 )
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import get_settings
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class ProjectStateModel(Base):
@@ -136,7 +136,8 @@ class WorkflowInstanceModel(Base):
         project_id: 关联的需求项目 ID。
         current_state: 当前阶段状态（如 ARCHITECTURE_REVIEW）。
         participants: 参与的 Agent 角色列表 JSON。
-        artifacts: 产出物列表 JSON（如 [{"name": "prd_v2.md", "stage": "generate_prd"}]）。
+        artifacts: 产出物列表 JSON（如
+            [{"name": "prd_v2.md", "stage": "generate_prd"}]）。
         status: 实例状态 (running/paused/completed/failed/cancelled)。
         context_json: 运行时上下文 JSON。
         started_at: 实例启动时间。
@@ -257,7 +258,9 @@ def get_session_maker():
     """
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+        _SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=get_engine()
+        )
     return _SessionLocal
 
 

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -9,7 +8,11 @@ from app.prompts.registry import PromptRegistry
 class PromptLoader:
     def __init__(self, registry: PromptRegistry, templates_dir: Optional[str] = None):
         self.registry = registry
-        self.templates_dir = Path(templates_dir) if templates_dir else Path(__file__).parent / "templates"
+        self.templates_dir = (
+            Path(templates_dir)
+            if templates_dir
+            else Path(__file__).parent / "templates"
+        )
 
     def load_file(self, file_path: Path) -> Optional[Jinja2PromptTemplate]:
         if not file_path.exists() or not file_path.suffix == ".j2":
@@ -32,7 +35,9 @@ class PromptLoader:
             source=source,
             description=description.strip(),
         )
-        self.registry.register(name, template, {"file": str(file_path), "description": description.strip()})
+        self.registry.register(
+            name, template, {"file": str(file_path), "description": description.strip()}
+        )
         return template
 
     def load_all(self) -> Dict[str, Jinja2PromptTemplate]:

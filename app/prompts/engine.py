@@ -26,6 +26,7 @@ class Jinja2PromptTemplate(PromptTemplate):
     def _compile(self) -> None:
         try:
             from jinja2 import Template
+
             self._template = Template(self._source)
         except ImportError:
             raise RuntimeError("jinja2 not installed. Install with: pip install jinja2")
