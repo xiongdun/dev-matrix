@@ -1,15 +1,11 @@
 """统一 GraphRunner 抽象层。
 
-提供工作流图遍历和调度的统一接口，被 Pipeline Executor 和 Temporal Workflow 共用。
+提供工作流图遍历和调度的统一接口，被 Temporal Workflow 使用。
 
 核心设计：
     - GraphRunner: 纯图遍历逻辑，不依赖任何执行环境
     - StageExecutor: 抽象接口，由调用方实现具体的阶段执行逻辑
     - ExecutionContext: 共享执行上下文
-
-Example (Pipeline):
-    runner = GraphRunner.from_flow_json(flow_json)
-    await runner.run(project_id, PipelineStageExecutor(db, repo, router))
 
 Example (Temporal):
     runner = GraphRunner.from_flow_json(flow_json)
@@ -53,7 +49,7 @@ class ExecutionContext:
 class StageExecutor(ABC):
     """阶段执行器抽象接口。
 
-    Pipeline 和 Temporal 各自实现此接口，注入各自的执行逻辑。
+    Temporal 实现此接口，注入执行逻辑。
     """
 
     @abstractmethod
@@ -217,7 +213,6 @@ class GraphRunner:
         batch_results: Dict[str, Any] = {}
         for item in results_list:
             if isinstance(item, BaseException):
-                # BaseException 不可迭代，跳过处理
                 continue
             node_id, result = item
             if isinstance(result, Exception):

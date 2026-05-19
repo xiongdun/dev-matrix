@@ -269,7 +269,7 @@ def seed_templates(db: Session) -> None:
         logger.exception("Template seeding failed")
 
 
-def _flow_json_to_pipeline(
+def _flow_json_to_yaml(
     flow_json_str: str, name: str, version: str, description: str
 ) -> Dict[str, Any]:
     try:
@@ -567,7 +567,7 @@ async def sync_yaml(config_id: int, db: Session = Depends(get_db)):
     version_val = cast(str, config.version)
     description_val = cast(str, config.description)
     try:
-        pipeline = _flow_json_to_pipeline(
+        yaml_data = _flow_json_to_yaml(
             flow_json_val, name_val, version_val, description_val
         )
     except ValueError as exc:
@@ -584,7 +584,7 @@ async def sync_yaml(config_id: int, db: Session = Depends(get_db)):
     try:
         with open(yaml_path, "w", encoding="utf-8") as f:
             yaml.dump(
-                pipeline,
+                yaml_data,
                 f,
                 default_flow_style=False,
                 allow_unicode=True,
