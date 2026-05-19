@@ -14,7 +14,8 @@
 -->
 
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import TabBar from './components/TabBar.vue'
 import AppConfirm from './components/AppConfirm.vue'
@@ -24,17 +25,22 @@ import { useDialog } from './composables/useDialog'
 
 const { t } = useI18n()
 const { confirmState, promptState, confirmResult, promptResult } = useDialog()
+const route = useRoute()
+
+const isFullscreenRoute = computed(() => !!route.meta.fullscreen)
 </script>
 
 <template>
   <div class="app-container">
-    <Sidebar />
-    <div class="main-content">
-      <header class="top-nav">
-        <h1>{{ t('app.title') }}</h1>
-      </header>
-      <TabBar />
-      <main class="content-area">
+    <Sidebar v-if="!isFullscreenRoute" />
+    <div class="main-content" :class="{ fullscreen: isFullscreenRoute }">
+      <template v-if="!isFullscreenRoute">
+        <header class="top-nav">
+          <h1>{{ t('app.title') }}</h1>
+        </header>
+        <TabBar />
+      </template>
+      <main class="content-area" :class="{ 'fullscreen-content': isFullscreenRoute }">
         <RouterView />
       </main>
     </div>
@@ -98,5 +104,16 @@ const { confirmState, promptState, confirmResult, promptResult } = useDialog()
   padding: 2rem;
   overflow-y: auto;
   width: 100%;
+}
+
+.main-content.fullscreen {
+  margin-left: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.content-area.fullscreen-content {
+  padding: 0;
+  overflow: hidden;
 }
 </style>

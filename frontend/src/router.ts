@@ -72,7 +72,7 @@ const routes = [
     path: '/workbench/task/:id',
     name: 'task-detail',
     component: () => import('./pages/TaskDetailPage.vue'),
-    meta: { title: 'Task Detail', icon: 'workbench' },
+    meta: { title: 'Task Detail', icon: 'workbench', fullscreen: true },
   },
   {
     path: '/settings',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { VueFlow, type Node, type Edge, Position } from '@vue-flow/core'
+import { VueFlow, type Node, type Edge, Position, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { X, GitBranch } from 'lucide-vue-next'
