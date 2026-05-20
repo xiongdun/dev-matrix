@@ -12,7 +12,7 @@
  * ```
  */
 
-const API_BASE = ''
+const API_BASE = '/api'
 
 /**
  * 统一的 API 请求函数
@@ -234,6 +234,88 @@ export const api = {
   },
   getWorkbenchStats(role: string) {
     return requestWithRetry<{pending: number; completed: number; rejected: number}>('/workbench/stats?role=' + role)
+  },
+
+  /** 获取任务对话历史 */
+  getTaskChatHistory(taskId: number) {
+    return requestWithRetry<{messages: Array<{id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}>}>('/workbench/tasks/' + taskId + '/chat')
+  },
+
+  /** 发送任务对话消息 */
+  sendTaskChatMessage(taskId: number, message: string) {
+    return requestWithRetry<{
+      message: {id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}
+      tool_calls: Array<{name: string; input: Record<string, unknown>; result?: Record<string, unknown>}> | null
+    }>('/workbench/tasks/' + taskId + '/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    })
+  },
+
+  // ==================== 项目管理 API ====================
+
+  /** 获取项目列表 */
+  getProjects(params?: { page?: number; page_size?: number; status?: string; priority?: string; keyword?: string; sort_by?: string; sort_order?: string }) {
+    const query = new URLSearchParams()
+    if (params?.page) query.append('page', String(params.page))
+    if (params?.page_size) query.append('page_size', String(params.page_size))
+    if (params?.status) query.append('status', params.status)
+    if (params?.priority) query.append('priority', params.priority)
+    if (params?.keyword) query.append('keyword', params.keyword)
+    if (params?.sort_by) query.append('sort_by', params.sort_by)
+    if (params?.sort_order) query.append('sort_order', params.sort_order)
+    return requestWithRetry<{ items: Array<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>; total: number; page: number; page_size: number }>('/projects?' + query.toString())
+  },
+
+  /** 创建项目 */
+  createProject(data: { name: string; description?: string; owner?: string; priority?: string; status?: string; progress?: number; start_date?: string | null; end_date?: string | null }) {
+    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>('/projects', { method: 'POST', body: JSON.stringify(data) })
+  },
+
+  /** 获取项目详情 */
+  getProject(id: number) {
+    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>('/projects/' + id)
+  },
+
+  /** 更新项目 */
+  updateProject(id: number, data: Partial<{ name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null }>) {
+    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>('/projects/' + id, { method: 'PUT', body: JSON.stringify(data) })
+  },
+
+  /** 删除项目 */
+  deleteProject(id: number) {
+    return requestWithRetry<void>('/projects/' + id, { method: 'DELETE' })
+  },
+
+  // ==================== 系统设置 API ====================
+
+  /** 获取所有配置 */
+  getSettings(category?: string) {
+    const params = category ? '?category=' + category : ''
+    return requestWithRetry<{ configs: Array<{ key: string; value: string; category: string; description: string | null; is_sensitive: boolean; updated_at: string | null }> }>('/settings' + params)
+  },
+
+  /** 获取配置分类列表 */
+  getSettingCategories() {
+    return requestWithRetry<{ categories: string[] }>('/settings/categories')
+  },
+
+  /** 获取单个配置 */
+  getSetting(key: string) {
+    return requestWithRetry<{ key: string; value: string; category: string; description: string | null; is_sensitive: boolean; updated_at: string | null }>('/settings/' + key)
+  },
+
+  /** 批量更新配置 */
+  updateSettings(configs: Record<string, string>) {
+    return requestWithRetry<{ configs: Array<{ key: string; value: string; category: string; description: string | null; is_sensitive: boolean; updated_at: string | null }> }>('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ configs }),
+    })
+  },
+
+  /** 初始化默认配置 */
+  initSettings() {
+    return requestWithRetry<{ status: string; message: string }>('/settings/init', { method: 'POST' })
   },
 
   subscribeToEvents(role?: string, onEvent?: (data: any) => void): () => void {

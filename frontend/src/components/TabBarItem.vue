@@ -12,6 +12,12 @@ import {
   Layers,
   ClipboardCheck,
   Settings,
+  Monitor,
+  BrainCircuit,
+  Database,
+  Shield,
+  Info,
+  FolderKanban,
   X,
 } from 'lucide-vue-next'
 
@@ -31,9 +37,15 @@ const emit = defineEmits<{
 
 const iconMap: Record<string, any> = {
   dashboard: LayoutDashboard,
+  projects: FolderKanban,
   agents: Bot,
   skills: Wrench,
   settings: Settings,
+  'settings-system': Monitor,
+  'settings-llm': BrainCircuit,
+  'settings-database': Database,
+  'settings-security': Shield,
+  'settings-about': Info,
   'workflow-list': List,
   'workflow-editor': Workflow,
   'workflow-instances': Layers,
@@ -45,9 +57,15 @@ const tabIcon = computed(() => iconMap[props.tab.id] || GitBranch)
 const displayTitle = computed(() => {
   const titleMap: Record<string, string> = {
     dashboard: t('sidebar.dashboard'),
+    projects: t('sidebar.projects'),
     agents: t('sidebar.agents'),
     skills: t('sidebar.skills'),
     settings: t('sidebar.settings'),
+    'settings-system': t('sidebar.settingsSystem'),
+    'settings-llm': t('sidebar.settingsLlm'),
+    'settings-database': t('sidebar.settingsDatabase'),
+    'settings-security': t('sidebar.settingsSecurity'),
+    'settings-about': t('sidebar.settingsAbout'),
     'workflow-list': t('sidebar.workflowList'),
     'workflow-editor': t('sidebar.workflowEditor'),
     'workflow-instances': t('sidebar.workflowInstances'),

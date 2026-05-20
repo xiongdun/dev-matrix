@@ -196,252 +196,7 @@ interface Task {
   messages?: Message[]
 }
 
-const allMockTasks: Task[] = [
-  {
-    id: 1,
-    project_id: 'dev-matrix-001',
-    stage_id: 'analyze_requirement',
-    stage_name: '需求分析',
-    agent_role: 'business_analyst',
-    status: 'pending',
-    output_json: JSON.stringify({
-      content: '## 需求分析\n\n### 背景\n用户需要一个支持多角色协作的软件开发 Agent 操作系统。\n\n### 核心功能\n1. 需求输入与分析\n2. 多 Agent 协作流程\n3. 人工审批节点\n4. 自动化测试与部署\n\n### 用户画像\n- 技术负责人：关注架构设计和代码质量\n- 产品经理：关注需求完整性和 PRD 质量\n- 开发者：关注代码实现和测试覆盖',
-      metadata: { confidence: 0.92, tokens: 2048 }
-    }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    processed_at: null,
-    context: {
-      skills: [
-        { name: 'requirement_analysis', description: '需求分析技能' },
-        { name: 'stakeholder_interview', description: '利益相关者访谈' },
-      ],
-      files: [
-        { path: 'docs/requirements/v1.md', name: 'v1.md' },
-        { path: 'docs/user_personas.md', name: 'user_personas.md' },
-      ],
-      tools: [
-        { name: 'markdown_parser', description: 'Markdown解析器' },
-        { name: 'sentiment_analysis', description: '情感分析' },
-      ],
-      tokenUsage: {
-        percent: 32,
-        used: 3200,
-        total: 10000,
-      },
-    },
-    messages: [
-      {
-        id: 'msg-1-1',
-        role: 'assistant',
-        content: '## 需求分析\n\n### 背景\n用户需要一个支持多角色协作的软件开发 Agent 操作系统。\n\n### 核心功能\n1. 需求输入与分析\n2. 多 Agent 协作流程\n3. 人工审批节点\n4. 自动化测试与部署\n\n### 用户画像\n- 技术负责人：关注架构设计和代码质量\n- 产品经理：关注需求完整性和 PRD 质量\n- 开发者：关注代码实现和测试覆盖',
-        timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      },
-    ],
-  },
-  {
-    id: 2,
-    project_id: 'dev-matrix-002',
-    stage_id: 'generate_prd',
-    stage_name: 'PRD 生成',
-    agent_role: 'product_manager',
-    status: 'pending',
-    output_json: JSON.stringify({
-      content: '# PRD - 多角色协作开发平台\n\n## 1. 产品概述\n构建一个 AI 驱动的软件开发操作系统，支持 5 个专业角色协同工作。\n\n## 2. 用户故事\n- 作为产品经理，我希望输入需求后自动生成 PRD\n- 作为架构师，我希望分析代码影响范围\n- 作为开发者，我希望自动生成代码补丁\n\n## 3. 功能模块\n### 3.1 需求管理\n### 3.2 流程编排\n### 3.3 审批中心\n### 3.4 工作台',
-      metadata: { version: 'v1.0', pages: 12 }
-    }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    processed_at: null,
-    context: {
-      skills: [
-        { name: 'prd_writer', description: 'PRD撰写技能' },
-        { name: 'user_story_generator', description: '用户故事生成' },
-      ],
-      files: [
-        { path: 'docs/requirements/v1.md', name: 'v1.md' },
-        { path: 'templates/prd_standard.md', name: 'prd_standard.md' },
-      ],
-      tools: [
-        { name: 'jira_api', description: 'Jira API' },
-        { name: 'figma_plugin', description: 'Figma插件' },
-      ],
-      tokenUsage: {
-        percent: 48,
-        used: 4800,
-        total: 10000,
-      },
-    },
-    messages: [
-      {
-        id: 'msg-2-1',
-        role: 'assistant',
-        content: '# PRD - 多角色协作开发平台\n\n## 1. 产品概述\n构建一个 AI 驱动的软件开发操作系统，支持 5 个专业角色协同工作。\n\n## 2. 用户故事\n- 作为产品经理，我希望输入需求后自动生成 PRD\n- 作为架构师，我希望分析代码影响范围\n- 作为开发者，我希望自动生成代码补丁\n\n## 3. 功能模块\n### 3.1 需求管理\n### 3.2 流程编排\n### 3.3 审批中心\n### 3.4 工作台',
-        timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-      },
-    ],
-  },
-  {
-    id: 3,
-    project_id: 'dev-matrix-003',
-    stage_id: 'analyze_code_impact',
-    stage_name: '代码影响分析',
-    agent_role: 'architect',
-    status: 'retrying',
-    output_json: JSON.stringify({
-      content: '## 影响分析\n\n### 变更范围\n- `app/state/models.py` - 新增 WorkflowInstanceModel\n- `app/api/workflow_config.py` - 模板管理 API\n- `frontend/src/pages/WorkflowInstancePage.vue` - 实例管理页面\n\n### 风险评估\n- 低风险：新增表结构，不影响现有数据\n- 中风险：API 变更需同步前端',
-      metadata: { files_changed: 3, risk_level: 'low' }
-    }, null, 2),
-    feedback: '请补充数据库迁移脚本的影响分析',
-    arrived_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    processed_at: null,
-    context: {
-      skills: [
-        { name: 'code_search', description: '代码搜索技能' },
-        { name: 'dependency_graph', description: '依赖关系分析' },
-        { name: 'risk_assessor', description: '风险评估' },
-      ],
-      files: [
-        { path: 'app/state/models.py', name: 'models.py' },
-        { path: 'app/api/workflow_config.py', name: 'workflow_config.py' },
-        { path: 'frontend/src/pages/WorkflowInstancePage.vue', name: 'WorkflowInstancePage.vue' },
-        { path: 'alembic/versions/001_init.py', name: '001_init.py' },
-      ],
-      tools: [
-        { name: 'ast_parser', description: 'AST解析器' },
-        { name: 'git_diff', description: 'Git差异分析' },
-      ],
-      tokenUsage: {
-        percent: 72,
-        used: 7200,
-        total: 10000,
-      },
-    },
-    messages: [
-      {
-        id: 'msg-3-1',
-        role: 'assistant',
-        content: '## 影响分析\n\n### 变更范围\n- `app/state/models.py` - 新增 WorkflowInstanceModel\n- `app/api/workflow_config.py` - 模板管理 API\n- `frontend/src/pages/WorkflowInstancePage.vue` - 实例管理页面\n\n### 风险评估\n- 低风险：新增表结构，不影响现有数据\n- 中风险：API 变更需同步前端',
-        timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-      },
-      {
-        id: 'msg-3-2',
-        role: 'user',
-        content: '请补充数据库迁移脚本的影响分析',
-        timestamp: new Date(Date.now() - 1000 * 60 * 100).toISOString(),
-      },
-      {
-        id: 'msg-3-3',
-        role: 'assistant',
-        content: '## 影响分析\n\n### 变更范围\n- `app/state/models.py` - 新增 WorkflowInstanceModel\n- `app/api/workflow_config.py` - 模板管理 API\n- `frontend/src/pages/WorkflowInstancePage.vue` - 实例管理页面\n- `alembic/versions/001_init.py` - 数据库迁移脚本\n\n### 风险评估\n- 低风险：新增表结构，不影响现有数据\n- 中风险：API 变更需同步前端\n- 低风险：迁移脚本使用 alembic，可回滚',
-        previousContent: '## 影响分析\n\n### 变更范围\n- `app/state/models.py` - 新增 WorkflowInstanceModel\n- `app/api/workflow_config.py` - 模板管理 API\n- `frontend/src/pages/WorkflowInstancePage.vue` - 实例管理页面\n\n### 风险评估\n- 低风险：新增表结构，不影响现有数据\n- 中风险：API 变更需同步前端',
-        timestamp: new Date(Date.now() - 1000 * 60 * 95).toISOString(),
-      },
-    ],
-  },
-  {
-    id: 4,
-    project_id: 'dev-matrix-004',
-    stage_id: 'generate_patch',
-    stage_name: '补丁生成',
-    agent_role: 'developer',
-    status: 'approved',
-    output_json: JSON.stringify({
-      content: '```diff\n+ class WorkflowInstanceModel(Base):\n+     __tablename__ = "workflow_instances"\n+     id = Column(Integer, primary_key=True)\n+     instance_id = Column(String(32), unique=True)\n+     template_id = Column(Integer, nullable=True)\n```',
-      metadata: { lines_added: 45, lines_removed: 0 }
-    }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    processed_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    context: {
-      skills: [
-        { name: 'code_generator', description: '代码生成技能' },
-        { name: 'unit_test_writer', description: '单元测试编写' },
-      ],
-      files: [
-        { path: 'app/state/models.py', name: 'models.py' },
-        { path: 'app/state/repository.py', name: 'repository.py' },
-        { path: 'tests/test_state.py', name: 'test_state.py' },
-      ],
-      tools: [
-        { name: 'black', description: '代码格式化' },
-        { name: 'mypy', description: '类型检查' },
-        { name: 'pytest', description: '测试框架' },
-      ],
-      tokenUsage: {
-        percent: 45,
-        used: 4500,
-        total: 10000,
-      },
-    },
-    messages: [
-      {
-        id: 'msg-4-1',
-        role: 'assistant',
-        content: '```diff\n+ class WorkflowInstanceModel(Base):\n+     __tablename__ = "workflow_instances"\n+     id = Column(Integer, primary_key=True)\n+     instance_id = Column(String(32), unique=True)\n+     template_id = Column(Integer, nullable=True)\n```',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-      },
-    ],
-  },
-  {
-    id: 5,
-    project_id: 'hotfix-2026-001',
-    stage_id: 'execute_tests',
-    stage_name: '测试执行',
-    agent_role: 'qa',
-    status: 'rejected',
-    output_json: JSON.stringify({
-      content: '## 测试结果\n\n| 测试项 | 状态 | 耗时 |\n|--------|------|------|\n| unit_test | ✅ 通过 | 12s |\n| integration | ❌ 失败 | 45s |\n| e2e | ⏭️ 跳过 | - |',
-      metadata: { total: 3, passed: 1, failed: 1, skipped: 1 }
-    }, null, 2),
-    feedback: '集成测试失败，请修复后再提交',
-    arrived_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    processed_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    context: {
-      skills: [
-        { name: 'code_search', description: '代码搜索技能' },
-        { name: 'test_runner', description: '测试执行技能' },
-      ],
-      files: [
-        { path: 'tests/integration/test_api.py', name: 'test_api.py' },
-        { path: 'tests/unit/test_models.py', name: 'test_models.py' },
-        { path: 'app/api/workflow.py', name: 'workflow.py' },
-      ],
-      tools: [
-        { name: 'pytest', description: 'Python测试框架' },
-        { name: 'coverage', description: '代码覆盖率工具' },
-      ],
-      tokenUsage: {
-        percent: 56,
-        used: 5600,
-        total: 10000,
-      },
-    },
-    messages: [
-      {
-        id: 'msg-5-1',
-        role: 'assistant',
-        content: '## 测试结果\n\n| 测试项 | 状态 | 耗时 |\n|--------|------|------|\n| unit_test | ✅ 通过 | 12s |\n| integration | ❌ 失败 | 45s |\n| e2e | ⏭️ 跳过 | - |',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-      },
-      {
-        id: 'msg-5-2',
-        role: 'user',
-        content: '修复集成测试中的 API 超时问题',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4.5).toISOString(),
-      },
-      {
-        id: 'msg-5-3',
-        role: 'assistant',
-        content: '## 测试结果\n\n| 测试项 | 状态 | 耗时 |\n|--------|------|------|\n| unit_test | ✅ 通过 | 12s |\n| integration | ✅ 通过 | 28s |\n| e2e | ⏭️ 跳过 | - |\n\n### 修复内容\n- 增加 API 超时时间从 5s 到 15s\n- 优化数据库连接池配置',
-        previousContent: '## 测试结果\n\n| 测试项 | 状态 | 耗时 |\n|--------|------|------|\n| unit_test | ✅ 通过 | 12s |\n| integration | ❌ 失败 | 45s |\n| e2e | ⏭️ 跳过 | - |',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-      },
-    ],
-  },
-]
-
-const allTasks = ref<Task[]>(allMockTasks)
+const allTasks = ref<Task[]>([])
 const taskId = ref(0)
 const task = ref<Task | null>(null)
 const messages = ref<Message[]>([])
@@ -449,21 +204,66 @@ const inputMessage = ref('')
 const isSending = ref(false)
 const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
+const isLoading = ref(false)
+const loadError = ref('')
 
-function loadTask(id: number) {
+async function loadAllTasks() {
+  try {
+    const res = await api.getWorkbenchTasks('')
+    allTasks.value = res.tasks.map((t: any) => ({
+      ...t,
+      context: t.output_json ? JSON.parse(t.output_json).context : undefined,
+      messages: [],
+    }))
+  } catch (e: any) {
+    console.error('Failed to load tasks:', e)
+  }
+}
+
+async function loadTask(id: number) {
   taskId.value = id
-  task.value = allTasks.value.find((t) => t.id === id) || null
-  messages.value = task.value?.messages || []
+  isLoading.value = true
+  loadError.value = ''
+
+  try {
+    // 加载任务详情
+    const taskRes = await api.getWorkbenchTask(id)
+    task.value = {
+      ...taskRes,
+      context: taskRes.output_json ? JSON.parse(taskRes.output_json).context : undefined,
+      messages: [],
+    }
+
+    // 加载对话历史
+    const chatRes = await api.getTaskChatHistory(id)
+    messages.value = chatRes.messages.map((m: any) => ({
+      id: `msg-${m.id}`,
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+      timestamp: m.created_at,
+    }))
+  } catch (e: any) {
+    loadError.value = e.message || String(e)
+    console.error('Failed to load task:', e)
+  } finally {
+    isLoading.value = false
+    scrollToBottom()
+  }
 }
 
 watch(
   () => route.params.id,
   (newId) => {
     const id = parseInt(newId as string, 10)
-    loadTask(id)
+    if (!isNaN(id)) {
+      loadTask(id)
+    }
   },
   { immediate: true }
 )
+
+// 初始加载任务列表
+loadAllTasks()
 
 const showReject = ref(false)
 const showRetry = ref(false)
@@ -508,9 +308,9 @@ function scrollToBottom() {
 
 async function sendMessage() {
   const text = inputMessage.value.trim()
-  if (!text || isSending.value) return
+  if (!text || isSending.value || !taskId.value) return
 
-  // 添加用户消息
+  // 添加用户消息到界面
   const userMsg: Message = {
     id: `msg-${taskId.value}-${Date.now()}`,
     role: 'user',
@@ -522,28 +322,32 @@ async function sendMessage() {
   autoResize()
   scrollToBottom()
 
-  // 模拟 AI 回复
+  // 调用后端 API
   isSending.value = true
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    const res = await api.sendTaskChatMessage(taskId.value, text)
 
-  const lastAssistantMsg = messages.value
-    .filter((m) => m.role === 'assistant')
-    .pop()
-
-  const aiMsg: Message = {
-    id: `msg-${taskId.value}-${Date.now()}-ai`,
-    role: 'assistant',
-    content: text.includes('修复') || text.includes('修改')
-      ? lastAssistantMsg
-        ? lastAssistantMsg.content + '\n\n### 修改说明\n根据您的反馈已调整上述内容。'
-        : '已根据您的反馈调整内容。'
-      : '收到您的指令，正在处理中...',
-    previousContent: lastAssistantMsg?.content,
-    timestamp: new Date().toISOString(),
+    // 添加 AI 回复到界面
+    const aiMsg: Message = {
+      id: `msg-${res.message.id}`,
+      role: 'assistant',
+      content: res.message.content,
+      timestamp: res.message.created_at || new Date().toISOString(),
+    }
+    messages.value.push(aiMsg)
+  } catch (e: any) {
+    // 显示错误消息
+    const errorMsg: Message = {
+      id: `msg-${taskId.value}-${Date.now()}-error`,
+      role: 'assistant',
+      content: `发送失败: ${e.message || String(e)}`,
+      timestamp: new Date().toISOString(),
+    }
+    messages.value.push(errorMsg)
+  } finally {
+    isSending.value = false
+    scrollToBottom()
   }
-  messages.value.push(aiMsg)
-  isSending.value = false
-  scrollToBottom()
 }
 
 async function handleApprove() {

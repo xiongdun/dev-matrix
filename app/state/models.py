@@ -30,6 +30,7 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    Float,
     event,
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -39,6 +40,40 @@ from app.config import get_settings
 
 class Base(DeclarativeBase):
     pass
+
+
+class ProjectModel(Base):
+    """项目管理模型。
+
+    存储独立的项目信息，与工作流无直接关联。
+
+    Attributes:
+        id: 主键 ID。
+        name: 项目名称。
+        description: 项目描述。
+        owner: 项目负责人。
+        priority: 优先级 (high/medium/low)。
+        status: 项目状态 (planning/in_progress/completed/on_hold/cancelled)。
+        progress: 进度百分比 (0-100)。
+        start_date: 计划开始时间。
+        end_date: 计划结束时间。
+        created_at: 创建时间。
+        updated_at: 更新时间。
+    """
+
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, default="")
+    owner = Column(String(64), default="")
+    priority = Column(String(16), default="medium")
+    status = Column(String(32), default="planning")
+    progress = Column(Float, default=0.0)
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ProjectStateModel(Base):
@@ -201,6 +236,64 @@ class WorkflowTaskModel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class TaskChatMessageModel(Base):
+    """任务对话消息模型。
+
+    存储工作台中用户与 Agent 的实时对话记录。
+
+    Attributes:
+        id: 主键 ID。
+        task_id: 关联的任务 ID（外键关联 workflow_tasks）。
+        role: 消息角色 (user/assistant/tool)。
+        content: 消息内容文本。
+        tool_calls: 工具调用信息 JSON（如 [{"name": "Read", "args": {...}}]）。
+        tool_results: 工具执行结果 JSON。
+        created_at: 创建时间。
+    """
+
+    __tablename__ = "task_chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, index=True, nullable=False)
+    role = Column(String(16), nullable=False)
+    content = Column(Text, default="")
+    tool_calls = Column(Text, nullable=True)
+    tool_results = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SystemConfigModel(Base):
+    """系统配置模型。
+
+    存储所有应用设置，支持分类管理和敏感字段标记。
+
+    Attributes:
+        id: 主键 ID。
+        key: 配置键（唯一）。
+        value: 配置值。
+        category: 配置分类 (system/llm/database/security)。
+        description: 配置描述。
+        is_sensitive: 是否为敏感字段（1=是，0=否）。
+        updated_at: 更新时间。
+    """
+
+    __tablename__ = "system_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(128), unique=True, nullable=False)
+    value = Column(Text, default="")
+    category = Column(String(32), default="system")
+    description = Column(String(256), nullable=True)
+    is_sensitive = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+@event.listens_for(ProjectModel, "before_update")
+def project_before_update(mapper, connection, target):
+    """在更新 ProjectModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
 @event.listens_for(ProjectStateModel, "before_update")
 def receive_before_update(mapper, connection, target):
     """在更新 ProjectStateModel 前自动设置 updated_at 时间戳。"""
@@ -222,6 +315,12 @@ def workflow_instance_before_update(mapper, connection, target):
 @event.listens_for(WorkflowTaskModel, "before_update")
 def workflow_task_before_update(mapper, connection, target):
     """在更新 WorkflowTaskModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
+@event.listens_for(SystemConfigModel, "before_update")
+def system_config_before_update(mapper, connection, target):
+    """在更新 SystemConfigModel 前自动设置 updated_at 时间戳。"""
     target.updated_at = datetime.utcnow()
 
 

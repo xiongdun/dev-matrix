@@ -30,11 +30,34 @@ from sqlalchemy.orm import Session
 
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
-from app.state.models import WorkflowTaskModel, get_db
+from app.state.models import WorkflowTaskModel, TaskChatMessageModel, get_db
 from app.state.repository import StateRepository
+from app.tools.executor import ToolExecutor
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    task_id: int
+    role: str
+    content: str
+    tool_calls: Optional[str] = None
+    tool_results: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000)
+
+
+class ChatResponse(BaseModel):
+    message: ChatMessageResponse
+    tool_calls: Optional[List[Dict[str, Any]]] = None
 
 
 class WorkflowTaskResponse(BaseModel):
@@ -262,6 +285,203 @@ async def retry_task(
         db.rollback()
         logger.exception("Failed to retry task %d", task_id)
         raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/tasks/{task_id}/chat", response_model=Dict[str, List[ChatMessageResponse]])
+async def get_chat_history(
+    task_id: int,
+    db: Session = Depends(get_db),
+):
+    """获取任务的对话历史记录。"""
+    task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    messages = (
+        db.query(TaskChatMessageModel)
+        .filter(TaskChatMessageModel.task_id == task_id)
+        .order_by(TaskChatMessageModel.created_at.asc())
+        .all()
+    )
+
+    return {
+        "messages": [
+            ChatMessageResponse(
+                id=cast(int, m.id),
+                task_id=cast(int, m.task_id),
+                role=cast(str, m.role),
+                content=cast(str, m.content),
+                tool_calls=cast(Optional[str], m.tool_calls),
+                tool_results=cast(Optional[str], m.tool_results),
+                created_at=cast(Optional[datetime], m.created_at),
+            )
+            for m in messages
+        ]
+    }
+
+
+@router.post("/tasks/{task_id}/chat", response_model=ChatResponse)
+async def chat_with_task(
+    task_id: int,
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+):
+    """与任务进行实时对话，调用 Agent SDK 处理用户消息。
+
+    流程：
+        1. 保存用户消息到数据库
+        2. 获取历史对话上下文
+        3. 调用 Agent SDK 生成回复
+        4. 执行工具调用（Read/Search/Write/Edit/Bash）
+        5. 保存 AI 回复到数据库
+        6. 返回 AI 消息和工具调用记录
+    """
+    task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    try:
+        # 1. 保存用户消息
+        user_msg = TaskChatMessageModel(
+            task_id=task_id,
+            role="user",
+            content=payload.message,
+        )
+        db.add(user_msg)
+        db.commit()
+
+        # 2. 获取历史消息作为上下文
+        history = (
+            db.query(TaskChatMessageModel)
+            .filter(TaskChatMessageModel.task_id == task_id)
+            .order_by(TaskChatMessageModel.created_at.asc())
+            .all()
+        )
+
+        # 构建对话上下文
+        context_lines = []
+        for h in history:
+            role_label = "User" if h.role == "user" else "Assistant"
+            context_lines.append(f"{role_label}: {h.content}")
+
+        context_text = "\n".join(context_lines)
+
+        # 3. 调用 Agent SDK 生成回复
+        agent_role = cast(str, task.agent_role)
+        stage_name = cast(str, task.stage_name)
+
+        # 构建系统提示词
+        system_prompt = (
+            f"You are a {agent_role} agent working on the '{stage_name}' stage. "
+            f"You have access to tools: Read, Search, Write, Edit, Bash. "
+            f"Use them when needed to help the user. "
+            f"Respond in the same language as the user."
+        )
+
+        # 尝试使用 SDK
+        ai_content = ""
+        tool_calls_log: List[Dict[str, Any]] = []
+
+        try:
+            from app.agents.base import CLAUDE_SDK_AVAILABLE
+
+            if CLAUDE_SDK_AVAILABLE:
+                from claude_agent_sdk import (
+                    query as sdk_query,
+                    ClaudeAgentOptions,
+                    AssistantMessage,
+                    TextBlock,
+                    ToolUseBlock,
+                    ToolResultBlock,
+                )
+
+                options = ClaudeAgentOptions(
+                    system_prompt=system_prompt,
+                    max_turns=5,
+                )
+
+                tool_executor = ToolExecutor()
+                full_prompt = f"{context_text}\n\nUser: {payload.message}\n\nAssistant:"
+
+                async for message in sdk_query(prompt=full_prompt, options=options):
+                    if isinstance(message, AssistantMessage):
+                        for block in message.content:
+                            if isinstance(block, TextBlock):
+                                ai_content += block.text
+                            elif isinstance(block, ToolUseBlock):
+                                tool_name = block.name
+                                tool_input = getattr(block, "input", {}) or {}
+                                tool_calls_log.append({
+                                    "name": tool_name,
+                                    "input": tool_input,
+                                })
+                                logger.info(
+                                    "Task %d Agent using tool: %s",
+                                    task_id,
+                                    tool_name,
+                                )
+
+                                # 执行工具
+                                try:
+                                    tool_result = tool_executor.execute(
+                                        tool_name, **tool_input
+                                    )
+                                except Exception as tool_exc:
+                                    tool_result = {"error": str(tool_exc)}
+
+                                tool_calls_log[-1]["result"] = tool_result
+
+                                # 将工具结果反馈给 SDK（下一回合会自动处理）
+                                # 这里我们记录结果，让 SDK 继续处理
+                            elif isinstance(block, ToolResultBlock):
+                                result_content = getattr(
+                                    block, "content", getattr(block, "output", "")
+                                )
+                                if tool_calls_log:
+                                    tool_calls_log[-1]["output"] = result_content
+                else:
+                    # SDK 不可用，使用简单 fallback
+                    ai_content = (
+                        f"[{agent_role}] 收到您的消息：{payload.message}\n\n"
+                        f"（SDK 未启用，这是模拟回复。实际部署后将调用 Claude Agent SDK 进行智能对话。）"
+                    )
+        except Exception as sdk_exc:
+            logger.exception("SDK query failed for task %d", task_id)
+            ai_content = (
+                f"处理消息时出错：{sdk_exc}\n\n"
+                f"请检查 claude-agent-sdk 是否正确安装和配置。"
+            )
+
+        # 5. 保存 AI 回复
+        ai_msg = TaskChatMessageModel(
+            task_id=task_id,
+            role="assistant",
+            content=ai_content,
+            tool_calls=json.dumps(tool_calls_log, ensure_ascii=False) if tool_calls_log else None,
+        )
+        db.add(ai_msg)
+        db.commit()
+        db.refresh(ai_msg)
+
+        return ChatResponse(
+            message=ChatMessageResponse(
+                id=cast(int, ai_msg.id),
+                task_id=cast(int, ai_msg.task_id),
+                role=cast(str, ai_msg.role),
+                content=cast(str, ai_msg.content),
+                tool_calls=cast(Optional[str], ai_msg.tool_calls),
+                tool_results=cast(Optional[str], ai_msg.tool_results),
+                created_at=cast(Optional[datetime], ai_msg.created_at),
+            ),
+            tool_calls=tool_calls_log if tool_calls_log else None,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Chat failed for task %d", task_id)
+        raise HTTPException(status_code=500, detail=f"Chat failed: {exc}") from exc
 
 
 @router.get("/stats", response_model=TaskStatsResponse)

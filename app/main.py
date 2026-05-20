@@ -51,6 +51,8 @@ from app.api import (
     events,
     lifecycle,
     workflow_instance,
+    projects,
+    settings as settings_api,
 )
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill
@@ -129,10 +131,12 @@ async def lifespan(app: FastAPI):
     try:
         from app.state.models import get_db
         from app.api.workflow_config import seed_templates
+        from app.api.settings import init_default_configs
 
         db = next(get_db())
         try:
             seed_templates(db)
+            init_default_configs(db)
         finally:
             db.close()
     except Exception:
@@ -245,19 +249,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(requirements.router, prefix="/requirements", tags=["requirements"])
-app.include_router(approvals.router, prefix="/approvals", tags=["approvals"])
-app.include_router(workflow.router, prefix="/workflow", tags=["workflow"])
-app.include_router(registry.router, prefix="/registry", tags=["registry"])
+app.include_router(requirements.router, prefix="/api/requirements", tags=["requirements"])
+app.include_router(approvals.router, prefix="/api/approvals", tags=["approvals"])
+app.include_router(workflow.router, prefix="/api/workflow", tags=["workflow"])
+app.include_router(registry.router, prefix="/api/registry", tags=["registry"])
 app.include_router(
-    workflow_config.router, prefix="/workflow-config", tags=["workflow-config"]
+    workflow_config.router, prefix="/api/workflow-config", tags=["workflow-config"]
 )
-app.include_router(workbench.router, prefix="/workbench", tags=["workbench"])
-app.include_router(events.router, prefix="/events", tags=["events"])
-app.include_router(lifecycle.router, prefix="/lifecycle", tags=["lifecycle"])
+app.include_router(workbench.router, prefix="/api/workbench", tags=["workbench"])
+app.include_router(events.router, prefix="/api/events", tags=["events"])
+app.include_router(lifecycle.router, prefix="/api/lifecycle", tags=["lifecycle"])
 app.include_router(
-    workflow_instance.router, prefix="/workflow-instances", tags=["workflow-instances"]
+    workflow_instance.router, prefix="/api/workflow-instances", tags=["workflow-instances"]
 )
+app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(settings_api.router, prefix="/api/settings", tags=["settings"])
 
 
 @app.get("/health")

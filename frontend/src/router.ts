@@ -25,6 +25,18 @@ const routes = [
     meta: { title: 'Dashboard', icon: 'dashboard' },
   },
   {
+    path: '/projects',
+    name: 'projects',
+    component: () => import('./pages/ProjectsPage.vue'),
+    meta: { title: 'Projects', icon: 'projects' },
+  },
+  {
+    path: '/projects/:id',
+    name: 'project-detail',
+    component: () => import('./pages/ProjectDetailPage.vue'),
+    meta: { title: 'Project Detail', icon: 'projects' },
+  },
+  {
     path: '/agents',
     name: 'agents',
     component: () => import('./pages/AgentsPage.vue'),
@@ -77,8 +89,40 @@ const routes = [
   {
     path: '/settings',
     name: 'settings',
-    component: () => import('./pages/SettingsPage.vue'),
+    redirect: '/settings/system',
     meta: { title: 'Settings', icon: 'settings' },
+    children: [
+      {
+        path: 'system',
+        name: 'settings-system',
+        component: () => import('./pages/settings/SystemSettingsPage.vue'),
+        meta: { title: 'System Settings', icon: 'monitor' },
+      },
+      {
+        path: 'llm',
+        name: 'settings-llm',
+        component: () => import('./pages/settings/LlmSettingsPage.vue'),
+        meta: { title: 'LLM Settings', icon: 'brain-circuit' },
+      },
+      {
+        path: 'database',
+        name: 'settings-database',
+        component: () => import('./pages/settings/DatabaseSettingsPage.vue'),
+        meta: { title: 'Database Settings', icon: 'database' },
+      },
+      {
+        path: 'security',
+        name: 'settings-security',
+        component: () => import('./pages/settings/SecuritySettingsPage.vue'),
+        meta: { title: 'Security Settings', icon: 'shield' },
+      },
+      {
+        path: 'about',
+        name: 'settings-about',
+        component: () => import('./pages/settings/AboutSettingsPage.vue'),
+        meta: { title: 'About', icon: 'info' },
+      },
+    ],
   },
 ]
 

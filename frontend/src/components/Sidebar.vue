@@ -14,6 +14,12 @@ import {
   ClipboardCheck,
   Settings,
   ChevronDown,
+  FolderKanban,
+  Monitor,
+  BrainCircuit,
+  Database,
+  Shield,
+  Info,
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -31,9 +37,11 @@ interface NavItem {
 }
 
 const workflowExpanded = ref(true)
+const settingsExpanded = ref(true)
 
 const navItems: NavItem[] = [
   { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: LayoutDashboard },
+  { id: 'projects', path: '/projects', title: 'sidebar.projects', icon: FolderKanban },
   { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: Bot },
   { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: Wrench },
   {
@@ -48,12 +56,28 @@ const navItems: NavItem[] = [
     ],
   },
   { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
-  { id: 'settings', path: '/settings', title: 'sidebar.settings', icon: Settings },
+  {
+    id: 'settings',
+    path: '/settings',
+    title: 'sidebar.settings',
+    icon: Settings,
+    children: [
+      { id: 'settings-system', path: '/settings/system', title: 'sidebar.settingsSystem', icon: Monitor },
+      { id: 'settings-llm', path: '/settings/llm', title: 'sidebar.settingsLlm', icon: BrainCircuit },
+      { id: 'settings-database', path: '/settings/database', title: 'sidebar.settingsDatabase', icon: Database },
+      { id: 'settings-security', path: '/settings/security', title: 'sidebar.settingsSecurity', icon: Shield },
+      { id: 'settings-about', path: '/settings/about', title: 'sidebar.settingsAbout', icon: Info },
+    ],
+  },
 ]
 
 const navigateTo = (item: NavItem) => {
   if (item.children) {
-    workflowExpanded.value = !workflowExpanded.value
+    if (item.id === 'workflow') {
+      workflowExpanded.value = !workflowExpanded.value
+    } else if (item.id === 'settings') {
+      settingsExpanded.value = !settingsExpanded.value
+    }
     return
   }
   const title = t(item.title)
@@ -86,9 +110,17 @@ const isParentActive = (item: NavItem) => {
         >
           <component :is="item.icon" class="nav-icon-lucide" :size="18" />
           <span class="nav-label">{{ t(item.title) }}</span>
-          <ChevronDown v-if="item.children" class="nav-expand" :class="{ expanded: workflowExpanded }" :size="14" />
+          <ChevronDown
+            v-if="item.children"
+            class="nav-expand"
+            :class="{ expanded: item.id === 'workflow' ? workflowExpanded : settingsExpanded }"
+            :size="14"
+          />
         </div>
-        <div v-if="item.children && workflowExpanded" class="nav-children">
+        <div
+          v-if="item.children && (item.id === 'workflow' ? workflowExpanded : settingsExpanded)"
+          class="nav-children"
+        >
           <div
             v-for="child in item.children"
             :key="child.id"
