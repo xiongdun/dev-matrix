@@ -324,6 +324,74 @@ def system_config_before_update(mapper, connection, target):
     target.updated_at = datetime.utcnow()
 
 
+class ScheduledTaskModel(Base):
+    """定时任务模型。
+
+    存储定时任务的配置和调度规则。
+
+    Attributes:
+        id: 主键 ID。
+        name: 任务名称。
+        description: 任务描述。
+        task_type: 任务类型 (workflow_instance / system_task)。
+        trigger_type: 触发器类型 (cron / interval / date)。
+        cron_expression: cron 表达式或调度配置 JSON。
+        is_enabled: 是否启用 (1=启用, 0=禁用)。
+        config_json: 任务配置 JSON（模板ID、项目ID、上下文等）。
+        last_run_at: 上次执行时间。
+        next_run_at: 下次执行时间。
+        created_at: 创建时间。
+        updated_at: 更新时间。
+    """
+
+    __tablename__ = "scheduled_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, default="")
+    task_type = Column(String(32), default="workflow_instance")
+    trigger_type = Column(String(16), default="cron")
+    cron_expression = Column(String(128), default="")
+    is_enabled = Column(Integer, default=1)
+    config_json = Column(Text, default="{}")
+    last_run_at = Column(DateTime, nullable=True)
+    next_run_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ScheduledTaskLogModel(Base):
+    """定时任务执行日志模型。
+
+    记录每次定时任务的执行结果。
+
+    Attributes:
+        id: 主键 ID。
+        task_id: 关联的定时任务 ID。
+        status: 执行状态 (success / failed / running)。
+        output: 执行输出。
+        error: 错误信息。
+        started_at: 开始时间。
+        completed_at: 完成时间。
+    """
+
+    __tablename__ = "scheduled_task_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, index=True, nullable=False)
+    status = Column(String(16), default="running")
+    output = Column(Text, default="")
+    error = Column(Text, default="")
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+
+@event.listens_for(ScheduledTaskModel, "before_update")
+def scheduled_task_before_update(mapper, connection, target):
+    """在更新 ScheduledTaskModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
 # 模块级单例
 _engine = None
 _SessionLocal = None

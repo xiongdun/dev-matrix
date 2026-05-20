@@ -18,6 +18,7 @@ import {
   Shield,
   Info,
   FolderKanban,
+  Clock,
   X,
 } from 'lucide-vue-next'
 
@@ -50,6 +51,7 @@ const iconMap: Record<string, any> = {
   'workflow-editor': Workflow,
   'workflow-instances': Layers,
   workbench: ClipboardCheck,
+  'scheduled-tasks': Clock,
 }
 
 const tabIcon = computed(() => iconMap[props.tab.id] || GitBranch)
@@ -70,6 +72,7 @@ const displayTitle = computed(() => {
     'workflow-editor': t('sidebar.workflowEditor'),
     'workflow-instances': t('sidebar.workflowInstances'),
     workbench: t('sidebar.workbench'),
+    'scheduled-tasks': t('sidebar.scheduledTasks'),
   }
   return titleMap[props.tab.id] || props.tab.title
 })

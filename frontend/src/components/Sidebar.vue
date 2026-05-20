@@ -20,6 +20,7 @@ import {
   Database,
   Shield,
   Info,
+  Clock,
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -56,6 +57,7 @@ const navItems: NavItem[] = [
     ],
   },
   { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
+  { id: 'scheduled-tasks', path: '/scheduled-tasks', title: 'sidebar.scheduledTasks', icon: Clock },
   {
     id: 'settings',
     path: '/settings',

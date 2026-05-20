@@ -81,6 +81,12 @@ const routes = [
     meta: { title: 'Workbench', icon: 'workbench' },
   },
   {
+    path: '/scheduled-tasks',
+    name: 'scheduled-tasks',
+    component: () => import('./pages/ScheduledTasksPage.vue'),
+    meta: { title: 'Scheduled Tasks', icon: 'clock' },
+  },
+  {
     path: '/workbench/task/:id',
     name: 'task-detail',
     component: () => import('./pages/TaskDetailPage.vue'),

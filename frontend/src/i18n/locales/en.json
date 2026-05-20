@@ -17,7 +17,8 @@
     "settingsLlm": "LLM",
     "settingsDatabase": "Database",
     "settingsSecurity": "Security",
-    "settingsAbout": "About"
+    "settingsAbout": "About",
+    "scheduledTasks": "Scheduled Tasks"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -365,5 +366,37 @@
     "timeMinutesAgo": "{n}m ago",
     "timeHoursAgo": "{n}h ago",
     "timeDaysAgo": "{n}d ago"
+  },
+  "scheduledTasks": {
+    "title": "Scheduled Tasks",
+    "subtitle": "Create and manage scheduled tasks",
+    "newTask": "New Task",
+    "createTitle": "Create Scheduled Task",
+    "editTitle": "Edit Scheduled Task",
+    "name": "Task Name",
+    "namePlaceholder": "Enter task name",
+    "description": "Description",
+    "taskType": "Task Type",
+    "typeWorkflow": "Create Workflow Instance",
+    "typeSystem": "System Task",
+    "triggerType": "Trigger Type",
+    "cronExpression": "Cron Expression",
+    "intervalMinutes": "Interval (minutes)",
+    "runDate": "Run Date",
+    "templateId": "Workflow Template ID",
+    "projectId": "Project ID",
+    "context": "Context (JSON)",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "enable": "Enable",
+    "disable": "Disable",
+    "runNow": "Run Now",
+    "logs": "Execution History",
+    "logsTitle": "Execution History",
+    "noLogs": "No execution records",
+    "lastRun": "Last Run",
+    "empty": "No scheduled tasks",
+    "loadError": "Failed to load scheduled tasks",
+    "confirmDelete": "Delete this scheduled task?"
   }
 }

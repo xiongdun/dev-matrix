@@ -334,7 +334,6 @@ onMounted(loadProjects)
 
 <style scoped>
 .projects-page {
-  padding: 24px;
   width: 100%;
 }
 

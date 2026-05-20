@@ -53,6 +53,7 @@ from app.api import (
     workflow_instance,
     projects,
     settings as settings_api,
+    scheduled_tasks,
 )
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill
@@ -148,7 +149,17 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Skill discovery failed")
         raise
+    try:
+        from app.scheduler.engine import init_scheduler
+
+        scheduler = init_scheduler()
+        app.state.scheduler = scheduler
+        logger.info("Task scheduler initialized")
+    except Exception:
+        logger.exception("Task scheduler initialization failed")
     yield
+    if hasattr(app.state, "scheduler") and app.state.scheduler:
+        app.state.scheduler.shutdown()
     logger.info("Shutting down DevMatrix application")
 
 
@@ -264,6 +275,7 @@ app.include_router(
 )
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["settings"])
+app.include_router(scheduled_tasks.router, prefix="/api/scheduled-tasks", tags=["scheduled-tasks"])
 
 
 @app.get("/health")

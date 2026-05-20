@@ -318,6 +318,49 @@ export const api = {
     return requestWithRetry<{ status: string; message: string }>('/settings/init', { method: 'POST' })
   },
 
+  // ==================== 定时任务 API ====================
+
+  /** 获取定时任务列表 */
+  getScheduledTasks() {
+    return requestWithRetry<{ tasks: Array<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }> }>('/scheduled-tasks')
+  },
+
+  /** 创建定时任务 */
+  createScheduledTask(data: { name: string; description?: string; task_type?: string; trigger_type?: string; cron_expression?: string; is_enabled?: number; config_json?: string }) {
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks', { method: 'POST', body: JSON.stringify(data) })
+  },
+
+  /** 获取定时任务详情 */
+  getScheduledTask(id: number) {
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id)
+  },
+
+  /** 更新定时任务 */
+  updateScheduledTask(id: number, data: Partial<{ name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string }>) {
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id, { method: 'PUT', body: JSON.stringify(data) })
+  },
+
+  /** 删除定时任务 */
+  deleteScheduledTask(id: number) {
+    return requestWithRetry<void>('/scheduled-tasks/' + id, { method: 'DELETE' })
+  },
+
+  /** 启用/禁用定时任务 */
+  toggleScheduledTask(id: number) {
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id + '/toggle', { method: 'POST' })
+  },
+
+  /** 立即执行定时任务 */
+  runScheduledTask(id: number) {
+    return requestWithRetry<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }>('/scheduled-tasks/' + id + '/run', { method: 'POST' })
+  },
+
+  /** 获取定时任务执行历史 */
+  getScheduledTaskLogs(id: number, limit?: number) {
+    const params = limit ? '?limit=' + limit : ''
+    return requestWithRetry<{ logs: Array<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }> }>('/scheduled-tasks/' + id + '/logs' + params)
+  },
+
   subscribeToEvents(role?: string, onEvent?: (data: any) => void): () => void {
     const params = role ? `?role=${role}` : ''
     let reconnectAttempts = 0

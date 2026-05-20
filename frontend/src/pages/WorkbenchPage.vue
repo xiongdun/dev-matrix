@@ -31,7 +31,6 @@
             v-for="task in tasks"
             :key="task.id"
             class="task-row"
-            @click="goToDetail(task.id)"
           >
             <td class="cell-project">{{ task.project_id }}</td>
             <td class="cell-stage">{{ task.stage_name }}</td>
@@ -43,7 +42,7 @@
             </td>
             <td class="cell-time">{{ formatTime(task.arrived_at) }}</td>
             <td>
-              <button class="btn-enter" @click.stop="goToDetail(task.id)">
+              <button class="btn-enter" @click="goToDetail(task.id)">
                 <ArrowRight :size="14" />
                 {{ t('workbench.enter') }}
               </button>

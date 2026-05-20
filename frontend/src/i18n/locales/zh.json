@@ -17,7 +17,8 @@
     "settingsLlm": "LLM 设置",
     "settingsDatabase": "数据库设置",
     "settingsSecurity": "安全设置",
-    "settingsAbout": "关于"
+    "settingsAbout": "关于",
+    "scheduledTasks": "定时任务"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -365,5 +366,37 @@
     "timeMinutesAgo": "{n}分钟前",
     "timeHoursAgo": "{n}小时前",
     "timeDaysAgo": "{n}天前"
+  },
+  "scheduledTasks": {
+    "title": "定时任务",
+    "subtitle": "创建和管理定时执行的任务",
+    "newTask": "新建任务",
+    "createTitle": "新建定时任务",
+    "editTitle": "编辑定时任务",
+    "name": "任务名称",
+    "namePlaceholder": "输入任务名称",
+    "description": "任务描述",
+    "taskType": "任务类型",
+    "typeWorkflow": "创建工作流实例",
+    "typeSystem": "系统任务",
+    "triggerType": "触发器类型",
+    "cronExpression": "Cron 表达式",
+    "intervalMinutes": "间隔（分钟）",
+    "runDate": "执行时间",
+    "templateId": "工作流模板 ID",
+    "projectId": "项目 ID",
+    "context": "上下文参数（JSON）",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "enable": "启用",
+    "disable": "禁用",
+    "runNow": "立即执行",
+    "logs": "执行历史",
+    "logsTitle": "执行历史",
+    "noLogs": "暂无执行记录",
+    "lastRun": "上次执行",
+    "empty": "暂无定时任务",
+    "loadError": "加载定时任务失败",
+    "confirmDelete": "确认删除此定时任务？"
   }
 }
