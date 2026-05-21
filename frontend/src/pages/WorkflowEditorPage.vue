@@ -7,6 +7,11 @@
           class="wf-name-input"
           :placeholder="t('workflow.namePlaceholder')"
         />
+        <input
+          v-model="workflowDescription"
+          class="wf-desc-input"
+          :placeholder="t('workflow.descriptionPlaceholder')"
+        />
       </div>
       <div class="toolbar-right">
         <button class="toolbar-btn" @click="handleSave" :disabled="saving">
@@ -102,6 +107,7 @@ const { project } = useVueFlow()
 const { getAgentDisplayName, getAgentDescription } = useAgentI18n()
 
 const workflowName = ref('')
+const workflowDescription = ref('')
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 const isFullscreen = ref(false)
@@ -133,6 +139,7 @@ async function loadWorkflow(id: number) {
     const res = await api.getWorkflow(id)
     workflowId.value = res.id
     workflowName.value = res.name
+    workflowDescription.value = res.description || ''
     if (res.flow_json) {
       try {
         const flow = JSON.parse(res.flow_json)
@@ -216,10 +223,11 @@ async function handleSave() {
     if (workflowId.value) {
       await api.saveWorkflow(workflowId.value, {
         name: workflowName.value,
+        description: workflowDescription.value,
         flow_json: flowJson,
       })
     } else {
-      const created = await api.createWorkflow({ name: workflowName.value, flow_json: flowJson })
+      const created = await api.createWorkflow({ name: workflowName.value, description: workflowDescription.value, flow_json: flowJson })
       workflowId.value = created.id
       addTab(`workflow-editor-${workflowId.value}`, `${t('workflow.editor')} - ${workflowName.value}`, `/workflow/editor/${workflowId.value}`)
     }
@@ -294,6 +302,23 @@ onMounted(async () => {
 }
 
 .wf-name-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.wf-desc-input {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  font-size: 13px;
+  outline: none;
+  width: 360px;
+  margin-left: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.wf-desc-input:focus {
   border-color: var(--accent-blue);
 }
 

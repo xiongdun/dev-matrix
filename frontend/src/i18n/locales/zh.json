@@ -245,7 +245,9 @@
     "categoryStandard": "标准研发",
     "categoryHotfix": "紧急修复",
     "categoryDbChange": "数据库变更",
-    "categoryAutoFix": "自动修复"
+    "categoryAutoFix": "自动修复",
+    "editDescription": "编辑描述",
+    "descriptionPlaceholder": "输入工作流描述"
   },
   "instance": {
     "title": "工作流实例",

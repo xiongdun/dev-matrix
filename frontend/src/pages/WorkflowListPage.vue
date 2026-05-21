@@ -35,7 +35,19 @@
               {{ wf.name }}
               <span v-if="wf.is_template" class="template-badge">{{ categoryLabel(wf.category) }}</span>
             </td>
-            <td class="wf-desc">{{ wf.description || '—' }}</td>
+            <td class="wf-desc">
+              <span v-if="!editingDescription[wf.id]" @click="startEditDescription(wf)" class="desc-text">{{ wf.description || '—' }}</span>
+              <input
+                v-else
+                v-model="editingDescription[wf.id]"
+                class="desc-input"
+                type="text"
+                @blur="saveDescription(wf)"
+                @keydown.enter="saveDescription(wf)"
+                @keydown.esc="cancelEditDescription(wf)"
+                ref="descInputRef"
+              />
+            </td>
             <td class="wf-version">{{ wf.version }}</td>
             <td>
               <span class="wf-status" :class="statusClass(wf.status)">{{ statusLabel(wf.status) }}</span>
@@ -81,6 +93,29 @@ interface Workflow {
 const workflows = ref<Workflow[]>([])
 const loading = ref(true)
 const error = ref('')
+const editingDescription = ref<Record<number, string | undefined>>({})
+
+function startEditDescription(wf: Workflow) {
+  editingDescription.value[wf.id] = wf.description || ''
+}
+
+async function saveDescription(wf: Workflow) {
+  const newDesc = editingDescription.value[wf.id]
+  if (newDesc === undefined) return
+  if (newDesc !== wf.description) {
+    try {
+      await api.saveWorkflow(wf.id, { description: newDesc })
+      wf.description = newDesc
+    } catch (e: any) {
+      error.value = e.message || String(e)
+    }
+  }
+  editingDescription.value[wf.id] = undefined
+}
+
+function cancelEditDescription(wf: Workflow) {
+  editingDescription.value[wf.id] = undefined
+}
 
 async function fetchWorkflows() {
   loading.value = true
@@ -248,6 +283,28 @@ onMounted(fetchWorkflows)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.desc-text {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.desc-text:hover {
+  background-color: var(--bg-hover);
+}
+
+.desc-input {
+  width: 100%;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  font-size: 13px;
+  outline: none;
 }
 
 .wf-version {

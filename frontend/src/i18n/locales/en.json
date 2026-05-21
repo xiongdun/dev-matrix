@@ -245,7 +245,9 @@
     "categoryStandard": "Standard",
     "categoryHotfix": "Hotfix",
     "categoryDbChange": "DB Change",
-    "categoryAutoFix": "Auto Fix"
+    "categoryAutoFix": "Auto Fix",
+    "editDescription": "Edit Description",
+    "descriptionPlaceholder": "Enter workflow description"
   },
   "instance": {
     "title": "Workflow Instances",
