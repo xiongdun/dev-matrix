@@ -247,7 +247,11 @@
     "categoryDbChange": "数据库变更",
     "categoryAutoFix": "自动修复",
     "editDescription": "编辑描述",
-    "descriptionPlaceholder": "输入工作流描述"
+    "descriptionPlaceholder": "输入工作流描述",
+    "enable": "启用",
+    "archive": "归档",
+    "confirmEnable": "确认启用工作流「{name}」？",
+    "confirmArchive": "确认归档工作流「{name}」？"
   },
   "instance": {
     "title": "工作流实例",

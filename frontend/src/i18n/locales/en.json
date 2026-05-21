@@ -247,7 +247,11 @@
     "categoryDbChange": "DB Change",
     "categoryAutoFix": "Auto Fix",
     "editDescription": "Edit Description",
-    "descriptionPlaceholder": "Enter workflow description"
+    "descriptionPlaceholder": "Enter workflow description",
+    "enable": "Enable",
+    "archive": "Archive",
+    "confirmEnable": "Enable workflow \"{name}\"?",
+    "confirmArchive": "Archive workflow \"{name}\"?"
   },
   "instance": {
     "title": "Workflow Instances",

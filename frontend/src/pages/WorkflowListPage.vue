@@ -55,6 +55,8 @@
             <td class="wf-time">{{ formatDate(wf.created_at) }}</td>
             <td class="wf-actions">
               <button class="btn-action btn-edit" @click="handleEdit(wf)">{{ t('common.edit') }}</button>
+              <button v-if="wf.status === 'draft'" class="btn-action btn-enable" @click="handleEnable(wf)">{{ t('workflow.enable') }}</button>
+              <button v-if="wf.status === 'active'" class="btn-action btn-archive" @click="handleArchive(wf)">{{ t('workflow.archive') }}</button>
               <button v-if="wf.is_template" class="btn-action btn-instantiate" @click="handleInstantiate(wf)">{{ t('workflow.instantiate') }}</button>
               <button v-if="!wf.is_template" class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
             </td>
@@ -151,6 +153,40 @@ async function handleDelete(wf: Workflow) {
   if (!confirmed) return
   try {
     await api.deleteWorkflow(wf.id)
+    await fetchWorkflows()
+  } catch (e: any) {
+    error.value = e.message || String(e)
+  }
+}
+
+async function handleEnable(wf: Workflow) {
+  const confirmed = await showConfirm({
+    title: t('common.confirm'),
+    message: t('workflow.confirmEnable', { name: wf.name }),
+    type: 'confirm',
+    confirmText: t('workflow.enable'),
+    cancelText: t('common.cancel'),
+  })
+  if (!confirmed) return
+  try {
+    await api.saveWorkflow(wf.id, { status: 'active' })
+    await fetchWorkflows()
+  } catch (e: any) {
+    error.value = e.message || String(e)
+  }
+}
+
+async function handleArchive(wf: Workflow) {
+  const confirmed = await showConfirm({
+    title: t('common.confirm'),
+    message: t('workflow.confirmArchive', { name: wf.name }),
+    type: 'warning',
+    confirmText: t('workflow.archive'),
+    cancelText: t('common.cancel'),
+  })
+  if (!confirmed) return
+  try {
+    await api.saveWorkflow(wf.id, { status: 'archived' })
     await fetchWorkflows()
   } catch (e: any) {
     error.value = e.message || String(e)
@@ -389,5 +425,23 @@ onMounted(fetchWorkflows)
 
 .btn-instantiate:hover {
   background-color: rgba(99, 102, 241, 0.1);
+}
+
+.btn-enable {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.btn-enable:hover {
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.btn-archive {
+  border-color: var(--text-tertiary);
+  color: var(--text-tertiary);
+}
+
+.btn-archive:hover {
+  background-color: rgba(113, 113, 122, 0.1);
 }
 </style>
