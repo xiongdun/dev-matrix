@@ -186,6 +186,22 @@
       "idle": "Idle",
       "active": "Active",
       "error": "Error"
+    },
+    "names": {
+      "business_analyst": "Business Analyst",
+      "product_manager": "Product Manager",
+      "architect": "Architect",
+      "developer": "Developer",
+      "qa": "QA Engineer",
+      "project_manager": "Project Manager"
+    },
+    "descriptions": {
+      "business_analyst": "Analyzes raw requirements and produces structured requirement documents",
+      "product_manager": "Generates Product Requirement Documents (PRD) from analyzed requirements",
+      "architect": "Performs code impact analysis and designs technical solutions",
+      "developer": "Generates code patches based on architecture design",
+      "qa": "Generates and executes tests for the generated patches",
+      "project_manager": "Manages project lifecycle and coordinates multi-agent collaboration"
     }
   },
   "skills": {

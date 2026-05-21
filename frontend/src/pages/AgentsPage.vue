@@ -15,10 +15,10 @@
       <div v-for="agent in agents" :key="agent.name" class="agent-card">
         <div class="agent-card-header">
           <div class="agent-info">
-            <h3 class="agent-name">{{ agent.name }}</h3>
+            <h3 class="agent-name">{{ getAgentDisplayName(agent.name) }}</h3>
             <span class="agent-status" :class="agent.status">{{ statusLabel(agent.status) }}</span>
           </div>
-          <p class="agent-desc">{{ agent.description }}</p>
+          <p class="agent-desc">{{ getAgentDescription(agent.name) || agent.description }}</p>
         </div>
 
         <div class="agent-skills">
@@ -60,9 +60,11 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
 import { useDialog } from '../composables/useDialog'
+import { useAgentI18n } from '../composables/useAgentI18n'
 
 const { t } = useI18n()
 const { showConfirm } = useDialog()
+const { getAgentDisplayName, getAgentDescription } = useAgentI18n()
 
 interface Agent {
   name: string

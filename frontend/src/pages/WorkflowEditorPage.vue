@@ -33,8 +33,8 @@
           >
             <span class="agent-dot" :class="agent.status === 'active' ? 'dot-active' : 'dot-idle'"></span>
             <div class="agent-info">
-              <div class="agent-name">{{ agent.name }}</div>
-              <div class="agent-desc">{{ agent.description }}</div>
+              <div class="agent-name">{{ getAgentDisplayName(agent.name) }}</div>
+              <div class="agent-desc">{{ getAgentDescription(agent.name) || agent.description }}</div>
             </div>
           </div>
         </div>
@@ -58,9 +58,9 @@
             <div class="custom-agent-node">
               <div class="node-header">
                 <span class="node-dot" :class="agentNodeProps.data.status === 'active' ? 'dot-active' : 'dot-idle'"></span>
-                <span class="node-title">{{ agentNodeProps.data.label || agentNodeProps.data.name || agentNodeProps.id }}</span>
+                <span class="node-title">{{ getAgentDisplayName(agentNodeProps.data.name || agentNodeProps.data.label || agentNodeProps.id) }}</span>
               </div>
-              <div class="node-desc">{{ agentNodeProps.data.description || agentNodeProps.data.agent || '' }}</div>
+              <div class="node-desc">{{ getAgentDescription(agentNodeProps.data.name || agentNodeProps.data.label) || agentNodeProps.data.description || agentNodeProps.data.agent || '' }}</div>
               <Handle type="target" :position="Position.Left" />
               <Handle type="source" :position="Position.Right" />
             </div>
@@ -88,6 +88,7 @@ import { MiniMap } from '@vue-flow/minimap'
 import { Handle } from '@vue-flow/core'
 import { api } from '../api'
 import { useTabs } from '../composables/useTabs'
+import { useAgentI18n } from '../composables/useAgentI18n'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -98,6 +99,7 @@ const { t } = useI18n()
 const route = useRoute()
 const { addTab } = useTabs()
 const { project } = useVueFlow()
+const { getAgentDisplayName, getAgentDescription } = useAgentI18n()
 
 const workflowName = ref('')
 const nodes = ref<Node[]>([])

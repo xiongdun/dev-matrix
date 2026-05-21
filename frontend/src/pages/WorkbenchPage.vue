@@ -35,7 +35,7 @@
             <td class="cell-project">{{ task.project_id }}</td>
             <td class="cell-stage">{{ task.stage_name }}</td>
             <td class="cell-agent">
-              <span class="agent-tag">{{ task.agent_role }}</span>
+              <span class="agent-tag">{{ getAgentDisplayName(task.agent_role) }}</span>
             </td>
             <td>
               <span class="status-badge" :class="task.status">{{ statusLabel(task.status) }}</span>
@@ -60,9 +60,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowRight } from 'lucide-vue-next'
 import { api } from '../api'
+import { useAgentI18n } from '../composables/useAgentI18n'
 
 const { t } = useI18n()
 const router = useRouter()
+const { getAgentDisplayName } = useAgentI18n()
 
 interface Task {
   id: number

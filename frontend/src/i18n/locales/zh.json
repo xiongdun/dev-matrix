@@ -186,6 +186,22 @@
       "idle": "空闲",
       "active": "活跃",
       "error": "错误"
+    },
+    "names": {
+      "business_analyst": "业务分析师",
+      "product_manager": "产品经理",
+      "architect": "架构师",
+      "developer": "开发者",
+      "qa": "测试工程师",
+      "project_manager": "项目经理"
+    },
+    "descriptions": {
+      "business_analyst": "分析原始需求并生成结构化的需求文档",
+      "product_manager": "基于分析后的需求生成产品需求文档（PRD）",
+      "architect": "执行代码影响分析并设计技术方案",
+      "developer": "基于架构设计生成代码补丁",
+      "qa": "为生成的补丁生成并执行测试",
+      "project_manager": "管理项目生命周期，协调各角色 Agent 协作执行工作流"
     }
   },
   "skills": {
