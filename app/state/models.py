@@ -324,6 +324,46 @@ def system_config_before_update(mapper, connection, target):
     target.updated_at = datetime.utcnow()
 
 
+class TaskManagementModel(Base):
+    """任务管理模型（独立任务系统）。
+
+    存储用户手动创建/分配的任务，类似 Jira/Trello。
+
+    Attributes:
+        id: 主键 ID。
+        title: 任务标题。
+        description: 任务描述。
+        status: 任务状态 (backlog/todo/in_progress/in_review/done)。
+        priority: 优先级 (high/medium/low)。
+        assignee_id: 被分配人 ID。
+        assignee_name: 被分配人姓名。
+        reporter_id: 创建人 ID。
+        reporter_name: 创建人姓名。
+        project_id: 关联项目 ID（可选）。
+        tags: 标签 JSON 列表。
+        due_date: 截止日期。
+        created_at: 创建时间。
+        updated_at: 更新时间。
+    """
+
+    __tablename__ = "task_management"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(256), nullable=False)
+    description = Column(Text, default="")
+    status = Column(String(32), default="backlog")
+    priority = Column(String(16), default="medium")
+    assignee_id = Column(String(64), nullable=True)
+    assignee_name = Column(String(64), nullable=True)
+    reporter_id = Column(String(64), nullable=False)
+    reporter_name = Column(String(64), nullable=False)
+    project_id = Column(Integer, nullable=True)
+    tags = Column(Text, default="[]")
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class ScheduledTaskModel(Base):
     """定时任务模型。
 

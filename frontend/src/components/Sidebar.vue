@@ -21,6 +21,8 @@ import {
   Shield,
   Info,
   Clock,
+  KanbanSquare,
+  ListTodo,
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -39,6 +41,7 @@ interface NavItem {
 
 const workflowExpanded = ref(true)
 const settingsExpanded = ref(true)
+const taskManagementExpanded = ref(true)
 
 const navItems: NavItem[] = [
   { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: LayoutDashboard },
@@ -58,6 +61,16 @@ const navItems: NavItem[] = [
   },
   { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
   { id: 'scheduled-tasks', path: '/scheduled-tasks', title: 'sidebar.scheduledTasks', icon: Clock },
+  {
+    id: 'task-management',
+    path: '/tasks',
+    title: 'sidebar.taskManagement',
+    icon: KanbanSquare,
+    children: [
+      { id: 'my-tasks', path: '/tasks/my', title: 'sidebar.myTasks', icon: ListTodo },
+      { id: 'task-board', path: '/tasks/board', title: 'sidebar.taskBoard', icon: KanbanSquare },
+    ],
+  },
   {
     id: 'settings',
     path: '/settings',
@@ -79,6 +92,8 @@ const navigateTo = (item: NavItem) => {
       workflowExpanded.value = !workflowExpanded.value
     } else if (item.id === 'settings') {
       settingsExpanded.value = !settingsExpanded.value
+    } else if (item.id === 'task-management') {
+      taskManagementExpanded.value = !taskManagementExpanded.value
     }
     return
   }
@@ -120,7 +135,12 @@ const isParentActive = (item: NavItem) => {
           />
         </div>
         <div
-          v-if="item.children && (item.id === 'workflow' ? workflowExpanded : settingsExpanded)"
+          v-if="item.children && (
+            item.id === 'workflow' ? workflowExpanded :
+            item.id === 'settings' ? settingsExpanded :
+            item.id === 'task-management' ? taskManagementExpanded :
+            true
+          )"
           class="nav-children"
         >
           <div

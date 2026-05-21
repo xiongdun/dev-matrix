@@ -361,6 +361,44 @@ export const api = {
     return requestWithRetry<{ logs: Array<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }> }>('/scheduled-tasks/' + id + '/logs' + params)
   },
 
+  // ==================== 任务管理 API ====================
+
+  /** 获取任务列表 */
+  getTasks(params?: { status?: string; priority?: string; keyword?: string }) {
+    const query = new URLSearchParams()
+    if (params?.status) query.append('status', params.status)
+    if (params?.priority) query.append('priority', params.priority)
+    if (params?.keyword) query.append('keyword', params.keyword)
+    const qs = query.toString()
+    return requestWithRetry<{ items: Array<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>; total: number }>('/tasks' + (qs ? '?' + qs : ''))
+  },
+
+  /** 获取我的任务 */
+  getMyTasks(status?: string) {
+    const params = status ? '?status=' + status : ''
+    return requestWithRetry<{ items: Array<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>; total: number }>('/tasks/my-tasks' + params)
+  },
+
+  /** 创建任务 */
+  createTask(data: { title: string; description?: string; status?: string; priority?: string; assignee_id?: string | null; assignee_name?: string | null; project_id?: number | null; tags?: string[]; due_date?: string | null }) {
+    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>('/tasks', { method: 'POST', body: JSON.stringify(data) })
+  },
+
+  /** 更新任务 */
+  updateTask(id: number, data: Partial<{ title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; project_id: number | null; tags: string[]; due_date: string | null }>) {
+    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>('/tasks/' + id, { method: 'PUT', body: JSON.stringify(data) })
+  },
+
+  /** 更新任务状态 */
+  updateTaskStatus(id: number, status: string) {
+    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>('/tasks/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) })
+  },
+
+  /** 删除任务 */
+  deleteTask(id: number) {
+    return requestWithRetry<void>('/tasks/' + id, { method: 'DELETE' })
+  },
+
   subscribeToEvents(role?: string, onEvent?: (data: any) => void): () => void {
     const params = role ? `?role=${role}` : ''
     let reconnectAttempts = 0

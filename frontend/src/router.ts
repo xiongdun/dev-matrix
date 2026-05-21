@@ -93,6 +93,26 @@ const routes = [
     meta: { title: 'Task Detail', icon: 'workbench', fullscreen: true },
   },
   {
+    path: '/tasks',
+    name: 'tasks',
+    redirect: '/tasks/my',
+    meta: { title: 'Task Management', icon: 'kanban-square' },
+    children: [
+      {
+        path: 'my',
+        name: 'my-tasks',
+        component: () => import('./pages/tasks/MyTasksPage.vue'),
+        meta: { title: 'My Tasks', icon: 'list-todo' },
+      },
+      {
+        path: 'board',
+        name: 'task-board',
+        component: () => import('./pages/tasks/TaskBoardPage.vue'),
+        meta: { title: 'Task Board', icon: 'kanban-square' },
+      },
+    ],
+  },
+  {
     path: '/settings',
     name: 'settings',
     redirect: '/settings/system',

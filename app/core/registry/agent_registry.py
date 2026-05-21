@@ -57,9 +57,11 @@ from app.agents.product_manager import ProductManagerAgent  # noqa: E402
 from app.agents.architect import ArchitectAgent  # noqa: E402
 from app.agents.developer import DeveloperAgent  # noqa: E402
 from app.agents.qa import QAAgent  # noqa: E402
+from app.agents.project_manager import ProjectManagerAgent  # noqa: E402
 
 agent_registry.register("business_analyst", BusinessAnalystAgent)
 agent_registry.register("product_manager", ProductManagerAgent)
 agent_registry.register("architect", ArchitectAgent)
 agent_registry.register("developer", DeveloperAgent)
 agent_registry.register("qa", QAAgent)
+agent_registry.register("project_manager", ProjectManagerAgent)

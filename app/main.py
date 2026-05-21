@@ -54,6 +54,7 @@ from app.api import (
     projects,
     settings as settings_api,
     scheduled_tasks,
+    task_management,
 )
 from app.skills.registry import _global_registry as skill_registry
 from app.skills.base import BaseSkill
@@ -276,6 +277,7 @@ app.include_router(
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["settings"])
 app.include_router(scheduled_tasks.router, prefix="/api/scheduled-tasks", tags=["scheduled-tasks"])
+app.include_router(task_management.router, prefix="/api/tasks", tags=["tasks"])
 
 
 @app.get("/health")
