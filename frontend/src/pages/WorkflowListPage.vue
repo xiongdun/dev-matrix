@@ -55,10 +55,10 @@
             <td class="wf-time">{{ formatDate(wf.created_at) }}</td>
             <td class="wf-actions">
               <button class="btn-action btn-edit" @click="handleEdit(wf)">{{ t('common.edit') }}</button>
-              <button v-if="wf.status === 'draft'" class="btn-action btn-enable" @click="handleEnable(wf)">{{ t('workflow.enable') }}</button>
+              <button v-if="wf.status === 'draft' || wf.status === 'archived'" class="btn-action btn-enable" @click="handleEnable(wf)">{{ t('workflow.enable') }}</button>
               <button v-if="wf.status === 'active'" class="btn-action btn-archive" @click="handleArchive(wf)">{{ t('workflow.archive') }}</button>
-              <button v-if="wf.is_template" class="btn-action btn-instantiate" @click="handleInstantiate(wf)">{{ t('workflow.instantiate') }}</button>
-              <button v-if="!wf.is_template" class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
+              <button v-if="wf.is_template && wf.status === 'active'" class="btn-action btn-instantiate" @click="handleInstantiate(wf)">{{ t('workflow.instantiate') }}</button>
+              <button v-if="!wf.is_template || wf.status === 'archived'" class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
             </td>
           </tr>
         </tbody>
