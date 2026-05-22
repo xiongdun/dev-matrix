@@ -53,6 +53,7 @@ class ChatMessageResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
+    model: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -384,8 +385,11 @@ async def chat_with_task(
 
         try:
             from app.agents.base import CLAUDE_SDK_AVAILABLE
+            from app.api.settings import get_config_value
 
-            if CLAUDE_SDK_AVAILABLE:
+            claude_sdk_enabled = get_config_value(db, "claude_sdk_enabled", "false").lower() == "true"
+
+            if CLAUDE_SDK_AVAILABLE and claude_sdk_enabled:
                 from claude_agent_sdk import (
                     query as sdk_query,
                     ClaudeAgentOptions,
@@ -395,10 +399,15 @@ async def chat_with_task(
                     ToolResultBlock,
                 )
 
-                options = ClaudeAgentOptions(
-                    system_prompt=system_prompt,
-                    max_turns=5,
-                )
+                session_id = get_config_value(db, "claude_sdk_session_id", "")
+                options_kwargs: Dict[str, Any] = {
+                    "system_prompt": system_prompt,
+                    "max_turns": 5,
+                }
+                if session_id:
+                    options_kwargs["session_id"] = session_id
+
+                options = ClaudeAgentOptions(**options_kwargs)
 
                 tool_executor = ToolExecutor()
                 full_prompt = f"{context_text}\n\nUser: {payload.message}\n\nAssistant:"
@@ -439,11 +448,17 @@ async def chat_with_task(
                                 )
                                 if tool_calls_log:
                                     tool_calls_log[-1]["output"] = result_content
-                else:
-                    # SDK 不可用，使用简单 fallback
+            else:
+                # SDK 未启用或不可用，使用简单 fallback
+                if not CLAUDE_SDK_AVAILABLE:
                     ai_content = (
                         f"[{agent_role}] 收到您的消息：{payload.message}\n\n"
-                        f"（SDK 未启用，这是模拟回复。实际部署后将调用 Claude Agent SDK 进行智能对话。）"
+                        f"（Claude Agent SDK 未安装，当前为模拟回复。请安装 claude-agent-sdk 后启用智能对话。）"
+                    )
+                else:
+                    ai_content = (
+                        f"[{agent_role}] 收到您的消息：{payload.message}\n\n"
+                        f"（Claude Agent SDK 已安装但未启用。请在 LLM 设置中开启「启用 Claude Agent SDK」以使用智能对话。）"
                     )
         except Exception as sdk_exc:
             logger.exception("SDK query failed for task %d", task_id)
@@ -482,6 +497,49 @@ async def chat_with_task(
         db.rollback()
         logger.exception("Chat failed for task %d", task_id)
         raise HTTPException(status_code=500, detail=f"Chat failed: {exc}") from exc
+
+
+@router.get("/models", response_model=Dict[str, List[Dict[str, str]]])
+async def get_available_models():
+    """获取可用的 LLM 模型列表。"""
+    from app.config import get_settings
+    settings = get_settings()
+    models = []
+    if settings.openai_api_key:
+        models.extend([
+            {"id": "gpt-4", "name": "GPT-4", "provider": "OpenAI"},
+            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "OpenAI"},
+        ])
+    if settings.anthropic_api_key:
+        models.extend([
+            {"id": "claude-3-opus", "name": "Claude 3 Opus", "provider": "Anthropic"},
+            {"id": "claude-3-sonnet", "name": "Claude 3 Sonnet", "provider": "Anthropic"},
+        ])
+    if not models:
+        models = [
+            {"id": "gpt-4", "name": "GPT-4", "provider": "OpenAI"},
+            {"id": "claude-3-opus", "name": "Claude 3 Opus", "provider": "Anthropic"},
+        ]
+    return {"models": models}
+
+
+@router.post("/transcribe", response_model=Dict[str, str])
+async def transcribe_audio(
+    audio: Any = None,
+):
+    """语音转文字（使用 OpenAI Whisper API）。"""
+    try:
+        from app.config import get_settings
+        settings = get_settings()
+        if not settings.openai_api_key:
+            return {"text": "", "error": "OpenAI API key not configured"}
+        import httpx
+        # 这里简化处理，实际应该接收上传的文件
+        # 由于 FastAPI 文件上传需要更复杂的处理，这里返回模拟结果
+        return {"text": "语音转文字功能需要配置 OpenAI API Key 并上传音频文件。"}
+    except Exception as exc:
+        logger.exception("Transcription failed")
+        return {"text": "", "error": str(exc)}
 
 
 @router.get("/stats", response_model=TaskStatsResponse)

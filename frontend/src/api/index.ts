@@ -44,6 +44,12 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
       throw new Error(`API Error ${response.status}: ${errorText}`)
     }
 
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      const text = await response.text()
+      throw new Error(`API Error ${response.status}: Expected JSON but got ${contentType}. Response: ${text.slice(0, 200)}`)
+    }
+
     return response.json() as Promise<T>
   } catch (error) {
     clearTimeout(timeoutId)
@@ -242,14 +248,19 @@ export const api = {
   },
 
   /** 发送任务对话消息 */
-  sendTaskChatMessage(taskId: number, message: string) {
+  sendTaskChatMessage(taskId: number, message: string, model?: string) {
     return requestWithRetry<{
       message: {id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}
       tool_calls: Array<{name: string; input: Record<string, unknown>; result?: Record<string, unknown>}> | null
     }>('/workbench/tasks/' + taskId + '/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, model }),
     })
+  },
+
+  /** 获取可用 LLM 模型列表 */
+  getAvailableModels() {
+    return requestWithRetry<{ models: Array<{ id: string; name: string; provider: string }> }>('/workbench/models')
   },
 
   // ==================== 项目管理 API ====================

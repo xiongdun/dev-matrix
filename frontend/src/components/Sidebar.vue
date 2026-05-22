@@ -45,7 +45,19 @@ const taskManagementExpanded = ref(true)
 
 const navItems: NavItem[] = [
   { id: 'dashboard', path: '/', title: 'sidebar.dashboard', icon: LayoutDashboard },
+  { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
   { id: 'projects', path: '/projects', title: 'sidebar.projects', icon: FolderKanban },
+  {
+    id: 'task-management',
+    path: '/tasks',
+    title: 'sidebar.taskManagement',
+    icon: KanbanSquare,
+    children: [
+      { id: 'my-tasks', path: '/tasks/my', title: 'sidebar.myTasks', icon: ListTodo },
+      { id: 'task-board', path: '/tasks/board', title: 'sidebar.taskBoard', icon: KanbanSquare },
+    ],
+  },
+  { id: 'scheduled-tasks', path: '/scheduled-tasks', title: 'sidebar.scheduledTasks', icon: Clock },
   { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: Bot },
   { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: Wrench },
   {
@@ -57,18 +69,6 @@ const navItems: NavItem[] = [
       { id: 'workflow-editor', path: '/workflow/editor', title: 'sidebar.workflowEditor', icon: Workflow },
       { id: 'workflow-list', path: '/workflow/list', title: 'sidebar.workflowList', icon: List },
       { id: 'workflow-instances', path: '/workflow/instances', title: 'sidebar.workflowInstances', icon: Layers },
-    ],
-  },
-  { id: 'workbench', path: '/workbench', title: 'sidebar.workbench', icon: ClipboardCheck },
-  { id: 'scheduled-tasks', path: '/scheduled-tasks', title: 'sidebar.scheduledTasks', icon: Clock },
-  {
-    id: 'task-management',
-    path: '/tasks',
-    title: 'sidebar.taskManagement',
-    icon: KanbanSquare,
-    children: [
-      { id: 'my-tasks', path: '/tasks/my', title: 'sidebar.myTasks', icon: ListTodo },
-      { id: 'task-board', path: '/tasks/board', title: 'sidebar.taskBoard', icon: KanbanSquare },
     ],
   },
   {

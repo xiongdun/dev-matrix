@@ -147,6 +147,22 @@ const handleReset = async () => {
         />
       </SettingsSection>
 
+      <SettingsSection title="Claude Agent SDK" description="Claude Code 集成配置">
+        <SettingItem
+          :label="t('settings.claudeSdkEnabled')"
+          :description="t('settings.claudeSdkEnabledDesc')"
+          type="checkbox"
+          v-model="configs.claude_sdk_enabled"
+        />
+        <SettingItem
+          :label="t('settings.claudeSdkSessionId')"
+          :description="t('settings.claudeSdkSessionIdDesc')"
+          type="text"
+          v-model="configs.claude_sdk_session_id"
+          placeholder="可选"
+        />
+      </SettingsSection>
+
       <SettingsSection :title="t('settings.advanced')" :description="t('settings.advancedDesc')">
         <SettingItem
           :label="t('settings.openaiBaseUrl')"

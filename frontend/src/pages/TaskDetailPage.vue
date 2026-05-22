@@ -24,7 +24,20 @@
 
       <!-- 对话流内容区 -->
       <div class="chat-container">
-        <div class="chat-messages" ref="messagesRef">
+        <!-- 加载错误提示 -->
+        <div v-if="loadError" class="load-error-overlay">
+          <div class="load-error-content">
+            <AlertCircle :size="48" class="error-icon" />
+            <h3>{{ t('workbench.loadErrorTitle') }}</h3>
+            <p>{{ loadError }}</p>
+            <button class="btn-back" @click="goBack">
+              <ArrowLeft :size="16" />
+              {{ t('common.back') }}
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="chat-messages" ref="messagesRef">
           <ChatMessage
             v-for="msg in messages"
             :key="msg.id"
@@ -34,7 +47,28 @@
 
         <!-- 底部输入框 -->
         <div class="chat-input-bar">
-          <div class="chat-input-wrapper">
+          <div class="chat-input-card">
+            <!-- 已上传图片预览 -->
+            <div v-if="uploadedImages.length" class="image-preview-row">
+              <div v-for="(img, idx) in uploadedImages" :key="idx" class="image-preview-item">
+                <img :src="img.preview" alt="preview" />
+                <button class="image-remove-btn" @click="removeImage(idx)">
+                  <X :size="12" />
+                </button>
+              </div>
+            </div>
+
+            <!-- 语音输入状态 -->
+            <div v-if="isRecording" class="recording-indicator">
+              <div class="recording-wave">
+                <span v-for="i in 5" :key="i" class="wave-bar" :style="{ animationDelay: `${i * 0.1}s` }"></span>
+              </div>
+              <span class="recording-text">{{ t('workbench.recording') }} {{ recordingTime }}s</span>
+              <button class="btn-icon-sm danger" @click="stopRecording">
+                <Square :size="14" />
+              </button>
+            </div>
+
             <textarea
               v-model="inputMessage"
               rows="1"
@@ -44,13 +78,66 @@
               @input="autoResize"
               ref="inputRef"
             />
-            <button
-              class="chat-send-btn"
-              :disabled="!inputMessage.trim() || isSending"
-              @click="sendMessage"
-            >
-              <Send :size="16" />
-            </button>
+
+            <!-- 底部工具栏 -->
+            <div class="chat-toolbar">
+              <div class="toolbar-left">
+                <button class="toolbar-btn" :title="t('workbench.uploadImage')" @click="triggerImageUpload">
+                  <ImageIcon :size="18" />
+                </button>
+                <button class="toolbar-btn" :title="t('workbench.codeBlock')" @click="insertCodeBlock">
+                  <Code2 :size="18" />
+                </button>
+                <input
+                  ref="imageInputRef"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style="display: none"
+                  @change="handleImageUpload"
+                />
+              </div>
+              <div class="toolbar-right">
+                <!-- 模型选择器 -->
+                <div class="model-selector">
+                  <button class="model-select-btn" @click="showModelDropdown = !showModelDropdown">
+                    <span>{{ selectedModelLabel }}</span>
+                    <ChevronDown :size="14" />
+                  </button>
+                  <div v-if="showModelDropdown" class="model-dropdown" v-click-outside="() => showModelDropdown = false">
+                    <div
+                      v-for="model in availableModels"
+                      :key="model.id"
+                      class="model-option"
+                      :class="{ active: selectedModel === model.id }"
+                      @click="selectModel(model.id)"
+                    >
+                      <span class="model-name">{{ model.name }}</span>
+                      <span class="model-provider">{{ model.provider }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 语音输入按钮 -->
+                <button
+                  class="toolbar-btn"
+                  :class="{ active: isRecording }"
+                  :title="t('workbench.voiceInput')"
+                  @click="toggleRecording"
+                >
+                  <Mic :size="18" />
+                </button>
+
+                <!-- 发送按钮 -->
+                <button
+                  class="chat-send-btn"
+                  :disabled="!canSend || isSending"
+                  @click="sendMessage"
+                >
+                  <ArrowUp :size="18" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -141,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -149,7 +236,14 @@ import {
   CheckCircle,
   Undo2,
   RefreshCw,
-  Send,
+  ArrowUp,
+  ImageIcon,
+  Code2,
+  Mic,
+  ChevronDown,
+  X,
+  Square,
+  AlertCircle,
 } from 'lucide-vue-next'
 import { api } from '../api'
 import { useDialog } from '../composables/useDialog'
@@ -179,6 +273,7 @@ interface Message {
   content: string
   previousContent?: string
   timestamp: string
+  images?: string[]
 }
 
 interface Task {
@@ -196,6 +291,7 @@ interface Task {
   messages?: Message[]
 }
 
+// ==================== 原有状态 ====================
 const allTasks = ref<Task[]>([])
 const taskId = ref(0)
 const task = ref<Task | null>(null)
@@ -207,12 +303,200 @@ const inputRef = ref<HTMLTextAreaElement | null>(null)
 const isLoading = ref(false)
 const loadError = ref('')
 
+// ==================== 图片上传 ====================
+const uploadedImages = ref<Array<{ file: File; preview: string }>>([])
+const imageInputRef = ref<HTMLInputElement | null>(null)
+
+function triggerImageUpload() {
+  imageInputRef.value?.click()
+}
+
+function handleImageUpload(e: Event) {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (!files) return
+
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      uploadedImages.value.push({
+        file,
+        preview: reader.result as string,
+      })
+    }
+    reader.readAsDataURL(file)
+  })
+
+  target.value = ''
+}
+
+function removeImage(idx: number) {
+  uploadedImages.value.splice(idx, 1)
+}
+
+// ==================== 代码块插入 ====================
+function insertCodeBlock() {
+  const codeBlock = '\n```\n\n```\n'
+  inputMessage.value += codeBlock
+  nextTick(() => {
+    inputRef.value?.focus()
+    autoResize()
+  })
+}
+
+// ==================== LLM 模型选择器 ====================
+interface LLMModel {
+  id: string
+  name: string
+  provider: string
+}
+
+const availableModels = ref<LLMModel[]>([])
+const selectedModel = ref('')
+const showModelDropdown = ref(false)
+
+const selectedModelLabel = computed(() => {
+  const model = availableModels.value.find(m => m.id === selectedModel.value)
+  return model?.name || t('workbench.selectModel')
+})
+
+async function loadAvailableModels() {
+  try {
+    const res = await api.getAvailableModels()
+    availableModels.value = res.models
+    if (availableModels.value.length && !selectedModel.value) {
+      selectedModel.value = availableModels.value[0].id
+    }
+  } catch (e) {
+    console.error('Failed to load models:', e)
+    availableModels.value = [
+      { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5', provider: 'OpenAI' },
+      { id: 'claude-3-opus', name: 'Claude 3 Opus', provider: 'Anthropic' },
+      { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'Anthropic' },
+    ]
+    selectedModel.value = 'gpt-4'
+  }
+}
+
+function selectModel(modelId: string) {
+  selectedModel.value = modelId
+  showModelDropdown.value = false
+}
+
+// ==================== 语音输入 ====================
+const isRecording = ref(false)
+const recordingTime = ref(0)
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
+let recordingTimer: ReturnType<typeof setInterval> | null = null
+
+async function toggleRecording() {
+  if (isRecording.value) {
+    stopRecording()
+  } else {
+    startRecording()
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    mediaRecorder = new MediaRecorder(stream)
+    audioChunks = []
+
+    mediaRecorder.ondataavailable = (e) => {
+      audioChunks.push(e.data)
+    }
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+      await transcribeAudio(audioBlob)
+      stream.getTracks().forEach(t => t.stop())
+    }
+
+    mediaRecorder.start()
+    isRecording.value = true
+    recordingTime.value = 0
+    recordingTimer = setInterval(() => {
+      recordingTime.value++
+    }, 1000)
+  } catch (e) {
+    console.error('Failed to start recording:', e)
+    await showConfirm({
+      title: t('common.error'),
+      message: t('workbench.micPermissionDenied'),
+      type: 'warning',
+      showCancel: false,
+      confirmText: t('common.confirm'),
+    })
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  }
+  isRecording.value = false
+  if (recordingTimer) {
+    clearInterval(recordingTimer)
+    recordingTimer = null
+  }
+}
+
+async function transcribeAudio(audioBlob: Blob) {
+  try {
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'recording.webm')
+
+    const res = await fetch('/api/workbench/transcribe', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!res.ok) {
+      throw new Error(`Transcription failed: ${res.status}`)
+    }
+
+    const data = await res.json()
+    if (data.text) {
+      inputMessage.value += (inputMessage.value ? ' ' : '') + data.text
+      nextTick(() => {
+        autoResize()
+        inputRef.value?.focus()
+      })
+    }
+  } catch (e: any) {
+    console.error('Transcription error:', e)
+    await showConfirm({
+      title: t('common.error'),
+      message: t('workbench.transcriptionFailed'),
+      type: 'warning',
+      showCancel: false,
+      confirmText: t('common.confirm'),
+    })
+  }
+}
+
+// ==================== 原有方法 ====================
+function safeParseOutputJson(outputJson: string | undefined): any {
+  if (!outputJson || outputJson === '{}') return undefined
+  try {
+    const parsed = JSON.parse(outputJson)
+    return parsed.context
+  } catch (e) {
+    console.warn('Failed to parse output_json:', e, 'Raw:', outputJson.slice(0, 200))
+    return undefined
+  }
+}
+
 async function loadAllTasks() {
   try {
     const res = await api.getWorkbenchTasks('')
     allTasks.value = res.tasks.map((t: any) => ({
       ...t,
-      context: t.output_json ? JSON.parse(t.output_json).context : undefined,
+      context: safeParseOutputJson(t.output_json),
       messages: [],
     }))
   } catch (e: any) {
@@ -226,15 +510,13 @@ async function loadTask(id: number) {
   loadError.value = ''
 
   try {
-    // 加载任务详情
     const taskRes = await api.getWorkbenchTask(id)
     task.value = {
       ...taskRes,
-      context: taskRes.output_json ? JSON.parse(taskRes.output_json).context : undefined,
+      context: safeParseOutputJson(taskRes.output_json),
       messages: [],
     }
 
-    // 加载对话历史
     const chatRes = await api.getTaskChatHistory(id)
     messages.value = chatRes.messages.map((m: any) => ({
       id: `msg-${m.id}`,
@@ -262,8 +544,8 @@ watch(
   { immediate: true }
 )
 
-// 初始加载任务列表
 loadAllTasks()
+loadAvailableModels()
 
 const showReject = ref(false)
 const showRetry = ref(false)
@@ -281,6 +563,10 @@ const statusLabel = computed(() => {
   return map[task.value?.status || ''] || task.value?.status || ''
 })
 
+const canSend = computed(() => {
+  return inputMessage.value.trim().length > 0 || uploadedImages.value.length > 0
+})
+
 function goBack() {
   router.push('/workbench')
 }
@@ -292,10 +578,7 @@ function formatTime(dateStr: string | undefined) {
 }
 
 function autoResize() {
-  const el = inputRef.value
-  if (!el) return
-  el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  // 固定高度，由 CSS 控制，不需要动态调整
 }
 
 function scrollToBottom() {
@@ -308,26 +591,27 @@ function scrollToBottom() {
 
 async function sendMessage() {
   const text = inputMessage.value.trim()
-  if (!text || isSending.value || !taskId.value) return
+  if ((!text && uploadedImages.value.length === 0) || isSending.value || !taskId.value) return
 
-  // 添加用户消息到界面
+  const imagePreviews = uploadedImages.value.map(img => img.preview)
+
   const userMsg: Message = {
     id: `msg-${taskId.value}-${Date.now()}`,
     role: 'user',
     content: text,
     timestamp: new Date().toISOString(),
+    images: imagePreviews.length ? imagePreviews : undefined,
   }
   messages.value.push(userMsg)
   inputMessage.value = ''
+  uploadedImages.value = []
   autoResize()
   scrollToBottom()
 
-  // 调用后端 API
   isSending.value = true
   try {
-    const res = await api.sendTaskChatMessage(taskId.value, text)
+    const res = await api.sendTaskChatMessage(taskId.value, text, selectedModel.value)
 
-    // 添加 AI 回复到界面
     const aiMsg: Message = {
       id: `msg-${res.message.id}`,
       role: 'assistant',
@@ -336,7 +620,6 @@ async function sendMessage() {
     }
     messages.value.push(aiMsg)
   } catch (e: any) {
-    // 显示错误消息
     const errorMsg: Message = {
       id: `msg-${taskId.value}-${Date.now()}-error`,
       role: 'assistant',
@@ -394,6 +677,28 @@ async function handleRetry() {
     })
   }
 }
+
+// ==================== 点击外部指令 ====================
+const vClickOutside = {
+  mounted(el: HTMLElement, binding: any) {
+    el._clickOutside = (e: Event) => {
+      if (!el.contains(e.target as Node)) {
+        binding.value()
+      }
+    }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el: HTMLElement) {
+    document.removeEventListener('click', el._clickOutside)
+  },
+}
+
+onUnmounted(() => {
+  if (recordingTimer) clearInterval(recordingTimer)
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  }
+})
 </script>
 
 <style scoped>
@@ -526,66 +831,255 @@ async function handleRetry() {
 
 /* 底部输入框 */
 .chat-input-bar {
-  padding: 12px 24px;
+  padding: 16px 24px;
   background-color: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
-.chat-input-wrapper {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
+.chat-input-card {
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 8px 12px;
-  transition: border-color 0.15s ease;
+  border-radius: 16px;
+  padding: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.chat-input-wrapper:focus-within {
+.chat-input-card:focus-within {
   border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* 图片预览 */
+.image-preview-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* 录音指示器 */
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+
+.recording-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+}
+
+.wave-bar {
+  width: 3px;
+  height: 100%;
+  background: var(--accent-red);
+  border-radius: 2px;
+  animation: wave 1s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+
+.recording-text {
+  font-size: 14px;
+  color: var(--accent-red);
+  font-weight: 500;
+}
+
+/* 输入框 */
 .chat-input {
-  flex: 1;
+  width: 100%;
   background: transparent;
   border: none;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 15px;
   font-family: inherit;
-  line-height: 1.5;
+  line-height: 1.6;
   resize: none;
   outline: none;
-  max-height: 120px;
-  min-height: 20px;
+  height: 60px;
+  max-height: 60px;
+  padding: 0;
+  margin-bottom: 12px;
+  overflow-y: auto;
 }
 
 .chat-input::placeholder {
   color: var(--text-muted);
 }
 
-.chat-send-btn {
+/* 底部工具栏 */
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   border: none;
-  background-color: var(--accent-blue);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.toolbar-btn.active {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+}
+
+/* 模型选择器 */
+.model-selector {
+  position: relative;
+}
+
+.model-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.model-select-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.model-option:hover {
+  background: var(--bg-hover);
+}
+
+.model-option.active {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.model-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.model-provider {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 发送按钮 */
+.chat-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background-color: var(--accent-green);
   color: white;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .chat-send-btn:hover:not(:disabled) {
   opacity: 0.9;
+  transform: scale(1.05);
 }
 
 .chat-send-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
@@ -755,5 +1249,63 @@ async function handleRetry() {
 .info-value {
   color: var(--text-secondary);
   font-family: 'SF Mono', Monaco, monospace;
+}
+
+.btn-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.btn-icon-sm.danger {
+  color: var(--accent-red);
+}
+
+.btn-icon-sm:hover {
+  background: var(--bg-hover);
+}
+
+/* 加载错误覆盖层 */
+.load-error-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px;
+}
+
+.load-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  max-width: 400px;
+}
+
+.load-error-content .error-icon {
+  color: var(--accent-red);
+  opacity: 0.8;
+}
+
+.load-error-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.load-error-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
 }
 </style>

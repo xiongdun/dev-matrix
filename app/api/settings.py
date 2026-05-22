@@ -48,6 +48,8 @@ DEFAULT_CONFIGS: Dict[str, tuple] = {
     "anthropic_api_key": ("", "llm", "Anthropic API 密钥", True),
     "openai_base_url": ("https://api.openai.com/v1", "llm", "OpenAI API 基础地址", False),
     "anthropic_base_url": ("https://api.anthropic.com/v1", "llm", "Anthropic API 基础地址", False),
+    "claude_sdk_enabled": ("false", "llm", "启用 Claude Agent SDK", False),
+    "claude_sdk_session_id": ("", "llm", "Claude Code 会话 ID", False),
 
     # 数据库设置
     "database_url": ("sqlite:///./devmatrix.db", "database", "数据库连接 URL", True),
@@ -129,6 +131,26 @@ def _model_to_response(model: SystemConfigModel, mask: bool = True) -> ConfigIte
         is_sensitive=is_sensitive,
         updated_at=cast(Optional[str], model.updated_at.isoformat() if model.updated_at else None),
     )
+
+
+def get_config_value(db: Session, key: str, default: str = "") -> str:
+    """获取单个配置值（内部使用，不脱敏）。
+
+    Args:
+        db: 数据库会话。
+        key: 配置键。
+        default: 默认值。
+
+    Returns:
+        str: 配置值。
+    """
+    config = db.query(SystemConfigModel).filter(SystemConfigModel.key == key).first()
+    if config is None:
+        meta = DEFAULT_CONFIGS.get(key)
+        if meta:
+            return meta[0]
+        return default
+    return cast(str, config.value)
 
 
 def init_default_configs(db: Session) -> None:
