@@ -46,8 +46,12 @@ DEFAULT_CONFIGS: Dict[str, tuple] = {
     "llm_strategy": ("quality_first", "llm", "LLM 选择策略", False),
     "openai_api_key": ("", "llm", "OpenAI API 密钥", True),
     "anthropic_api_key": ("", "llm", "Anthropic API 密钥", True),
+    "azure_api_key": ("", "llm", "Azure OpenAI API 密钥", True),
+    "deepseek_api_key": ("", "llm", "DeepSeek API 密钥", True),
     "openai_base_url": ("https://api.openai.com/v1", "llm", "OpenAI API 基础地址", False),
     "anthropic_base_url": ("https://api.anthropic.com/v1", "llm", "Anthropic API 基础地址", False),
+    "azure_base_url": ("", "llm", "Azure OpenAI 端点地址", False),
+    "deepseek_base_url": ("https://api.deepseek.com/v1", "llm", "DeepSeek API 基础地址", False),
     "claude_sdk_enabled": ("false", "llm", "启用 Claude Agent SDK", False),
     "claude_sdk_session_id": ("", "llm", "Claude Code 会话 ID", False),
 

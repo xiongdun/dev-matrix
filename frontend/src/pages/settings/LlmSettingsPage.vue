@@ -109,13 +109,25 @@ const handleReset = async () => {
             { value: 'openai', label: 'OpenAI' },
             { value: 'anthropic', label: 'Anthropic' },
             { value: 'azure', label: 'Azure OpenAI' },
+            { value: 'deepseek', label: 'DeepSeek' },
           ]"
         />
         <SettingItem
           :label="t('settings.llmModel')"
           :description="t('settings.llmModelDesc')"
-          type="text"
+          type="select"
           v-model="configs.llm_model"
+          :options="[
+            { value: 'gpt-4', label: 'GPT-4' },
+            { value: 'gpt-4o', label: 'GPT-4o' },
+            { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+            { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+            { value: 'claude-3-opus-4', label: 'Claude 3 Opus' },
+            { value: 'claude-3-5-sonnet-4', label: 'Claude 3.5 Sonnet' },
+            { value: 'claude-3-5-haiku-4', label: 'Claude 3.5 Haiku' },
+            { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+            { value: 'deepseek-coder', label: 'DeepSeek Coder' },
+          ]"
         />
         <SettingItem
           :label="t('settings.llmStrategy')"
@@ -143,6 +155,20 @@ const handleReset = async () => {
           :description="t('settings.anthropicApiKeyDesc')"
           type="password"
           v-model="configs.anthropic_api_key"
+          :placeholder="t('settings.enterApiKey')"
+        />
+        <SettingItem
+          :label="t('settings.azureApiKey')"
+          :description="t('settings.azureApiKeyDesc')"
+          type="password"
+          v-model="configs.azure_api_key"
+          :placeholder="t('settings.enterApiKey')"
+        />
+        <SettingItem
+          :label="t('settings.deepseekApiKey')"
+          :description="t('settings.deepseekApiKeyDesc')"
+          type="password"
+          v-model="configs.deepseek_api_key"
           :placeholder="t('settings.enterApiKey')"
         />
       </SettingsSection>
@@ -175,6 +201,18 @@ const handleReset = async () => {
           :description="t('settings.anthropicBaseUrlDesc')"
           type="text"
           v-model="configs.anthropic_base_url"
+        />
+        <SettingItem
+          :label="t('settings.azureBaseUrl')"
+          :description="t('settings.azureBaseUrlDesc')"
+          type="text"
+          v-model="configs.azure_base_url"
+        />
+        <SettingItem
+          :label="t('settings.deepseekBaseUrl')"
+          :description="t('settings.deepseekBaseUrlDesc')"
+          type="text"
+          v-model="configs.deepseek_base_url"
         />
       </SettingsSection>
 
