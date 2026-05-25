@@ -446,4 +446,49 @@ export const api = {
       eventSource?.close()
     }
   },
+
+  // ==================== 代码审查 API ====================
+
+  /** 创建代码审查 */
+  createCodeReview(data: {
+    task_id: number
+    diff: string
+    project_context?: string
+    model?: string
+  }) {
+    return requestWithRetry<{ id: number; task_id: number; status: string; created_at: string }>('/code-reviews', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  /** 获取代码审查详情 */
+  getCodeReview(reviewId: number) {
+    return requestWithRetry<{ id: number; task_id: number; status: string; result: any; created_at: string; updated_at: string }>('/code-reviews/' + reviewId)
+  },
+
+  /** 获取代码审查列表 */
+  listCodeReviews(params?: {
+    task_id?: number
+    project_id?: string
+    status?: string
+    limit?: number
+    offset?: number
+  }) {
+    const query = new URLSearchParams()
+    if (params?.task_id) query.append('task_id', String(params.task_id))
+    if (params?.project_id) query.append('project_id', params.project_id)
+    if (params?.status) query.append('status', params.status)
+    if (params?.limit) query.append('limit', String(params.limit))
+    if (params?.offset) query.append('offset', String(params.offset))
+    const qs = query.toString()
+    return requestWithRetry<{ items: Array<{ id: number; task_id: number; status: string; created_at: string; updated_at: string }>; total: number }>('/code-reviews' + (qs ? '?' + qs : ''))
+  },
+
+  /** 重新运行代码审查 */
+  rerunCodeReview(reviewId: number) {
+    return requestWithRetry<{ id: number; task_id: number; status: string; created_at: string; updated_at: string }>('/code-reviews/' + reviewId + '/re-run', {
+      method: 'POST',
+    })
+  },
 }
