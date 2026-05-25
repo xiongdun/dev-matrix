@@ -51,6 +51,16 @@ class CodeReviewerAgent(Agent):
                 "improvements": [],
             }
 
+        # 1. 静态分析（快速筛选）
+        static_issues = []
+        try:
+            from app.static_analysis.engine import StaticAnalysisEngine
+            engine = StaticAnalysisEngine()
+            static_issues = engine.analyze_diff(diff)
+            logger.info("Static analysis found %d issues", len(static_issues))
+        except Exception as e:
+            logger.warning("Static analysis failed: %s", e)
+
         prompt = build_code_review_prompt(diff, project_context)
 
         start_time = time.time()
@@ -75,13 +85,21 @@ class CodeReviewerAgent(Agent):
             report.setdefault("issues", [])
             report.setdefault("improvements", [])
 
-            # 标准化问题格式
+            # 3. 合并结果（静态分析结果优先）
+            merged_issues = static_issues.copy()
+            static_files = {i["file"] + str(i.get("line")) for i in static_issues}
+
             for issue in report["issues"]:
                 issue.setdefault("line", None)
                 issue.setdefault("file", "")
+                key = issue["file"] + str(issue.get("line"))
+                if key not in static_files:
+                    merged_issues.append(issue)
 
+            report["issues"] = merged_issues
             report["duration_ms"] = duration_ms
             report["llm_model"] = response.get("model", model or "default")
+            report["static_analysis_count"] = len(static_issues)
 
             logger.info(
                 "Code review completed: score=%d, issues=%d, duration=%dms",
@@ -104,6 +122,15 @@ class CodeReviewerAgent(Agent):
             }
         except Exception as e:
             logger.exception("Code review failed")
+            # 即使 LLM 失败，也返回静态分析结果
+            if static_issues:
+                return {
+                    "score": max(0, 100 - len(static_issues) * 10),
+                    "summary": f"LLM 审查失败，仅显示静态分析结果：{e}",
+                    "issues": static_issues,
+                    "improvements": [],
+                    "error": str(e),
+                }
             return {
                 "score": 0,
                 "summary": f"审查失败：{e}",
