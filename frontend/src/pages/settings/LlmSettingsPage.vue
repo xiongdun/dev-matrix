@@ -189,6 +189,33 @@ const handleReset = async () => {
         />
       </SettingsSection>
 
+      <SettingsSection title="代码审查" description="质量门禁规则配置">
+        <SettingItem
+          label="启用代码审查"
+          description="开启后开发阶段完成后自动触发代码审查"
+          type="checkbox"
+          v-model="configs.code_review_enabled"
+        />
+        <SettingItem
+          label="自动触发审查"
+          description="开发 Agent 生成补丁后自动发起审查"
+          type="checkbox"
+          v-model="configs.code_review_auto_trigger"
+        />
+        <SettingItem
+          label="通过分数阈值"
+          description="审查分数达到此值才能通过门禁"
+          type="text"
+          v-model="configs.code_review_score_threshold"
+        />
+        <SettingItem
+          label="Must Fix 阻止通过"
+          description="存在 Must Fix 级别问题时阻止通过"
+          type="checkbox"
+          v-model="configs.code_review_must_fix_block"
+        />
+      </SettingsSection>
+
       <SettingsSection :title="t('settings.advanced')" :description="t('settings.advancedDesc')">
         <SettingItem
           :label="t('settings.openaiBaseUrl')"
