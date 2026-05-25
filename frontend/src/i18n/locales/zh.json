@@ -342,6 +342,26 @@
     "selectWorkflow": "选择要启动的工作流模板",
     "noWorkflows": "暂无可用的工作流模板"
   },
+  "codeReview": {
+    "title": "代码审查",
+    "description": "智能代码质量审查",
+    "score": "分数",
+    "status": "状态",
+    "issues": "问题",
+    "improvements": "改进建议",
+    "mustFix": "必须修复",
+    "shouldFix": "建议修复",
+    "niceToHave": "可选优化",
+    "rerun": "重新审查",
+    "noReviews": "暂无审查记录",
+    "reviewing": "审查中...",
+    "security": "安全",
+    "performance": "性能",
+    "maintainability": "可维护性",
+    "style": "代码规范",
+    "testing": "测试",
+    "architecture": "架构"
+  },
   "workbench": {
     "title": "工作台",
     "subtitle": "查看和处理分配给您的任务",

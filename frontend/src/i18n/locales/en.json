@@ -342,6 +342,26 @@
     "selectWorkflow": "Select a workflow template to start",
     "noWorkflows": "No workflow templates available"
   },
+  "codeReview": {
+    "title": "Code Review",
+    "description": "Intelligent code quality review",
+    "score": "Score",
+    "status": "Status",
+    "issues": "Issues",
+    "improvements": "Improvements",
+    "mustFix": "Must Fix",
+    "shouldFix": "Should Fix",
+    "niceToHave": "Nice to Have",
+    "rerun": "Re-run Review",
+    "noReviews": "No review records",
+    "reviewing": "Reviewing...",
+    "security": "Security",
+    "performance": "Performance",
+    "maintainability": "Maintainability",
+    "style": "Code Style",
+    "testing": "Testing",
+    "architecture": "Architecture"
+  },
   "workbench": {
     "title": "Workbench",
     "subtitle": "View and process tasks assigned to you",
