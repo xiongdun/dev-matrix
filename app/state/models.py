@@ -26,6 +26,7 @@ from datetime import datetime
 from sqlalchemy import (
     create_engine,
     Column,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -234,6 +235,44 @@ class WorkflowTaskModel(Base):
     processed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CodeReviewModel(Base):
+    """代码审查记录模型。
+
+    存储代码审查的详细结果，包括评分、问题、改进建议等。
+
+    Attributes:
+        id: 主键 ID。
+        task_id: 关联的任务 ID（外键关联 workflow_tasks）。
+        project_id: 项目唯一标识。
+        status: 审查状态 (pending/completed/failed)。
+        score: 代码质量评分 (0-100)。
+        summary: 审查总结。
+        issues_json: 发现的问题列表 JSON。
+        improvements_json: 改进建议列表 JSON。
+        raw_diff: 审查的原始代码 diff。
+        llm_model: 使用的 LLM 模型名称。
+        duration_ms: 审查耗时（毫秒）。
+        created_at: 创建时间。
+        completed_at: 完成时间。
+    """
+
+    __tablename__ = "code_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("workflow_tasks.id"), nullable=False, index=True)
+    project_id = Column(String(100), nullable=False, index=True)
+    status = Column(String(20), default="pending")
+    score = Column(Integer, nullable=True)
+    summary = Column(Text, nullable=True)
+    issues_json = Column(Text, nullable=True)
+    improvements_json = Column(Text, nullable=True)
+    raw_diff = Column(Text, nullable=True)
+    llm_model = Column(String(50), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
 
 
 class TaskChatMessageModel(Base):
