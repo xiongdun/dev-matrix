@@ -55,6 +55,13 @@ DEFAULT_CONFIGS: Dict[str, tuple] = {
     "claude_sdk_enabled": ("false", "llm", "启用 Claude Agent SDK", False),
     "claude_sdk_session_id": ("", "llm", "Claude Code 会话 ID", False),
 
+    # 代码审查质量门禁
+    "code_review_enabled": ("true", "llm", "启用代码审查", False),
+    "code_review_auto_trigger": ("true", "llm", "开发完成后自动触发审查", False),
+    "code_review_score_threshold": ("60", "llm", "审查通过分数阈值", False),
+    "code_review_must_fix_block": ("true", "llm", "Must Fix 问题阻止通过", False),
+    "code_review_models": ("gpt-4,claude-3-opus", "llm", "代码审查可用模型", False),
+
     # 数据库设置
     "database_url": ("sqlite:///./devmatrix.db", "database", "数据库连接 URL", True),
     "redis_url": ("redis://localhost:6379/0", "database", "Redis 连接 URL", True),
