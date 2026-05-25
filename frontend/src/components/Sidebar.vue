@@ -23,6 +23,7 @@ import {
   Clock,
   KanbanSquare,
   ListTodo,
+  GitPullRequest,
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { id: 'scheduled-tasks', path: '/scheduled-tasks', title: 'sidebar.scheduledTasks', icon: Clock },
   { id: 'agents', path: '/agents', title: 'sidebar.agents', icon: Bot },
   { id: 'skills', path: '/skills', title: 'sidebar.skills', icon: Wrench },
+  { id: 'code-reviews', path: '/code-reviews', title: 'sidebar.codeReviews', icon: GitPullRequest },
   {
     id: 'workflow',
     path: '/workflow',

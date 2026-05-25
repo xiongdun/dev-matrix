@@ -113,6 +113,18 @@ const routes = [
     ],
   },
   {
+    path: '/code-reviews',
+    name: 'CodeReviewList',
+    component: () => import('./pages/CodeReviewListPage.vue'),
+    meta: { title: '代码审查' }
+  },
+  {
+    path: '/code-reviews/:id',
+    name: 'CodeReviewDetail',
+    component: () => import('./pages/CodeReviewPage.vue'),
+    meta: { title: '审查详情' }
+  },
+  {
     path: '/settings',
     name: 'settings',
     redirect: '/settings/system',
