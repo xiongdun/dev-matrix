@@ -12,6 +12,8 @@
  * ```
  */
 
+import { useErrorHandler } from '../composables/useErrorHandler'
+
 const API_BASE = '/api'
 
 /**
@@ -25,23 +27,44 @@ const API_BASE = '/api'
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30000)
+  const { handleApiError } = useErrorHandler()
 
   try {
     const { headers: customHeaders, ...restOptions } = options || {}
+
+    // 添加 Token
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...customHeaders,
+    }
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token')
+      if (token) {
+        authHeaders['Authorization'] = `Bearer ${token}`
+      }
+    }
+
     const response = await fetch(`${API_BASE}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...customHeaders,
-      },
+      headers: authHeaders,
       signal: controller.signal,
       ...restOptions,
     })
 
     clearTimeout(timeoutId)
 
+    if (response.status === 401) {
+      localStorage.removeItem('token')
+      window.location.href = '/login'
+      throw new Error('Session expired, please login again')
+    }
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => response.statusText)
-      throw new Error(`API Error ${response.status}: ${errorText}`)
+      const error = new Error(`API Error ${response.status}: ${errorText}`)
+      // 显示友好错误提示
+      const friendlyMessage = handleApiError(error)
+      useErrorHandler().showError(friendlyMessage)
+      throw error
     }
 
     const contentType = response.headers.get('content-type') || ''
@@ -55,7 +78,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     clearTimeout(timeoutId)
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        throw new Error('Request timeout after 30s')
+        const msg = 'Request timeout after 30s'
+        useErrorHandler().showError('请求超时，请检查网络连接后重试')
+        throw new Error(msg)
       }
       throw error
     }
@@ -100,6 +125,34 @@ async function requestWithRetry<T>(
 // ==================== API 导出 ====================
 
 export const api = {
+  /** 通用 GET 请求 */
+  get<T>(url: string, options?: RequestInit) {
+    return requestWithRetry<T>(url, { ...options, method: 'GET' })
+  },
+
+  /** 通用 POST 请求 */
+  post<T>(url: string, body?: any, options?: RequestInit) {
+    return requestWithRetry<T>(url, {
+      ...options,
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  },
+
+  /** 通用 PUT 请求 */
+  put<T>(url: string, body?: any, options?: RequestInit) {
+    return requestWithRetry<T>(url, {
+      ...options,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  },
+
+  /** 通用 DELETE 请求 */
+  delete<T>(url: string, options?: RequestInit) {
+    return requestWithRetry<T>(url, { ...options, method: 'DELETE' })
+  },
+
   /** 健康检查 */
   getHealth() {
     return requestWithRetry<{ status: string }>('/health')
@@ -419,7 +472,7 @@ export const api = {
 
     const connect = () => {
       if (closed) return
-      eventSource = new EventSource(`/events/stream${params}`)
+      eventSource = new EventSource(`/api/events/stream${params}`)
 
       eventSource.onmessage = (event) => {
         reconnectAttempts = 0

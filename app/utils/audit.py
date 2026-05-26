@@ -1,22 +1,6 @@
 """审计日志模块。
 
 提供审计日志记录功能，支持文件和数据库两种输出方式。
-
-主要类/函数：
-    - AuditLog: 审计日志数据类。
-    - AuditLogger: 审计日志记录器。
-    - log_audit: 便捷函数，记录审计日志。
-
-使用示例：
-    ```python
-    from app.utils.audit import AuditLogger, log_audit
-
-    logger = AuditLogger()
-    logger.log("user_login", {"user_id": "123"})
-
-    # 或使用便捷函数
-    log_audit("user_login", {"user_id": "123"})
-    ```
 """
 
 import json
@@ -26,183 +10,139 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
+from app.state.models import AuditLogModel
+
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class AuditLog:
-    """审计日志数据类。
-
-    Attributes:
-        action: 操作名称。
-        user_id: 用户 ID，可选。
-        project_id: 项目 ID，可选。
-        details: 详细信息字典。
-        timestamp: 日志时间戳，默认 UTC 当前时间。
-        ip_address: IP 地址，可选。
-        user_agent: 用户代理，可选。
-    """
-
+    """审计日志数据类。"""
     action: str
-    user_id: Optional[str] = None
-    project_id: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    user_id: Optional[int] = None
+    username: Optional[str] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
+    resource_type: Optional[str] = None
+    resource_id: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    status: str = "success"
+    error_message: Optional[str] = None
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典。
-
-        Returns:
-            Dict: 审计日志字典。
-        """
         return {
             **asdict(self),
             "timestamp": self.timestamp.isoformat(),
         }
 
     def to_json(self) -> str:
-        """序列化为 JSON 字符串。
-
-        Returns:
-            str: JSON 字符串。
-        """
         return json.dumps(self.to_dict(), ensure_ascii=False)
 
 
 class AuditLogger:
-    """审计日志记录器。
+    """审计日志记录器。"""
 
-    支持文件和数据库两种输出方式。
-
-    Attributes:
-        log_file: 日志文件路径。
-        use_db: 是否使用数据库存储。
-
-    Example:
-        ```python
-        logger = AuditLogger("audit.log")
-        logger.log("user_login", {"user_id": "123"})
-        ```
-    """
-
-    def __init__(self, log_file: Optional[str] = None, use_db: bool = False):
-        """初始化审计日志记录器。
-
-        Args:
-            log_file: 日志文件路径，默认使用 "logs/audit.log"。
-            use_db: 是否使用数据库存储，默认 False。
-        """
+    def __init__(self, log_file: Optional[str] = None, use_db: bool = True):
         self.log_file = Path(log_file) if log_file else Path("logs/audit.log")
         self.use_db = use_db
         self._ensure_log_dir()
 
     def _ensure_log_dir(self):
-        """确保日志目录存在。"""
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
     def log(
         self,
+        db: Session,
         action: str,
+        user_id: Optional[int] = None,
+        username: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None,
-        project_id: Optional[str] = None,
+        status: str = "success",
+        error_message: Optional[str] = None,
     ) -> AuditLog:
-        """记录审计日志。
-
-        Args:
-            action: 操作名称。
-            details: 详细信息字典。
-            user_id: 用户 ID。
-            project_id: 项目 ID。
-
-        Returns:
-            AuditLog: 审计日志实例。
-        """
         audit_log = AuditLog(
             action=action,
             user_id=user_id,
-            project_id=project_id,
-            details=details or {},
+            username=username,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            details=details,
+            status=status,
+            error_message=error_message,
         )
 
         # 写入文件
         self._write_to_file(audit_log)
 
-        # 可选写入数据库
-        if self.use_db:
-            self._write_to_db(audit_log)
+        # 写入数据库
+        if self.use_db and db:
+            self._write_to_db(db, audit_log)
 
         return audit_log
 
     def _write_to_file(self, audit_log: AuditLog):
-        """写入审计日志到文件。
-
-        Args:
-            audit_log: 审计日志实例。
-        """
         try:
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(audit_log.to_json() + "\n")
         except Exception as exc:
             logger.error("Failed to write audit log to file: %s", exc)
 
-    def _write_to_db(self, audit_log: AuditLog):
-        """写入审计日志到数据库。
-
-        当前为占位实现，实际应使用数据库模型存储。
-
-        Args:
-            audit_log: 审计日志实例。
-        """
-        # 实际实现应写入数据库
-        pass
+    def _write_to_db(self, db: Session, audit_log: AuditLog):
+        try:
+            db_log = AuditLogModel(
+                action=audit_log.action,
+                user_id=audit_log.user_id,
+                username=audit_log.username,
+                ip_address=audit_log.ip_address,
+                user_agent=audit_log.user_agent,
+                resource_type=audit_log.resource_type,
+                resource_id=audit_log.resource_id,
+                details=json.dumps(audit_log.details, ensure_ascii=False) if audit_log.details else None,
+                status=audit_log.status,
+                error_message=audit_log.error_message,
+            )
+            db.add(db_log)
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            logger.error("Failed to write audit log to database: %s", exc)
 
     def get_logs(
         self,
+        db: Session,
         action: Optional[str] = None,
-        user_id: Optional[str] = None,
-        project_id: Optional[str] = None,
+        user_id: Optional[int] = None,
+        resource_type: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         limit: int = 100,
-    ) -> list:
-        """查询审计日志。
+        offset: int = 0,
+    ) -> tuple:
+        query = db.query(AuditLogModel)
 
-        从日志文件中筛选符合条件的日志。
+        if action:
+            query = query.filter(AuditLogModel.action == action)
+        if user_id:
+            query = query.filter(AuditLogModel.user_id == user_id)
+        if resource_type:
+            query = query.filter(AuditLogModel.resource_type == resource_type)
+        if start_date:
+            query = query.filter(AuditLogModel.created_at >= start_date)
+        if end_date:
+            query = query.filter(AuditLogModel.created_at <= end_date)
 
-        Args:
-            action: 按操作名称筛选。
-            user_id: 按用户 ID 筛选。
-            project_id: 按项目 ID 筛选。
-            limit: 最大返回数量。
-
-        Returns:
-            list: 审计日志列表。
-        """
-        logs: List[Dict[str, Any]] = []
-        if not self.log_file.exists():
-            return logs
-
-        try:
-            with open(self.log_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    if len(logs) >= limit:
-                        break
-                    try:
-                        data = json.loads(line.strip())
-                        if action and data.get("action") != action:
-                            continue
-                        if user_id and data.get("user_id") != user_id:
-                            continue
-                        if project_id and data.get("project_id") != project_id:
-                            continue
-                        logs.append(data)
-                    except json.JSONDecodeError:
-                        continue
-        except Exception as exc:
-            logger.error("Failed to read audit logs: %s", exc)
-
-        return logs
+        total = query.count()
+        logs = query.order_by(AuditLogModel.created_at.desc()).offset(offset).limit(limit).all()
+        return total, logs
 
 
 # 全局审计日志记录器实例
@@ -210,20 +150,11 @@ _default_logger = AuditLogger()
 
 
 def log_audit(
+    db: Session,
     action: str,
-    details: Optional[Dict[str, Any]] = None,
-    user_id: Optional[str] = None,
-    project_id: Optional[str] = None,
+    user_id: Optional[int] = None,
+    username: Optional[str] = None,
+    **kwargs
 ) -> AuditLog:
-    """便捷函数，使用默认记录器记录审计日志。
-
-    Args:
-        action: 操作名称。
-        details: 详细信息字典。
-        user_id: 用户 ID。
-        project_id: 项目 ID。
-
-    Returns:
-        AuditLog: 审计日志实例。
-    """
-    return _default_logger.log(action, details, user_id, project_id)
+    """便捷函数，使用默认记录器记录审计日志。"""
+    return _default_logger.log(db, action, user_id=user_id, username=username, **kwargs)

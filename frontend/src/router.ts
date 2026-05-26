@@ -11,6 +11,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from './stores/user'
 import Dashboard from './components/Dashboard.vue'
 
 /**
@@ -18,6 +19,12 @@ import Dashboard from './components/Dashboard.vue'
  * @type {Array<import('vue-router').RouteRecordRaw>}
  */
 const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('./pages/LoginPage.vue'),
+    meta: { public: true, fullscreen: true },
+  },
   {
     path: '/',
     name: 'dashboard',
@@ -162,6 +169,30 @@ const routes = [
       },
     ],
   },
+  {
+    path: '/users',
+    name: 'users',
+    component: () => import('./pages/users/UserListPage.vue'),
+    meta: { title: 'User Management', icon: 'users', permission: 'user:manage' },
+  },
+  {
+    path: '/roles',
+    name: 'roles',
+    component: () => import('./pages/roles/RoleListPage.vue'),
+    meta: { title: 'Role Management', icon: 'user-cog', permission: 'role:manage' },
+  },
+  {
+    path: '/menus',
+    name: 'menus',
+    component: () => import('./pages/menus/MenuListPage.vue'),
+    meta: { title: 'Menu Management', icon: 'menu', permission: 'menu:manage' },
+  },
+  {
+    path: '/forbidden',
+    name: 'forbidden',
+    component: () => import('./pages/ForbiddenPage.vue'),
+    meta: { public: true, fullscreen: true },
+  },
 ]
 
 /**
@@ -171,6 +202,54 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+
+  if (to.meta.public) {
+    next()
+    return
+  }
+
+  if (!token) {
+    next('/login')
+    return
+  }
+
+  // 权限检查
+  const requiredPermission = to.meta.permission as string | undefined
+  if (requiredPermission) {
+    const userStore = useUserStore()
+    // 确保用户信息已加载
+    if (!userStore.userInfo) {
+      // 异步获取用户信息后再检查权限
+      import('./api/auth').then(({ authApi }) => {
+        authApi.getMe()
+          .then((userInfo) => {
+            userStore.setUserInfo(userInfo)
+            if (userStore.hasPermission(requiredPermission)) {
+              next()
+            } else {
+              next('/forbidden')
+            }
+          })
+          .catch(() => {
+            userStore.clearToken()
+            next('/login')
+          })
+      })
+      return
+    }
+
+    if (!userStore.hasPermission(requiredPermission)) {
+      next('/forbidden')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

@@ -14,20 +14,38 @@
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import TabBar from './components/TabBar.vue'
 import AppConfirm from './components/AppConfirm.vue'
 import AppPrompt from './components/AppPrompt.vue'
+import ErrorToast from './components/ErrorToast.vue'
 import { useI18n } from 'vue-i18n'
 import { useDialog } from './composables/useDialog'
+import { useUserStore } from './stores/user'
+import { authApi } from './api/auth'
+import { api } from './api'
 
 const { t } = useI18n()
 const { confirmState, promptState, confirmResult, promptResult } = useDialog()
 const route = useRoute()
+const userStore = useUserStore()
 
 const isFullscreenRoute = computed(() => !!route.meta.fullscreen)
+
+onMounted(async () => {
+  if (userStore.isLoggedIn && userStore.menus.length === 0) {
+    try {
+      const userInfo = await authApi.getMe()
+      userStore.setUserInfo(userInfo)
+      const menus = await api.get('/menus/my')
+      userStore.setMenus(menus)
+    } catch (e) {
+      userStore.clearToken()
+    }
+  }
+})
 </script>
 
 <template>
@@ -68,6 +86,8 @@ const isFullscreenRoute = computed(() => !!route.meta.fullscreen)
       @confirm="(v) => promptResult(v)"
       @cancel="promptResult(null)"
     />
+
+    <ErrorToast />
   </div>
 </template>
 
