@@ -57,6 +57,10 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # 重置限流器状态
+    from app.core.limiter import limiter
+    limiter.reset()
+
     user = UserModel(
         username="testuser",
         password_hash=hash_password("testpass"),
@@ -91,8 +95,15 @@ class TestRateLimit:
 
     def test_login_rate_limit_blocks(self, client):
         """限流触发后阻止额外请求。"""
-        # 由于限流器在测试间共享状态，前一个测试已经触发了限流
-        # 此测试验证限流仍然生效
+        # 先成功登录 5 次触发限流
+        for i in range(5):
+            response = client.post("/api/auth/login", json={
+                "username": "testuser",
+                "password": "testpass",
+            })
+            assert response.status_code == 200, f"Login {i+1} should succeed"
+
+        # 第 6 次应该被限流
         response = client.post("/api/auth/login", json={
             "username": "testuser",
             "password": "testpass",

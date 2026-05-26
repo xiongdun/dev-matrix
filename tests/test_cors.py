@@ -57,6 +57,10 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # 重置限流器状态
+    from app.core.limiter import limiter
+    limiter.reset()
+
     user = UserModel(
         username="testuser",
         password_hash=hash_password("testpass"),

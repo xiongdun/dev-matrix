@@ -61,6 +61,10 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # 重置限流器状态
+    from app.core.limiter import limiter
+    limiter.reset()
+
     # 创建测试用户
     user = UserModel(
         username="testuser",
