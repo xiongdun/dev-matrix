@@ -28,11 +28,13 @@ Attributes:
     logger: 模块级日志记录器。
 """
 
+import json
 import logging
 import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -121,7 +123,7 @@ def configure_logging() -> None:
     class JsonFormatter(logging.Formatter):
         def format(self, record: logging.LogRecord) -> str:
             log_data = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
                 "level": record.levelname,
                 "logger": record.name,
                 "message": record.getMessage(),
@@ -258,7 +260,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "detail": f"Internal server error: {exc}",
+            "detail": "Internal server error",
             "request_id": request_id,
         },
     )
