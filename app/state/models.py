@@ -28,13 +28,13 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Integer,
+    event,
     String,
     Text,
     DateTime,
     Float,
-    event,
 )
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
 
 from app.config import get_settings
 
@@ -471,15 +471,153 @@ def scheduled_task_before_update(mapper, connection, target):
     target.updated_at = datetime.utcnow()
 
 
+class SystemSecretModel(Base):
+    """系统密钥存储模型。
+
+    用于安全地存储 JWT Secret 等系统级密钥。
+    """
+    __tablename__ = "system_secrets"
+
+    id = Column(Integer, primary_key=True)
+    key_name = Column(String(64), unique=True, nullable=False, index=True)
+    key_value = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AuditLogModel(Base):
+    """审计日志数据库模型。
+
+    记录系统中所有重要的用户操作和系统事件。
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    action = Column(String(64), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    username = Column(String(50), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    resource_type = Column(String(50), nullable=True)
+    resource_id = Column(String(64), nullable=True)
+    details = Column(Text, nullable=True)
+    status = Column(String(20), default="success")
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("UserModel", backref="audit_logs")
+
+
+class UserModel(Base):
+    """用户表。"""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    nickname = Column(String(50), nullable=True)
+    email = Column(String(100), nullable=True)
+    avatar = Column(String(255), nullable=True)
+    status = Column(String(20), default="active")
+    data_scope = Column(String(20), default="self")
+    last_login_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class RoleModel(Base):
+    """角色表。"""
+
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    display_name = Column(String(50), nullable=False)
+    description = Column(String(255), nullable=True)
+    data_scope = Column(String(20), default="self")
+    is_system = Column(Integer, default=0)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserRoleModel(Base):
+    """用户角色关联表。"""
+
+    __tablename__ = "user_roles"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+
+
+class MenuModel(Base):
+    """菜单表。"""
+
+    __tablename__ = "menus"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    title = Column(String(50), nullable=False)
+    path = Column(String(100), nullable=True)
+    icon = Column(String(50), nullable=True)
+    parent_id = Column(Integer, ForeignKey("menus.id"), nullable=True)
+    sort_order = Column(Integer, default=0)
+    menu_type = Column(String(20), default="page")
+    permission = Column(String(100), nullable=True)
+    component = Column(String(100), nullable=True)
+    is_visible = Column(Integer, default=1)
+    status = Column(String(20), default="active")
+
+
+class RoleMenuModel(Base):
+    """角色菜单关联表。"""
+
+    __tablename__ = "role_menus"
+
+    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+    menu_id = Column(Integer, ForeignKey("menus.id"), primary_key=True)
+
+
+class RoleAgentModel(Base):
+    """角色 Agent 关联表。"""
+
+    __tablename__ = "role_agents"
+
+    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+    agent_name = Column(String(50), primary_key=True)
+
+
+@event.listens_for(UserModel, "before_update")
+def user_before_update(mapper, connection, target):
+    """在更新 UserModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
+@event.listens_for(RoleModel, "before_update")
+def role_before_update(mapper, connection, target):
+    """在更新 RoleModel 前自动设置 updated_at 时间戳。"""
+    target.updated_at = datetime.utcnow()
+
+
 # 模块级单例
 _engine = None
 _SessionLocal = None
 
 
+def _set_sqlite_pragma(dbapi_conn, connection_record):
+    """设置 SQLite WAL 模式以支持并发读写。"""
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
+
+
 def get_engine():
     """获取数据库引擎（单例）。
 
-    首次调用时根据配置创建引擎，SQLite 使用 check_same_thread=False。
+    首次调用时根据配置创建引擎，SQLite 使用 check_same_thread=False
+    和 WAL 日志模式以支持并发读写。
 
     Returns:
         Engine: SQLAlchemy 引擎实例。
@@ -487,12 +625,14 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_engine(
-            settings.database_url,
-            connect_args={"check_same_thread": False}
-            if settings.database_url.startswith("sqlite")
-            else {},
-        )
+        if settings.database_url.startswith("sqlite"):
+            _engine = create_engine(
+                settings.database_url,
+                connect_args={"check_same_thread": False},
+            )
+            event.listen(_engine, "connect", _set_sqlite_pragma)
+        else:
+            _engine = create_engine(settings.database_url)
     return _engine
 
 
