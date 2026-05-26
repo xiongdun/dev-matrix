@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.state.models import UserModel, RoleModel, UserRoleModel, MenuModel, RoleMenuModel, RoleAgentModel
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
+from app.core.limiter import limiter
 
 router = APIRouter(tags=["auth"])
 
@@ -98,7 +99,8 @@ def get_user_agents(db: Session, user_id: int) -> list:
 
 
 @router.post("/login")
-async def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     """用户登录。"""
     user = db.query(UserModel).filter(UserModel.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):

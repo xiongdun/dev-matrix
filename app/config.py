@@ -65,6 +65,18 @@ class Settings(BaseSettings):
     # 国际化配置
     default_locale: str = "zh"
 
+    # 限流配置
+    rate_limit_login: str = "5/minute"
+    rate_limit_default: str = "100/minute"
+    rate_limit_enabled: bool = True
+
+    # CORS 配置
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    def get_allowed_origins(self) -> list:
+        """解析允许的来源列表。"""
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
     class Config:
         """Pydantic 配置类。"""
 
