@@ -1,7 +1,7 @@
 import pytest
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
-from app.skills.base import BaseSkill, SkillResult, SkillConfig
+from app.skills.base import BaseSkill, SkillConfig, SkillResult
 
 
 class MockLLMRouter:
@@ -69,9 +69,7 @@ class TestBaseAgent:
     @pytest.mark.asyncio
     async def test_call_skill_not_found(self):
         agent = TestAgent(MockLLMRouter(), MockStateRepo())
-        with pytest.raises(
-            ValueError, match="Skill 'missing' not composed into agent 'test'"
-        ):
+        with pytest.raises(ValueError, match="Skill 'missing' not composed into agent 'test'"):
             await agent.call_skill("missing", {})
 
     def test_list_skills(self):
@@ -108,9 +106,7 @@ class TestBaseAgent:
         skill = SlowSkill()
         skill.config = SkillConfig(timeout=0.01)
         agent.use_skill(skill)
-        with pytest.raises(
-            TimeoutError, match="Skill 'slow_skill' execution timed out"
-        ):
+        with pytest.raises(TimeoutError, match="Skill 'slow_skill' execution timed out"):
             await agent.call_skill("slow_skill", {})
 
     @pytest.mark.asyncio

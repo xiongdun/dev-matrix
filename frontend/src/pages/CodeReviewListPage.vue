@@ -47,7 +47,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileSearch } from 'lucide-vue-next'
-import api from '../api'
+import { api } from '../api'
 import ScoreBadge from '../components/code-review/ScoreBadge.vue'
 
 const router = useRouter()

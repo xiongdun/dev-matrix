@@ -1,7 +1,6 @@
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
 
 import httpx
 
@@ -37,9 +36,7 @@ class GitProvider(ABC):
         pass
 
     @abstractmethod
-    async def list_pull_requests(
-        self, repo: str, state: str = "open"
-    ) -> List[PullRequest]:
+    async def list_pull_requests(self, repo: str, state: str = "open") -> list[PullRequest]:
         pass
 
     @abstractmethod
@@ -55,7 +52,7 @@ class GitProvider(ABC):
 
 
 class GitHubProvider(GitProvider):
-    def __init__(self, token: Optional[str] = None):
+    def __init__(self, token: str | None = None):
         self.token = token or os.environ.get("GITHUB_TOKEN", "")
         self.base_url = "https://api.github.com"
         self._client = httpx.AsyncClient(
@@ -92,9 +89,7 @@ class GitHubProvider(GitProvider):
             base_branch=base,
         )
 
-    async def list_pull_requests(
-        self, repo: str, state: str = "open"
-    ) -> List[PullRequest]:
+    async def list_pull_requests(self, repo: str, state: str = "open") -> list[PullRequest]:
         url = f"{self.base_url}/repos/{repo}/pulls"
         response = await self._client.get(url, params={"state": state})
         response.raise_for_status()
@@ -141,9 +136,7 @@ class GitHubProvider(GitProvider):
 
 
 class GitLabProvider(GitProvider):
-    def __init__(
-        self, token: Optional[str] = None, base_url: str = "https://gitlab.com"
-    ):
+    def __init__(self, token: str | None = None, base_url: str = "https://gitlab.com"):
         self.token = token or os.environ.get("GITLAB_TOKEN", "")
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(headers={"PRIVATE-TOKEN": self.token})
@@ -179,9 +172,7 @@ class GitLabProvider(GitProvider):
             base_branch=base,
         )
 
-    async def list_pull_requests(
-        self, repo: str, state: str = "opened"
-    ) -> List[PullRequest]:
+    async def list_pull_requests(self, repo: str, state: str = "opened") -> list[PullRequest]:
         project = self._project_path(repo)
         url = f"{self.base_url}/api/v4/projects/{project}/merge_requests"
         response = await self._client.get(url, params={"state": state})

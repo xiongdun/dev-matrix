@@ -21,7 +21,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
-from app.state.models import WorkflowTaskModel, TaskChatMessageModel, get_db
+from app.state.models import TaskChatMessageModel, WorkflowTaskModel, get_db
 from app.state.repository import StateRepository
 from app.tools.executor import ToolExecutor
 
@@ -43,9 +43,9 @@ class ChatMessageResponse(BaseModel):
     task_id: int
     role: str
     content: str
-    tool_calls: Optional[str] = None
-    tool_results: Optional[str] = None
-    created_at: Optional[datetime] = None
+    tool_calls: str | None = None
+    tool_results: str | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -53,39 +53,39 @@ class ChatMessageResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
-    model: Optional[str] = None
+    model: str | None = None
 
 
 class ChatResponse(BaseModel):
     message: ChatMessageResponse
-    tool_calls: Optional[List[Dict[str, Any]]] = None
+    tool_calls: list[dict[str, Any]] | None = None
 
 
 class WorkflowTaskResponse(BaseModel):
     id: int
     project_id: str
-    workflow_id: Optional[int] = None
+    workflow_id: int | None = None
     stage_id: str
     stage_name: str
     agent_role: str
     status: str
     output_json: str = "{}"
-    feedback: Optional[str] = None
-    arrived_at: Optional[datetime] = None
-    processed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    feedback: str | None = None
+    arrived_at: datetime | None = None
+    processed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
 
 
 class RejectRequest(BaseModel):
-    comment: Optional[str] = Field(None, max_length=2000)
+    comment: str | None = Field(None, max_length=2000)
 
 
 class RetryRequest(BaseModel):
-    feedback: Optional[str] = Field(None, max_length=2000)
+    feedback: str | None = Field(None, max_length=2000)
 
 
 class TaskStatsResponse(BaseModel):
@@ -98,23 +98,23 @@ def _model_to_response(model: WorkflowTaskModel) -> WorkflowTaskResponse:
     return WorkflowTaskResponse(
         id=cast(int, model.id),
         project_id=cast(str, model.project_id),
-        workflow_id=cast(Optional[int], model.workflow_id),
+        workflow_id=cast(int | None, model.workflow_id),
         stage_id=cast(str, model.stage_id),
         stage_name=cast(str, model.stage_name),
         agent_role=cast(str, model.agent_role),
         status=cast(str, model.status),
         output_json=cast(str, model.output_json),
-        feedback=cast(Optional[str], model.feedback),
-        arrived_at=cast(Optional[datetime], model.arrived_at),
-        processed_at=cast(Optional[datetime], model.processed_at),
-        created_at=cast(Optional[datetime], model.created_at),
-        updated_at=cast(Optional[datetime], model.updated_at),
+        feedback=cast(str | None, model.feedback),
+        arrived_at=cast(datetime | None, model.arrived_at),
+        processed_at=cast(datetime | None, model.processed_at),
+        created_at=cast(datetime | None, model.created_at),
+        updated_at=cast(datetime | None, model.updated_at),
     )
 
 
-@router.get("/tasks", response_model=Dict[str, List[WorkflowTaskResponse]])
+@router.get("/tasks", response_model=dict[str, list[WorkflowTaskResponse]])
 async def list_tasks(
-    role: Optional[str] = Query(None, max_length=64),
+    role: str | None = Query(None, max_length=64),
     db: Session = Depends(get_db),
 ):
     try:
@@ -184,7 +184,7 @@ async def approve_task(task_id: int, db: Session = Depends(get_db)):
 @router.post("/tasks/{task_id}/reject", response_model=WorkflowTaskResponse)
 async def reject_task(
     task_id: int,
-    payload: Optional[RejectRequest] = None,
+    payload: RejectRequest | None = None,
     db: Session = Depends(get_db),
 ):
     task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
@@ -218,7 +218,7 @@ async def reject_task(
 @router.post("/tasks/{task_id}/retry", response_model=WorkflowTaskResponse)
 async def retry_task(
     task_id: int,
-    payload: Optional[RetryRequest] = None,
+    payload: RetryRequest | None = None,
     db: Session = Depends(get_db),
 ):
     task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
@@ -254,11 +254,9 @@ async def retry_task(
                 repo = StateRepository(db)
                 agent = agent_cls(llm_router=router, state_repository=repo)
                 output_json_val = cast(str, task.output_json)
-                context: Dict[str, Any] = {
+                context: dict[str, Any] = {
                     "feedback": task.feedback,
-                    "previous_output": json.loads(output_json_val)
-                    if output_json_val
-                    else {},
+                    "previous_output": json.loads(output_json_val) if output_json_val else {},
                 }
                 proposal = await agent.run(cast(str, task.project_id), context)
 
@@ -288,7 +286,7 @@ async def retry_task(
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
-@router.get("/tasks/{task_id}/chat", response_model=Dict[str, List[ChatMessageResponse]])
+@router.get("/tasks/{task_id}/chat", response_model=dict[str, list[ChatMessageResponse]])
 async def get_chat_history(
     task_id: int,
     db: Session = Depends(get_db),
@@ -312,9 +310,9 @@ async def get_chat_history(
                 task_id=cast(int, m.task_id),
                 role=cast(str, m.role),
                 content=cast(str, m.content),
-                tool_calls=cast(Optional[str], m.tool_calls),
-                tool_results=cast(Optional[str], m.tool_results),
-                created_at=cast(Optional[datetime], m.created_at),
+                tool_calls=cast(str | None, m.tool_calls),
+                tool_results=cast(str | None, m.tool_results),
+                created_at=cast(datetime | None, m.created_at),
             )
             for m in messages
         ]
@@ -381,26 +379,30 @@ async def chat_with_task(
 
         # 尝试使用 SDK
         ai_content = ""
-        tool_calls_log: List[Dict[str, Any]] = []
+        tool_calls_log: list[dict[str, Any]] = []
 
         try:
             from app.agents.base import CLAUDE_SDK_AVAILABLE
             from app.api.settings import get_config_value
 
-            claude_sdk_enabled = get_config_value(db, "claude_sdk_enabled", "false").lower() == "true"
+            claude_sdk_enabled = (
+                get_config_value(db, "claude_sdk_enabled", "false").lower() == "true"
+            )
 
             if CLAUDE_SDK_AVAILABLE and claude_sdk_enabled:
                 from claude_agent_sdk import (
-                    query as sdk_query,
-                    ClaudeAgentOptions,
                     AssistantMessage,
+                    ClaudeAgentOptions,
                     TextBlock,
-                    ToolUseBlock,
                     ToolResultBlock,
+                    ToolUseBlock,
+                )
+                from claude_agent_sdk import (
+                    query as sdk_query,
                 )
 
                 session_id = get_config_value(db, "claude_sdk_session_id", "")
-                options_kwargs: Dict[str, Any] = {
+                options_kwargs: dict[str, Any] = {
                     "system_prompt": system_prompt,
                     "max_turns": 5,
                 }
@@ -420,10 +422,12 @@ async def chat_with_task(
                             elif isinstance(block, ToolUseBlock):
                                 tool_name = block.name
                                 tool_input = getattr(block, "input", {}) or {}
-                                tool_calls_log.append({
-                                    "name": tool_name,
-                                    "input": tool_input,
-                                })
+                                tool_calls_log.append(
+                                    {
+                                        "name": tool_name,
+                                        "input": tool_input,
+                                    }
+                                )
                                 logger.info(
                                     "Task %d Agent using tool: %s",
                                     task_id,
@@ -432,9 +436,7 @@ async def chat_with_task(
 
                                 # 执行工具
                                 try:
-                                    tool_result = tool_executor.execute(
-                                        tool_name, **tool_input
-                                    )
+                                    tool_result = tool_executor.execute(tool_name, **tool_input)
                                 except Exception as tool_exc:
                                     tool_result = {"error": str(tool_exc)}
 
@@ -463,8 +465,7 @@ async def chat_with_task(
         except Exception as sdk_exc:
             logger.exception("SDK query failed for task %d", task_id)
             ai_content = (
-                f"处理消息时出错：{sdk_exc}\n\n"
-                f"请检查 claude-agent-sdk 是否正确安装和配置。"
+                f"处理消息时出错：{sdk_exc}\n\n请检查 claude-agent-sdk 是否正确安装和配置。"
             )
 
         # 5. 保存 AI 回复
@@ -484,9 +485,9 @@ async def chat_with_task(
                 task_id=cast(int, ai_msg.task_id),
                 role=cast(str, ai_msg.role),
                 content=cast(str, ai_msg.content),
-                tool_calls=cast(Optional[str], ai_msg.tool_calls),
-                tool_results=cast(Optional[str], ai_msg.tool_results),
-                created_at=cast(Optional[datetime], ai_msg.created_at),
+                tool_calls=cast(str | None, ai_msg.tool_calls),
+                tool_results=cast(str | None, ai_msg.tool_results),
+                created_at=cast(datetime | None, ai_msg.created_at),
             ),
             tool_calls=tool_calls_log if tool_calls_log else None,
         )
@@ -499,22 +500,27 @@ async def chat_with_task(
         raise HTTPException(status_code=500, detail=f"Chat failed: {exc}") from exc
 
 
-@router.get("/models", response_model=Dict[str, List[Dict[str, str]]])
+@router.get("/models", response_model=dict[str, list[dict[str, str]]])
 async def get_available_models():
     """获取可用的 LLM 模型列表。"""
     from app.config import get_settings
+
     settings = get_settings()
     models = []
     if settings.openai_api_key:
-        models.extend([
-            {"id": "gpt-4", "name": "GPT-4", "provider": "OpenAI"},
-            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "OpenAI"},
-        ])
+        models.extend(
+            [
+                {"id": "gpt-4", "name": "GPT-4", "provider": "OpenAI"},
+                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "OpenAI"},
+            ]
+        )
     if settings.anthropic_api_key:
-        models.extend([
-            {"id": "claude-3-opus", "name": "Claude 3 Opus", "provider": "Anthropic"},
-            {"id": "claude-3-sonnet", "name": "Claude 3 Sonnet", "provider": "Anthropic"},
-        ])
+        models.extend(
+            [
+                {"id": "claude-3-opus", "name": "Claude 3 Opus", "provider": "Anthropic"},
+                {"id": "claude-3-sonnet", "name": "Claude 3 Sonnet", "provider": "Anthropic"},
+            ]
+        )
     if not models:
         models = [
             {"id": "gpt-4", "name": "GPT-4", "provider": "OpenAI"},
@@ -523,17 +529,17 @@ async def get_available_models():
     return {"models": models}
 
 
-@router.post("/transcribe", response_model=Dict[str, str])
+@router.post("/transcribe", response_model=dict[str, str])
 async def transcribe_audio(
     audio: Any = None,
 ):
     """语音转文字（使用 OpenAI Whisper API）。"""
     try:
         from app.config import get_settings
+
         settings = get_settings()
         if not settings.openai_api_key:
             return {"text": "", "error": "OpenAI API key not configured"}
-        import httpx
         # 这里简化处理，实际应该接收上传的文件
         # 由于 FastAPI 文件上传需要更复杂的处理，这里返回模拟结果
         return {"text": "语音转文字功能需要配置 OpenAI API Key 并上传音频文件。"}
@@ -544,7 +550,7 @@ async def transcribe_audio(
 
 @router.get("/stats", response_model=TaskStatsResponse)
 async def get_stats(
-    role: Optional[str] = Query(None, max_length=64),
+    role: str | None = Query(None, max_length=64),
     db: Session = Depends(get_db),
 ):
     try:
@@ -558,9 +564,7 @@ async def get_stats(
 
         completed = (
             db.query(func.count(WorkflowTaskModel.id))
-            .filter(
-                *base_filter, WorkflowTaskModel.status.in_(["approved", "completed"])
-            )
+            .filter(*base_filter, WorkflowTaskModel.status.in_(["approved", "completed"]))
             .scalar()
             or 0
         )
@@ -579,9 +583,7 @@ async def get_stats(
             completed,
             rejected,
         )
-        return TaskStatsResponse(
-            pending=pending, completed=completed, rejected=rejected
-        )
+        return TaskStatsResponse(pending=pending, completed=completed, rejected=rejected)
     except Exception as exc:
         logger.exception("Failed to get workbench stats")
         raise HTTPException(status_code=500, detail="Internal server error") from exc

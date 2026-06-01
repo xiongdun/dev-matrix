@@ -24,17 +24,17 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    create_engine,
     Column,
-    ForeignKey,
-    Integer,
-    event,
-    String,
-    Text,
     DateTime,
     Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    event,
 )
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 
 from app.config import get_settings
 
@@ -476,6 +476,7 @@ class SystemSecretModel(Base):
 
     用于安全地存储 JWT Secret 等系统级密钥。
     """
+
     __tablename__ = "system_secrets"
 
     id = Column(Integer, primary_key=True)
@@ -490,6 +491,7 @@ class AuditLogModel(Base):
 
     记录系统中所有重要的用户操作和系统事件。
     """
+
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True)
@@ -644,9 +646,7 @@ def get_session_maker():
     """
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = sessionmaker(
-            autocommit=False, autoflush=False, bind=get_engine()
-        )
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
     return _SessionLocal
 
 

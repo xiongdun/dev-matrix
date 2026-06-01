@@ -22,7 +22,8 @@
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from app.events.types import Event
 
@@ -51,7 +52,7 @@ class EventBus:
 
     def __init__(self):
         """初始化事件总线。"""
-        self._handlers: Dict[str, List[Callable[[Event], Any]]] = {}
+        self._handlers: dict[str, list[Callable[[Event], Any]]] = {}
         self._lock = asyncio.Lock()
 
     def subscribe(self, event_type: str, handler: Callable[[Event], Any]) -> None:

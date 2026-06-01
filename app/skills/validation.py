@@ -18,7 +18,7 @@
     ```
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from app.skills.base import BaseSkill, SkillResult
 
@@ -46,7 +46,7 @@ class ValidationSkill(BaseSkill):
     name = "validation"
     description = "Validate content against a set of rules"
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行内容验证。
 
         检查内容中是否包含所有规则指定的关键字（不区分大小写）。

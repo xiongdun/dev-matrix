@@ -23,8 +23,6 @@
     ```
 """
 
-from typing import Dict, Optional, Type
-
 from app.core.registry.base import Registry
 from app.skills.base import BaseSkill, SkillConfig
 
@@ -45,7 +43,7 @@ class SkillRegistry(Registry[BaseSkill]):
         ```
     """
 
-    def create(self, name: str, config: Optional[SkillConfig] = None) -> BaseSkill:
+    def create(self, name: str, config: SkillConfig | None = None) -> BaseSkill:
         """创建技能实例。
 
         Args:
@@ -61,7 +59,7 @@ class SkillRegistry(Registry[BaseSkill]):
         skill_class = self.get(name)
         return skill_class(config)
 
-    def discover(self, package: str = "app.skills") -> Dict[str, Type[BaseSkill]]:
+    def discover(self, package: str = "app.skills") -> dict[str, type[BaseSkill]]:
         """自动发现指定包中的技能类。
 
         Args:
@@ -76,7 +74,7 @@ class SkillRegistry(Registry[BaseSkill]):
         return {name: self.get(name) for name in registered}
 
 
-def register_skill(name: Optional[str] = None, registry: Optional[SkillRegistry] = None):
+def register_skill(name: str | None = None, registry: SkillRegistry | None = None):
     """技能注册装饰器。
 
     将技能类注册到指定或全局注册表。
@@ -96,7 +94,7 @@ def register_skill(name: Optional[str] = None, registry: Optional[SkillRegistry]
         ```
     """
 
-    def decorator(cls: Type[BaseSkill]) -> Type[BaseSkill]:
+    def decorator(cls: type[BaseSkill]) -> type[BaseSkill]:
         reg = registry or _global_registry
         reg.register(name or cls.name, cls)
         return cls

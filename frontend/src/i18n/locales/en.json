@@ -22,7 +22,10 @@
     "scheduledTasks": "Scheduled Tasks",
     "taskManagement": "Task Management",
     "myTasks": "My Tasks",
-    "taskBoard": "Task Board"
+    "taskBoard": "Task Board",
+    "userManagement": "User Management",
+    "roleManagement": "Role Management",
+    "menuManagement": "Menu Management"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -428,6 +431,7 @@
     "micPermissionDenied": "Cannot access microphone. Please check permission settings.",
     "transcriptionFailed": "Voice transcription failed",
     "loadErrorTitle": "Load Failed",
+    "taskNotFound": "Task #{id} not found or has been deleted",
     "timeJustNow": "Just now",
     "timeMinutesAgo": "{n}m ago",
     "timeHoursAgo": "{n}h ago",
@@ -464,6 +468,11 @@
     "empty": "No scheduled tasks",
     "loadError": "Failed to load scheduled tasks",
     "confirmDelete": "Delete this scheduled task?"
+  },
+  "forbidden": {
+    "title": "Access Denied",
+    "message": "You do not have permission to access this page. Please contact the administrator.",
+    "backHome": "Back to Home"
   },
   "taskManagement": {
     "title": "Task Management",

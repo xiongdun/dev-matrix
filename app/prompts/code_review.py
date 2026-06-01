@@ -17,11 +17,11 @@ CODE_REVIEW_SYSTEM_PROMPT: Final[str] = (
     "- should_fix: 建议修复，影响代码质量或可读性\n"
     "- nice_to_have: 可选优化，锦上添花\n\n"
     "输出格式要求（必须严格遵循 JSON 格式）：\n"
-    '{\n'
+    "{\n"
     '  "score": <0-100 的整数分数>,\n'
     '  "summary": "<一句话总结审查结果>",\n'
     '  "issues": [\n'
-    '    {\n'
+    "    {\n"
     '      "file": "<文件路径>",\n'
     '      "line": <行号或 null>,\n'
     '      "severity": "must_fix|should_fix|nice_to_have",\n'
@@ -29,15 +29,15 @@ CODE_REVIEW_SYSTEM_PROMPT: Final[str] = (
     '      "title": "<问题标题>",\n'
     '      "description": "<问题详细描述>",\n'
     '      "suggestion": "<具体的修复建议，包含代码示例>"\n'
-    '    }\n'
-    '  ],\n'
+    "    }\n"
+    "  ],\n"
     '  "improvements": [\n'
-    '    {\n'
+    "    {\n"
     '      "category": "<类别>",\n'
     '      "suggestion": "<改进建议>"\n'
-    '    }\n'
-    '  ]\n'
-    '}'
+    "    }\n"
+    "  ]\n"
+    "}"
 )
 
 

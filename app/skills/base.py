@@ -23,7 +23,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ class SkillResult:
     """
 
     output: Any
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -60,7 +60,7 @@ class SkillConfig:
 
     timeout: int = 30
     retry_count: int = 0
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseSkill(ABC):
@@ -88,7 +88,7 @@ class BaseSkill(ABC):
     name: str = "base"
     description: str = ""
 
-    def __init__(self, config: Optional[SkillConfig] = None):
+    def __init__(self, config: SkillConfig | None = None):
         """初始化技能。
 
         Args:
@@ -97,7 +97,7 @@ class BaseSkill(ABC):
         self.config = config or SkillConfig()
 
     @abstractmethod
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行技能。
 
         子类必须实现此方法。
@@ -113,7 +113,7 @@ class BaseSkill(ABC):
         """
         raise NotImplementedError
 
-    async def execute_with_timeout(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute_with_timeout(self, context: dict[str, Any]) -> SkillResult:
         """带超时和异常处理的技能执行。
 
         包装 execute 方法，提供：
@@ -157,7 +157,7 @@ class BaseSkill(ABC):
         """
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """将技能序列化为字典。
 
         Returns:

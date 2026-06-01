@@ -1,22 +1,21 @@
 import json
 import os
 from functools import lru_cache
-from typing import Dict, Optional
 
 from app.config import get_settings
 
 
-@lru_cache()
-def _load_locale(locale: str) -> Dict[str, str]:
+@lru_cache
+def _load_locale(locale: str) -> dict[str, str]:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(base_dir, "locales", f"{locale}.json")
     if not os.path.exists(path):
         return {}
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-_current_locale: Optional[str] = None
+_current_locale: str | None = None
 
 
 def get_locale() -> str:
@@ -31,7 +30,7 @@ def set_locale(locale: str) -> None:
     _current_locale = locale
 
 
-def get_text(key: str, locale: Optional[str] = None, **kwargs) -> str:
+def get_text(key: str, locale: str | None = None, **kwargs) -> str:
     loc = locale or get_locale()
     translations = _load_locale(loc)
     text = translations.get(key, key)

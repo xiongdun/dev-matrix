@@ -7,11 +7,11 @@ from temporalio.worker import Worker
 from app.config import get_settings
 from app.workflow.activities import (
     create_state_snapshot,
-    send_approval_request,
     execute_agent_task,
-    wait_for_approval,
-    rollback_state,
     notify_completion,
+    rollback_state,
+    send_approval_request,
+    wait_for_approval,
 )
 from app.workflow.definitions import DevWorkflow
 

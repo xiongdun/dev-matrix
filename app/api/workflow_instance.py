@@ -12,7 +12,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -27,53 +27,53 @@ router = APIRouter()
 class ArtifactCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=256)
     stage: str = Field(..., min_length=1, max_length=64)
-    content: Optional[str] = None
+    content: str | None = None
 
 
 class WorkflowInstanceResponse(BaseModel):
     id: int
     instance_id: str
-    template_id: Optional[int]
+    template_id: int | None
     project_id: str
     current_state: str
-    participants: List[str] = []
-    artifacts: List[Dict[str, Any]] = []
+    participants: list[str] = []
+    artifacts: list[dict[str, Any]] = []
     status: str
     context_json: str = "{}"
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
 
 
 def _instance_to_response(model: WorkflowInstanceModel) -> WorkflowInstanceResponse:
-    participants_raw = cast(Optional[str], model.participants)
-    artifacts_raw = cast(Optional[str], model.artifacts)
+    participants_raw = cast(str | None, model.participants)
+    artifacts_raw = cast(str | None, model.artifacts)
     participants = json.loads(participants_raw) if participants_raw else []
     artifacts = json.loads(artifacts_raw) if artifacts_raw else []
     return WorkflowInstanceResponse(
         id=cast(int, model.id),
         instance_id=cast(str, model.instance_id),
-        template_id=cast(Optional[int], model.template_id),
+        template_id=cast(int | None, model.template_id),
         project_id=cast(str, model.project_id),
         current_state=cast(str, model.current_state),
         participants=participants,
         artifacts=artifacts,
         status=cast(str, model.status),
         context_json=cast(str, model.context_json),
-        started_at=cast(Optional[datetime], model.started_at),
-        completed_at=cast(Optional[datetime], model.completed_at),
-        created_at=cast(Optional[datetime], model.created_at),
-        updated_at=cast(Optional[datetime], model.updated_at),
+        started_at=cast(datetime | None, model.started_at),
+        completed_at=cast(datetime | None, model.completed_at),
+        created_at=cast(datetime | None, model.created_at),
+        updated_at=cast(datetime | None, model.updated_at),
     )
 
 
-@router.get("/", response_model=Dict[str, List[WorkflowInstanceResponse]])
+@router.get("", response_model=dict[str, list[WorkflowInstanceResponse]])
 async def list_instances(
-    status: Optional[str] = None,
+    status: str | None = None,
     db: Session = Depends(get_db),
 ):
     try:
@@ -99,9 +99,7 @@ async def get_instance_by_project(project_id: str, db: Session = Depends(get_db)
         .first()
     )
     if instance is None:
-        raise HTTPException(
-            status_code=404, detail=f"No instance found for project '{project_id}'"
-        )
+        raise HTTPException(status_code=404, detail=f"No instance found for project '{project_id}'")
     return _instance_to_response(instance)
 
 
@@ -113,9 +111,7 @@ async def get_instance(instance_id_str: str, db: Session = Depends(get_db)):
         .first()
     )
     if instance is None:
-        raise HTTPException(
-            status_code=404, detail=f"Instance '{instance_id_str}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Instance '{instance_id_str}' not found")
     return _instance_to_response(instance)
 
 
@@ -129,15 +125,11 @@ async def add_artifact(
         .first()
     )
     if instance is None:
-        raise HTTPException(
-            status_code=404, detail=f"Instance '{instance_id_str}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Instance '{instance_id_str}' not found")
     try:
-        artifacts_raw = cast(Optional[str], instance.artifacts)
-        artifacts: List[Dict[str, Any]] = json.loads(artifacts_raw) if artifacts_raw else []
-        artifacts.append(
-            {"name": payload.name, "stage": payload.stage, "content": payload.content}
-        )
+        artifacts_raw = cast(str | None, instance.artifacts)
+        artifacts: list[dict[str, Any]] = json.loads(artifacts_raw) if artifacts_raw else []
+        artifacts.append({"name": payload.name, "stage": payload.stage, "content": payload.content})
         instance.artifacts = json.dumps(artifacts, ensure_ascii=False)  # type: ignore[assignment]
         db.commit()
         db.refresh(instance)

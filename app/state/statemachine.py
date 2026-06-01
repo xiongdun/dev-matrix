@@ -8,9 +8,9 @@
     - StateMachine: 状态机，管理状态转换逻辑。
 """
 
-from enum import Enum
-from typing import List, Set, cast
 import logging
+from enum import Enum
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ProjectStatus(str, Enum):
     ROLLBACK = "rollback"
 
 
-TRANSITIONS: dict[str, Set[str]] = {
+TRANSITIONS: dict[str, set[str]] = {
     ProjectStatus.PENDING: {ProjectStatus.ANALYZING, ProjectStatus.FAILED},
     ProjectStatus.ANALYZING: {ProjectStatus.AWAITING_APPROVAL, ProjectStatus.FAILED},
     ProjectStatus.AWAITING_APPROVAL: {ProjectStatus.APPROVED, ProjectStatus.REJECTED},
@@ -93,7 +93,7 @@ class StateMachine:
         return to_status
 
     @staticmethod
-    def get_allowed_transitions(status: str) -> List[str]:
+    def get_allowed_transitions(status: str) -> list[str]:
         from_enum = ProjectStatus(status)
         allowed = TRANSITIONS.get(from_enum, set())
         return [cast(str, getattr(s, "value", s)) for s in allowed]

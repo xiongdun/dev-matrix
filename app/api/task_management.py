@@ -14,7 +14,6 @@
 
 import json
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -35,25 +34,25 @@ class TaskCreate(BaseModel):
     description: str = Field(default="", max_length=5000)
     status: str = Field(default="backlog")
     priority: str = Field(default="medium")
-    assignee_id: Optional[str] = None
-    assignee_name: Optional[str] = None
-    project_id: Optional[int] = None
-    tags: List[str] = Field(default_factory=list)
-    due_date: Optional[datetime] = None
+    assignee_id: str | None = None
+    assignee_name: str | None = None
+    project_id: int | None = None
+    tags: list[str] = Field(default_factory=list)
+    due_date: datetime | None = None
 
 
 class TaskUpdate(BaseModel):
     """更新任务请求模型。"""
 
-    title: Optional[str] = Field(default=None, min_length=1, max_length=256)
-    description: Optional[str] = Field(default=None, max_length=5000)
-    status: Optional[str] = None
-    priority: Optional[str] = None
-    assignee_id: Optional[str] = None
-    assignee_name: Optional[str] = None
-    project_id: Optional[int] = None
-    tags: Optional[List[str]] = None
-    due_date: Optional[datetime] = None
+    title: str | None = Field(default=None, min_length=1, max_length=256)
+    description: str | None = Field(default=None, max_length=5000)
+    status: str | None = None
+    priority: str | None = None
+    assignee_id: str | None = None
+    assignee_name: str | None = None
+    project_id: int | None = None
+    tags: list[str] | None = None
+    due_date: datetime | None = None
 
 
 class TaskStatusUpdate(BaseModel):
@@ -70,13 +69,13 @@ class TaskOut(BaseModel):
     description: str
     status: str
     priority: str
-    assignee_id: Optional[str] = None
-    assignee_name: Optional[str] = None
+    assignee_id: str | None = None
+    assignee_name: str | None = None
     reporter_id: str
     reporter_name: str
-    project_id: Optional[int] = None
-    tags: List[str]
-    due_date: Optional[datetime] = None
+    project_id: int | None = None
+    tags: list[str]
+    due_date: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -87,7 +86,7 @@ class TaskOut(BaseModel):
 class TaskListOut(BaseModel):
     """任务列表响应模型。"""
 
-    items: List[TaskOut]
+    items: list[TaskOut]
     total: int
 
 
@@ -114,12 +113,12 @@ def _model_to_out(task: TaskManagementModel) -> dict:
 
 @router.get("", response_model=TaskListOut)
 def list_tasks(
-    status: Optional[str] = Query(None),
-    priority: Optional[str] = Query(None),
-    assignee_id: Optional[str] = Query(None),
-    reporter_id: Optional[str] = Query(None),
-    project_id: Optional[int] = Query(None),
-    keyword: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    priority: str | None = Query(None),
+    assignee_id: str | None = Query(None),
+    reporter_id: str | None = Query(None),
+    project_id: int | None = Query(None),
+    keyword: str | None = Query(None),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     db: Session = Depends(get_db),
@@ -143,8 +142,7 @@ def list_tasks(
     if keyword:
         like = f"%{keyword}%"
         query = query.filter(
-            TaskManagementModel.title.ilike(like)
-            | TaskManagementModel.description.ilike(like)
+            TaskManagementModel.title.ilike(like) | TaskManagementModel.description.ilike(like)
         )
 
     total = query.count()
@@ -181,7 +179,7 @@ def create_task(data: TaskCreate, db: Session = Depends(get_db)):
 
 @router.get("/my-tasks", response_model=TaskListOut)
 def list_my_tasks(
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """获取当前用户的任务（我创建的 + 分配给我的）。"""
@@ -232,9 +230,7 @@ def update_task(task_id: int, data: TaskUpdate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{task_id}/status", response_model=TaskOut)
-def update_task_status(
-    task_id: int, data: TaskStatusUpdate, db: Session = Depends(get_db)
-):
+def update_task_status(task_id: int, data: TaskStatusUpdate, db: Session = Depends(get_db)):
     """更新任务状态（看板拖拽用）。"""
     task = db.query(TaskManagementModel).filter(TaskManagementModel.id == task_id).first()
     if not task:

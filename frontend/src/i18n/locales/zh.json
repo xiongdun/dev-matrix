@@ -22,7 +22,10 @@
     "scheduledTasks": "定时任务",
     "taskManagement": "任务管理",
     "myTasks": "我的任务",
-    "taskBoard": "任务看板"
+    "taskBoard": "任务看板",
+    "userManagement": "用户管理",
+    "roleManagement": "角色管理",
+    "menuManagement": "菜单管理"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -428,6 +431,7 @@
     "micPermissionDenied": "无法访问麦克风，请检查权限设置",
     "transcriptionFailed": "语音转文字失败",
     "loadErrorTitle": "加载失败",
+    "taskNotFound": "任务 #{id} 不存在或已被删除",
     "timeJustNow": "刚刚",
     "timeMinutesAgo": "{n}分钟前",
     "timeHoursAgo": "{n}小时前",
@@ -464,6 +468,11 @@
     "empty": "暂无定时任务",
     "loadError": "加载定时任务失败",
     "confirmDelete": "确认删除此定时任务？"
+  },
+  "forbidden": {
+    "title": "无权访问",
+    "message": "您没有权限访问此页面，请联系管理员",
+    "backHome": "返回首页"
   },
   "taskManagement": {
     "title": "任务管理",

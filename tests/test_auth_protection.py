@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, UserModel, get_db
 from app.core.security import hash_password
 from app.main import app
+from app.state.models import Base, UserModel, get_db
 
 
 @pytest.fixture
@@ -23,6 +23,7 @@ def db_session():
 
     # 临时修改配置中的数据库 URL
     from app.config import get_settings
+
     original_db_url = get_settings().database_url
     get_settings().database_url = db_url
 
@@ -38,6 +39,7 @@ def db_session():
         get_settings().database_url = original_db_url
         # 清理全局引擎缓存，避免影响其他测试
         from app.state.models import _engine, _SessionLocal
+
         global _engine, _SessionLocal
         if _engine is not None:
             _engine.dispose()
@@ -53,6 +55,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """创建测试客户端。"""
+
     def override_get_db():
         try:
             yield db_session
@@ -63,6 +66,7 @@ def client(db_session):
 
     # 重置限流器状态
     from app.core.limiter import limiter
+
     limiter.reset()
 
     # 创建测试用户
@@ -83,10 +87,13 @@ def client(db_session):
 @pytest.fixture
 def auth_token(client, db_session):
     """获取认证 Token。"""
-    response = client.post("/api/auth/login", json={
-        "username": "testuser",
-        "password": "testpass",
-    })
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "username": "testuser",
+            "password": "testpass",
+        },
+    )
     assert response.status_code == 200
     return response.json()["token"]
 
@@ -137,10 +144,13 @@ class TestProtectedRoutes:
 class TestPublicRoutes:
     def test_auth_login_public(self, client):
         """登录接口无需认证。"""
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass",
+            },
+        )
         assert response.status_code == 200
 
     def test_health_public(self, client):

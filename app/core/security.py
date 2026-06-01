@@ -3,12 +3,11 @@
 提供密码哈希、JWT Token 生成/验证等安全相关功能。
 """
 
-import bcrypt
-import jwt
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional
 
+import bcrypt
+import jwt
 from sqlalchemy.orm import Session
 
 from app.core.secrets import get_or_create_secret
@@ -19,7 +18,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # 延迟获取 SECRET_KEY，避免在导入时查询数据库
-_SECRET_KEY: Optional[str] = None
+_SECRET_KEY: str | None = None
 
 
 def get_secret_key(db: Session) -> str:
@@ -41,7 +40,7 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
-def create_access_token(db: Session, data: Dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(db: Session, data: dict, expires_delta: timedelta | None = None) -> str:
     """创建 JWT Access Token。"""
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -50,7 +49,7 @@ def create_access_token(db: Session, data: Dict, expires_delta: Optional[timedel
     return jwt.encode(to_encode, secret, algorithm=ALGORITHM)
 
 
-def create_refresh_token(db: Session, data: Dict) -> str:
+def create_refresh_token(db: Session, data: dict) -> str:
     """创建 JWT Refresh Token。"""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -59,7 +58,7 @@ def create_refresh_token(db: Session, data: Dict) -> str:
     return jwt.encode(to_encode, secret, algorithm=ALGORITHM)
 
 
-def decode_token(db: Session, token: str) -> Optional[Dict]:
+def decode_token(db: Session, token: str) -> dict | None:
     """解码并验证 JWT Token。"""
     try:
         secret = get_secret_key(db)

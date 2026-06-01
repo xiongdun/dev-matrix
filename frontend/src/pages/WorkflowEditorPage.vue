@@ -158,7 +158,7 @@ async function loadWorkflow(id: number) {
         // invalid flow_json, start empty
       }
     }
-    addTab(`workflow-editor-${id}`, `${t('workflow.editor')} - ${res.name}`, `/workflow/editor/${id}`)
+    addTab(`workflow_editor_${id}`, `${t('workflow.editor')} - ${res.name}`, `/workflow/editor/${id}`)
   } catch (e: any) {
     saveError.value = e.message || String(e)
   }
@@ -229,7 +229,7 @@ async function handleSave() {
     } else {
       const created = await api.createWorkflow({ name: workflowName.value, description: workflowDescription.value, flow_json: flowJson })
       workflowId.value = created.id
-      addTab(`workflow-editor-${workflowId.value}`, `${t('workflow.editor')} - ${workflowName.value}`, `/workflow/editor/${workflowId.value}`)
+      addTab(`workflow_editor_${workflowId.value}`, `${t('workflow.editor')} - ${workflowName.value}`, `/workflow/editor/${workflowId.value}`)
     }
 
     saveSuccess.value = true
@@ -250,7 +250,7 @@ onMounted(async () => {
   if (id) {
     await loadWorkflow(Number(id))
   } else {
-    addTab('workflow-editor', t('workflow.newWorkflow'), '/workflow/editor')
+    addTab('workflow_editor', t('workflow.newWorkflow'), '/workflow/editor')
   }
   await loadAgents()
 })

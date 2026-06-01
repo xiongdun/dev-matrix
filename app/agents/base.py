@@ -34,7 +34,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from app.llm.router import LLMRouter
 from app.state.repository import StateRepository
@@ -50,12 +50,14 @@ if TYPE_CHECKING:
 # Claude Agent SDK 可选导入
 try:
     from claude_agent_sdk import (
-        query as sdk_query,
-        ClaudeAgentOptions,
         AssistantMessage,
+        ClaudeAgentOptions,
         TextBlock,
-        ToolUseBlock,
         ToolResultBlock,
+        ToolUseBlock,
+    )
+    from claude_agent_sdk import (
+        query as sdk_query,
     )
 
     CLAUDE_SDK_AVAILABLE = True
@@ -76,7 +78,7 @@ class Proposal:
 
     agent_name: str
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -90,8 +92,8 @@ class ValidationResult:
     """
 
     is_valid: bool
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 class BaseAgent(ABC):
@@ -139,8 +141,8 @@ class BaseAgent(ABC):
         """
         self.llm_router = llm_router
         self.state_repository = state_repository
-        self._skills: Dict[str, "BaseSkill"] = {}
-        self._sdk_options: Optional["ClaudeAgentOptions"] = None
+        self._skills: dict[str, BaseSkill] = {}
+        self._sdk_options: ClaudeAgentOptions | None = None
 
     def _build_sdk_options(self, **kwargs) -> Optional["ClaudeAgentOptions"]:
         """构建 SDK 配置选项。
@@ -188,8 +190,7 @@ class BaseAgent(ABC):
         """
         if not CLAUDE_SDK_AVAILABLE:
             raise RuntimeError(
-                "claude-agent-sdk is not installed. "
-                "Install it with: pip install claude-agent-sdk"
+                "claude-agent-sdk is not installed. Install it with: pip install claude-agent-sdk"
             )
 
         if options is None:
@@ -224,7 +225,7 @@ class BaseAgent(ABC):
     async def sdk_query_with_tools(
         self,
         prompt: str,
-        allowed_tools: List[str],
+        allowed_tools: list[str],
         options: Optional["ClaudeAgentOptions"] = None,
         **option_kwargs,
     ) -> str:
@@ -251,7 +252,7 @@ class BaseAgent(ABC):
 
         return await self.sdk_query(prompt=prompt, options=options)
 
-    def read_state(self, project_id: str) -> Dict[str, Any]:
+    def read_state(self, project_id: str) -> dict[str, Any]:
         """读取指定项目的当前状态。
 
         从状态仓库读取并解析 JSON 状态数据。
@@ -277,13 +278,9 @@ class BaseAgent(ABC):
                 project_id,
                 exc,
             )
-            raise ValueError(
-                f"Invalid JSON in state for project '{project_id}': {exc}"
-            ) from exc
+            raise ValueError(f"Invalid JSON in state for project '{project_id}': {exc}") from exc
 
-    def write_state(
-        self, project_id: str, state_dict: Dict[str, Any], status: Optional[str] = None
-    ):
+    def write_state(self, project_id: str, state_dict: dict[str, Any], status: str | None = None):
         """写入指定项目的状态。
 
         将字典序列化为 JSON 并保存到状态仓库。
@@ -314,9 +311,7 @@ class BaseAgent(ABC):
         )
 
     @abstractmethod
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         """生成提案。
 
         子类必须实现此方法以生成特定类型的提案。
@@ -332,9 +327,7 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         """验证提案输出。
 
         子类必须实现此方法以验证生成的提案。
@@ -348,7 +341,7 @@ class BaseAgent(ABC):
         """
         pass
 
-    async def run(self, project_id: str, context: Dict[str, Any]) -> Proposal:
+    async def run(self, project_id: str, context: dict[str, Any]) -> Proposal:
         """运行 Agent 的完整流程：生成提案并验证。
 
         Args:
@@ -406,7 +399,7 @@ class BaseAgent(ABC):
             return True
         return False
 
-    async def call_skill(self, name: str, context: Dict[str, Any]) -> "SkillResult":
+    async def call_skill(self, name: str, context: dict[str, Any]) -> "SkillResult":
         """按名称执行已组合的技能，带超时保护。
 
         Args:
@@ -434,9 +427,7 @@ class BaseAgent(ABC):
                 timeout,
                 self.name,
             )
-            raise TimeoutError(
-                f"Skill '{name}' execution timed out after {timeout}s"
-            ) from exc
+            raise TimeoutError(f"Skill '{name}' execution timed out after {timeout}s") from exc
         except Exception:
             logger.exception(
                 "Skill '%s' execution failed on agent '%s'",
@@ -445,7 +436,7 @@ class BaseAgent(ABC):
             )
             raise
 
-    def list_skills(self) -> List[str]:
+    def list_skills(self) -> list[str]:
         """列出当前 Agent 已组合的所有技能名称。
 
         Returns:

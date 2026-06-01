@@ -3,18 +3,17 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.agents.code_reviewer import CodeReviewerAgent
 from app.api.deps import get_db
 from app.state.models import CodeReviewModel, WorkflowTaskModel
-from app.agents.code_reviewer import CodeReviewerAgent
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/code-reviews", tags=["code-reviews"])
+router = APIRouter(tags=["code-reviews"])
 
 
 class CreateCodeReviewRequest(BaseModel):
@@ -23,14 +22,14 @@ class CreateCodeReviewRequest(BaseModel):
     task_id: int = Field(..., description="关联的工作流任务 ID")
     diff: str = Field(..., description="代码 diff 内容")
     project_context: str = Field(default="", description="项目上下文信息")
-    model: Optional[str] = Field(default=None, description="指定 LLM 模型")
+    model: str | None = Field(default=None, description="指定 LLM 模型")
 
 
 class CodeReviewIssue(BaseModel):
     """代码审查问题项。"""
 
     file: str
-    line: Optional[int] = None
+    line: int | None = None
     severity: str
     category: str
     title: str
@@ -45,14 +44,14 @@ class CodeReviewResponse(BaseModel):
     task_id: int
     project_id: str
     status: str
-    score: Optional[int] = None
-    summary: Optional[str] = None
-    issues: List[CodeReviewIssue] = []
-    improvements: List[Dict[str, str]] = []
-    llm_model: Optional[str] = None
-    duration_ms: Optional[int] = None
+    score: int | None = None
+    summary: str | None = None
+    issues: list[CodeReviewIssue] = []
+    improvements: list[dict[str, str]] = []
+    llm_model: str | None = None
+    duration_ms: int | None = None
     created_at: str
-    completed_at: Optional[str] = None
+    completed_at: str | None = None
 
     class Config:
         from_attributes = True
@@ -65,11 +64,7 @@ async def create_code_review(
 ) -> CodeReviewModel:
     """创建代码审查。"""
     # 验证任务存在
-    task = (
-        db.query(WorkflowTaskModel)
-        .filter(WorkflowTaskModel.id == payload.task_id)
-        .first()
-    )
+    task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == payload.task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail=f"Task {payload.task_id} not found")
 
@@ -88,11 +83,13 @@ async def create_code_review(
     # 异步执行审查
     try:
         agent = CodeReviewerAgent()
-        report = await agent.execute({
-            "diff": payload.diff,
-            "project_context": payload.project_context,
-            "model": payload.model,
-        })
+        report = await agent.execute(
+            {
+                "diff": payload.diff,
+                "project_context": payload.project_context,
+                "model": payload.model,
+            }
+        )
 
         # 更新审查记录
         review.status = "completed"
@@ -122,25 +119,21 @@ async def get_code_review(
     db: Session = Depends(get_db),
 ) -> CodeReviewModel:
     """获取代码审查详情。"""
-    review = (
-        db.query(CodeReviewModel)
-        .filter(CodeReviewModel.id == review_id)
-        .first()
-    )
+    review = db.query(CodeReviewModel).filter(CodeReviewModel.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail=f"Code review {review_id} not found")
     return review
 
 
-@router.get("", response_model=List[CodeReviewResponse])
+@router.get("", response_model=list[CodeReviewResponse])
 async def list_code_reviews(
-    task_id: Optional[int] = None,
-    project_id: Optional[str] = None,
-    status: Optional[str] = None,
+    task_id: int | None = None,
+    project_id: str | None = None,
+    status: str | None = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
-) -> List[CodeReviewModel]:
+) -> list[CodeReviewModel]:
     """列出代码审查记录。"""
     query = db.query(CodeReviewModel)
 
@@ -151,12 +144,7 @@ async def list_code_reviews(
     if status:
         query = query.filter(CodeReviewModel.status == status)
 
-    reviews = (
-        query.order_by(CodeReviewModel.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    reviews = query.order_by(CodeReviewModel.created_at.desc()).offset(offset).limit(limit).all()
     return reviews
 
 
@@ -166,11 +154,7 @@ async def rerun_code_review(
     db: Session = Depends(get_db),
 ) -> CodeReviewResponse:
     """重新运行代码审查。"""
-    review = (
-        db.query(CodeReviewModel)
-        .filter(CodeReviewModel.id == review_id)
-        .first()
-    )
+    review = db.query(CodeReviewModel).filter(CodeReviewModel.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail=f"Code review {review_id} not found")
 
@@ -189,10 +173,12 @@ async def rerun_code_review(
     # 重新执行审查
     try:
         agent = CodeReviewerAgent()
-        report = await agent.execute({
-            "diff": review.raw_diff,
-            "model": review.llm_model,
-        })
+        report = await agent.execute(
+            {
+                "diff": review.raw_diff,
+                "model": review.llm_model,
+            }
+        )
 
         review.status = "completed"
         review.score = report.get("score")

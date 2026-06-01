@@ -7,7 +7,7 @@
     - ArchitectAgent: 架构师 Agent，执行架构设计任务。
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
 
@@ -42,9 +42,7 @@ class ArchitectAgent(BaseAgent):
         "Be thorough and precise."
     )
 
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         """生成架构设计提案。
 
         读取项目状态中的 PRD，可选地检索相关代码上下文，
@@ -102,9 +100,7 @@ class ArchitectAgent(BaseAgent):
             },
         )
 
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         """验证架构提案是否包含必要章节。
 
         检查提案内容是否包含 "design" 和 "api" 关键字。

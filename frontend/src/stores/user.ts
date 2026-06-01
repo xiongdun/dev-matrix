@@ -65,7 +65,7 @@ export const useUserStore = defineStore(
   {
     persist: {
       key: 'devmatrix-user',
-      paths: ['userInfo', 'menus'],
+      paths: ['token', 'userInfo', 'menus'],
       storage: localStorage,
     },
   }

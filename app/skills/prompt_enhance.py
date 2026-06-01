@@ -17,7 +17,7 @@
     ```
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from app.skills.base import BaseSkill, SkillResult
 
@@ -45,7 +45,7 @@ class PromptEnhanceSkill(BaseSkill):
     name = "prompt_enhance"
     description = "Enhance prompts with additional context and structure"
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行提示增强。
 
         Args:
@@ -66,7 +66,7 @@ class PromptEnhanceSkill(BaseSkill):
             metadata={"original_length": len(prompt), "enhanced_length": len(enhanced)},
         )
 
-    def _enhance(self, prompt: str, context: Dict[str, Any]) -> str:
+    def _enhance(self, prompt: str, context: dict[str, Any]) -> str:
         """增强提示词的内部方法。
 
         根据上下文信息构建结构化的增强提示词。

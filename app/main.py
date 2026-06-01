@@ -34,45 +34,58 @@ import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.config import get_settings
-from app.core.limiter import limiter
-from app.state.models import init_db
 from app.api import (
-    requirements,
     approvals,
-    workflow,
-    registry,
-    workflow_config,
-    workbench,
+    code_review,
     events,
     lifecycle,
-    workflow_instance,
     projects,
-    settings as settings_api,
+    registry,
+    requirements,
     scheduled_tasks,
     task_management,
-    code_review,
-    auth as auth_api,
-    users as users_api,
-    roles as roles_api,
-    menus as menus_api,
+    workbench,
+    workflow,
+    workflow_config,
+    workflow_instance,
+)
+from app.api import (
     audit as audit_api,
+)
+from app.api import (
+    auth as auth_api,
+)
+from app.api import (
     health as health_api,
 )
-from app.skills.registry import _global_registry as skill_registry
-from app.skills.base import BaseSkill
+from app.api import (
+    menus as menus_api,
+)
+from app.api import (
+    roles as roles_api,
+)
+from app.api import (
+    settings as settings_api,
+)
+from app.api import (
+    users as users_api,
+)
+from app.config import get_settings
+from app.core.limiter import limiter
 from app.core.registry.discovery import discover_and_register
 from app.middleware.audit import audit_middleware
+from app.skills.base import BaseSkill
+from app.skills.registry import _global_registry as skill_registry
+from app.state.models import init_db
 
 
 class ErrorResponse(BaseModel):
@@ -101,8 +114,14 @@ def configure_logging() -> None:
         """日志敏感数据过滤器。"""
 
         SENSITIVE_PATTERNS = [
-            "password", "token", "secret", "api_key", "private_key",
-            "authorization", "cookie", "set-cookie",
+            "password",
+            "token",
+            "secret",
+            "api_key",
+            "private_key",
+            "authorization",
+            "cookie",
+            "set-cookie",
         ]
 
         def filter(self, record: logging.LogRecord) -> bool:
@@ -112,8 +131,8 @@ def configure_logging() -> None:
             msg = str(record.msg)
             for pattern in self.SENSITIVE_PATTERNS:
                 msg = re.sub(
-                    rf'("{pattern}"\s*[:=]\s*"[^"]{3,}")',
-                    lambda m: m.group(1)[:len(pattern)+4] + "***\"",
+                    rf'("{pattern}"\s*[:=]\s*"[^"]{(3,)}")',
+                    lambda m: m.group(1)[: len(pattern) + 4] + '***"',
                     msg,
                     flags=re.IGNORECASE,
                 )
@@ -123,7 +142,7 @@ def configure_logging() -> None:
     class JsonFormatter(logging.Formatter):
         def format(self, record: logging.LogRecord) -> str:
             log_data = {
-                "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "level": record.levelname,
                 "logger": record.name,
                 "message": record.getMessage(),
@@ -136,9 +155,7 @@ def configure_logging() -> None:
     handler = logging.StreamHandler(sys.stdout)
 
     if settings.debug:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     else:
         formatter = JsonFormatter()
 
@@ -181,6 +198,7 @@ async def lifespan(app: FastAPI):
     # 自动执行数据库迁移（如果 alembic 配置存在）
     try:
         from alembic.config import Config
+
         from alembic import command
 
         alembic_cfg = Config("alembic.ini")
@@ -196,9 +214,9 @@ async def lifespan(app: FastAPI):
         logger.exception("Database initialization failed")
         raise
     try:
-        from app.state.models import get_db
-        from app.api.workflow_config import seed_templates
         from app.api.settings import init_default_configs
+        from app.api.workflow_config import seed_templates
+        from app.state.models import get_db
 
         db = next(get_db())
         try:

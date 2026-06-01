@@ -1,6 +1,6 @@
 import pytest
 
-from app.skills.base import BaseSkill, SkillResult, SkillConfig
+from app.skills.base import BaseSkill, SkillConfig, SkillResult
 
 
 class ConcreteSkill(BaseSkill):

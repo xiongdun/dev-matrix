@@ -16,10 +16,9 @@
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from app.config import get_settings
-from app.llm.client import LLMClient, OpenAIClient, AnthropicClient
+from app.llm.client import AnthropicClient, LLMClient, OpenAIClient
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class LLMRouter:
         ```
     """
 
-    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, provider: str | None = None, model: str | None = None):
         """初始化 LLM 路由。
 
         根据配置初始化可用的 LLM 客户端。
@@ -55,7 +54,7 @@ class LLMRouter:
         self.provider = provider or settings.default_llm_provider
         self.model = model or settings.default_llm_model
         self.strategy = settings.llm_strategy
-        self._clients: Dict[str, LLMClient] = {}
+        self._clients: dict[str, LLMClient] = {}
         self._init_clients()
 
     def _init_clients(self):
@@ -70,9 +69,7 @@ class LLMRouter:
         if settings.anthropic_api_key:
             self._clients["anthropic"] = AnthropicClient(
                 api_key=settings.anthropic_api_key,
-                model=self.model
-                if self.provider == "anthropic"
-                else "claude-3-opus-20240229",
+                model=self.model if self.provider == "anthropic" else "claude-3-opus-20240229",
             )
             logger.debug("Initialized Anthropic client")
         if not self._clients:
@@ -112,8 +109,7 @@ class LLMRouter:
 
         available = list(self._clients.keys())
         logger.error(
-            "No LLM client available for provider=%s, strategy=%s. "
-            "Available clients: %s",
+            "No LLM client available for provider=%s, strategy=%s. Available clients: %s",
             self.provider,
             self.strategy,
             available,
@@ -152,7 +148,7 @@ class LLMRouter:
             logger.error("LLM complete failed via %s: %s", client.name, exc)
             raise
 
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """使用选中的客户端进行多轮对话。
 
         Args:
@@ -169,9 +165,7 @@ class LLMRouter:
         logger.info("LLM chat via %s, messages=%d", client.name, len(messages))
         try:
             result = await client.chat(messages, **kwargs)
-            logger.info(
-                "LLM chat success via %s, result_length=%d", client.name, len(result)
-            )
+            logger.info("LLM chat success via %s, result_length=%d", client.name, len(result))
             return result
         except Exception as exc:
             logger.error("LLM chat failed via %s: %s", client.name, exc)

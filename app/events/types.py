@@ -20,7 +20,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
@@ -36,10 +36,10 @@ class Event:
     """
 
     type: str
-    payload: Dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    source: Optional[str] = None
-    project_id: Optional[str] = None
+    source: str | None = None
+    project_id: str | None = None
 
 
 class EventTypes:

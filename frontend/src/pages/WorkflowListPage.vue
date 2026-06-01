@@ -99,12 +99,12 @@ async function fetchWorkflows() {
 
 function handleCreate() {
   router.push('/workflow/editor')
-  addTab('workflow-editor', t('workflow.newWorkflow'), '/workflow/editor')
+  addTab('workflow_editor', t('workflow.newWorkflow'), '/workflow/editor')
 }
 
 function handleEdit(wf: Workflow) {
   router.push(`/workflow/editor/${wf.id}`)
-  addTab(`workflow-editor-${wf.id}`, `${t('workflow.editor')} - ${wf.name}`, `/workflow/editor/${wf.id}`)
+  addTab(`workflow_editor_${wf.id}`, `${t('workflow.editor')} - ${wf.name}`, `/workflow/editor/${wf.id}`)
 }
 
 async function handleDelete(wf: Workflow) {

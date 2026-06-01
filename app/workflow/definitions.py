@@ -5,7 +5,7 @@
 
 import asyncio
 from datetime import timedelta
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 from temporalio import workflow
 
@@ -21,9 +21,9 @@ class TemporalStageExecutor(StageExecutor):
     在 Temporal Workflow 中调用 Activity 来执行阶段。
     """
 
-    def __init__(self, snapshot_result: Dict[str, Any]):
+    def __init__(self, snapshot_result: dict[str, Any]):
         self.snapshot_result = snapshot_result
-        self._results: Dict[str, Any] = {}
+        self._results: dict[str, Any] = {}
 
     async def on_workflow_start(self, ctx: ExecutionContext):
         """Temporal 中无需额外初始化。"""
@@ -33,15 +33,15 @@ class TemporalStageExecutor(StageExecutor):
         """Temporal 中由 DevWorkflow 统一处理完成逻辑。"""
         pass
 
-    async def on_batch_start(self, batch: List[str], ctx: ExecutionContext):
+    async def on_batch_start(self, batch: list[str], ctx: ExecutionContext):
         """批次开始前的回调。"""
         pass
 
-    async def on_batch_complete(self, batch: List[str], ctx: ExecutionContext):
+    async def on_batch_complete(self, batch: list[str], ctx: ExecutionContext):
         """批次完成后的回调。"""
         pass
 
-    async def execute(self, node: DAGNode, ctx: ExecutionContext) -> Dict[str, Any]:
+    async def execute(self, node: DAGNode, ctx: ExecutionContext) -> dict[str, Any]:
         """通过 Temporal Activity 执行单个阶段。"""
         project_id = ctx.project_id
         timeout = node.timeout_seconds or 300
@@ -125,7 +125,7 @@ class DevWorkflow:
             return {"status": "error", "message": "flow_json or stages required"}
 
         # 创建状态快照
-        snapshot_result: Dict[str, Any] = await workflow.execute_activity(
+        snapshot_result: dict[str, Any] = await workflow.execute_activity(
             cast(Any, ACTIVITY_MAP["create_state_snapshot"]),
             args=(project_id,),
             start_to_close_timeout=timedelta(seconds=30),
@@ -134,19 +134,14 @@ class DevWorkflow:
         # 使用统一的 GraphRunner 进行 DAG 遍历
         runner = GraphRunner(dag)
         executor = TemporalStageExecutor(snapshot_result)
-        ctx = ExecutionContext(
-            project_id=project_id, metadata=config.get("context", {})
-        )
+        ctx = ExecutionContext(project_id=project_id, metadata=config.get("context", {}))
 
         for batch in runner.iter_batches():
             # batch 中的节点依赖都已满足，可以并行执行
             batch_results = await self._execute_batch(batch, runner, executor, ctx)
 
             # 检查是否有失败
-            if any(
-                r.get("status") in ("failed", "rejected")
-                for r in batch_results.values()
-            ):
+            if any(r.get("status") in ("failed", "rejected") for r in batch_results.values()):
                 return {
                     "status": "failed",
                     "project_id": project_id,
@@ -168,11 +163,11 @@ class DevWorkflow:
 
     async def _execute_batch(
         self,
-        batch: List[str],
+        batch: list[str],
         runner: GraphRunner,
         executor: TemporalStageExecutor,
         ctx: ExecutionContext,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """执行一个批次的节点（并行）。"""
         if len(batch) == 1:
             node_id = batch[0]
@@ -198,7 +193,7 @@ class DevWorkflow:
         promises = [run_node(nid) for nid in batch]
         results_list = await asyncio.gather(*promises, return_exceptions=True)
 
-        batch_results: Dict[str, Any] = {}
+        batch_results: dict[str, Any] = {}
         for item in results_list:
             if isinstance(item, BaseException):
                 # BaseException 不可迭代，跳过处理

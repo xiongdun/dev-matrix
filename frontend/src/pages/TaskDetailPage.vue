@@ -525,7 +525,14 @@ async function loadTask(id: number) {
       timestamp: m.created_at,
     }))
   } catch (e: any) {
-    loadError.value = e.message || String(e)
+    const msg = e.message || String(e)
+    if (msg.includes('404') || msg.includes('not found')) {
+      loadError.value = t('workbench.taskNotFound', { id: String(id) })
+      // 从侧边栏列表中移除不存在的任务
+      allTasks.value = allTasks.value.filter(t => t.id !== id)
+    } else {
+      loadError.value = msg
+    }
     console.error('Failed to load task:', e)
   } finally {
     isLoading.value = false

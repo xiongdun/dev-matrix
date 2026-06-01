@@ -18,7 +18,7 @@
 """
 
 from datetime import datetime
-from typing import List, Optional, cast
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -50,7 +50,7 @@ class StateRepository:
         """
         self.db = db
 
-    def get_state(self, project_id: str) -> Optional[ProjectStateModel]:
+    def get_state(self, project_id: str) -> ProjectStateModel | None:
         """查询指定项目的当前状态。
 
         Args:
@@ -69,8 +69,8 @@ class StateRepository:
         self,
         project_id: str,
         state_json: str,
-        status: Optional[str] = None,
-        expected_version: Optional[int] = None,
+        status: str | None = None,
+        expected_version: int | None = None,
         skip_transition_check: bool = False,
     ) -> ProjectStateModel:
         state = self.get_state(project_id)
@@ -98,15 +98,13 @@ class StateRepository:
         state.state_json = state_json  # type: ignore[assignment]
         if status is not None:
             state.status = status  # type: ignore[assignment]
-        state.version = (cast(Optional[int], state.version) or 0) + 1  # type: ignore[assignment]
+        state.version = (cast(int | None, state.version) or 0) + 1  # type: ignore[assignment]
         state.updated_at = datetime.utcnow()  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(state)
         return state
 
-    def create_snapshot(
-        self, project_id: str, stage_id: Optional[str] = None
-    ) -> StateSnapshotModel:
+    def create_snapshot(self, project_id: str, stage_id: str | None = None) -> StateSnapshotModel:
         state = self.get_state(project_id)
         if state is None:
             raise ValueError(f"Project {project_id} not found")
@@ -121,7 +119,7 @@ class StateRepository:
         self.db.refresh(snapshot)
         return snapshot
 
-    def get_snapshots(self, project_id: str) -> List[StateSnapshotModel]:
+    def get_snapshots(self, project_id: str) -> list[StateSnapshotModel]:
         """查询指定项目的所有快照，按创建时间倒序排列。
 
         Args:
@@ -137,9 +135,7 @@ class StateRepository:
             .all()
         )
 
-    def rollback_to_snapshot(
-        self, project_id: str, snapshot_id: int
-    ) -> ProjectStateModel:
+    def rollback_to_snapshot(self, project_id: str, snapshot_id: int) -> ProjectStateModel:
         """将项目状态回滚到指定快照。
 
         Args:
@@ -161,9 +157,7 @@ class StateRepository:
             .first()
         )
         if snapshot is None:
-            raise ValueError(
-                f"Snapshot {snapshot_id} not found for project {project_id}"
-            )
+            raise ValueError(f"Snapshot {snapshot_id} not found for project {project_id}")
         return self.update_state(
             project_id=project_id,
             state_json=cast(str, snapshot.state_json),

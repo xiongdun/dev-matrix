@@ -1,13 +1,11 @@
-from typing import Any, Dict
+from typing import Any
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
 
 
 class BusinessAnalystAgent(BaseAgent):
     name = "business_analyst"
-    description = (
-        "Analyzes raw requirements and produces structured requirement documents"
-    )
+    description = "Analyzes raw requirements and produces structured requirement documents"
     system_prompt = (
         "You are an expert Business Analyst. Your role is to analyze raw requirements "
         "and produce structured requirement documents including: functional "
@@ -15,14 +13,10 @@ class BusinessAnalystAgent(BaseAgent):
         "criteria. Be thorough and precise in your analysis."
     )
 
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         state = self.read_state(project_id)
         raw_input = (
-            context.get("raw_input")
-            or state.get("raw_input")
-            or state.get("requirement", "")
+            context.get("raw_input") or state.get("raw_input") or state.get("requirement", "")
         )
 
         prompt = (
@@ -47,9 +41,7 @@ class BusinessAnalystAgent(BaseAgent):
             },
         )
 
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         content = proposal.content
         errors = []
         if "functional" not in content.lower():

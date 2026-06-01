@@ -69,9 +69,7 @@ class TestStateRepository:
 
     def test_rollback_to_snapshot_not_found(self, state_repo, db_session):
         state_repo.update_state("proj-1", '{"v": 1}', "running")
-        with pytest.raises(
-            ValueError, match="Snapshot 999 not found for project proj-1"
-        ):
+        with pytest.raises(ValueError, match="Snapshot 999 not found for project proj-1"):
             state_repo.rollback_to_snapshot("proj-1", 999)
 
     def test_rollback_to_snapshot_wrong_project(self, state_repo, db_session):

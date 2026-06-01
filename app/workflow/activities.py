@@ -16,13 +16,13 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
-from app.state.models import get_db, WorkflowTaskModel
+from app.state.models import WorkflowTaskModel, get_db
 from app.state.repository import StateRepository
-from app.state.statemachine import StateMachine, ProjectStatus
+from app.state.statemachine import ProjectStatus, StateMachine
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def _get_repo() -> StateRepository:
     return StateRepository(db)
 
 
-async def create_state_snapshot(project_id: str, **kwargs) -> Dict[str, Any]:
+async def create_state_snapshot(project_id: str, **kwargs) -> dict[str, Any]:
     repo = _get_repo()
     try:
         snapshot = repo.create_snapshot(project_id)
@@ -46,7 +46,7 @@ async def create_state_snapshot(project_id: str, **kwargs) -> Dict[str, Any]:
 
 async def send_approval_request(
     project_id: str, stage_id: str, stage_name: str, agent_role: str, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     event = Event(
         type=EventTypes.APPROVAL_REQUIRED,
         payload={
@@ -73,9 +73,9 @@ async def execute_agent_task(
     stage_name: str,
     agent_role: str,
     agent_name: str,
-    context: Dict[str, Any],
+    context: dict[str, Any],
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     from app.core.registry.agent_registry import agent_registry
     from app.llm.router import LLMRouter
 
@@ -105,7 +105,7 @@ async def execute_agent_task(
         proposal = await agent.run(project_id, context)
 
         current_state = repo.get_state(project_id)
-        state_dict: Dict[str, Any] = {}
+        state_dict: dict[str, Any] = {}
         if current_state is not None and current_state.state_json is not None:
             state_dict = json.loads(str(current_state.state_json))
         state_dict[stage_id] = {
@@ -114,9 +114,7 @@ async def execute_agent_task(
             "metadata": proposal.metadata,
             "timestamp": datetime.utcnow().isoformat(),
         }
-        repo.update_state(
-            project_id, json.dumps(state_dict, ensure_ascii=False), status
-        )
+        repo.update_state(project_id, json.dumps(state_dict, ensure_ascii=False), status)
 
         task = WorkflowTaskModel(
             project_id=project_id,
@@ -171,15 +169,13 @@ async def execute_agent_task(
 
 async def wait_for_approval(
     project_id: str, task_id: int, timeout_seconds: int = 86400, **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     db = next(get_db())
     poll_interval = 3
     elapsed = 0
 
     while elapsed < timeout_seconds:
-        task = (
-            db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
-        )
+        task = db.query(WorkflowTaskModel).filter(WorkflowTaskModel.id == task_id).first()
         if task is None:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
@@ -200,7 +196,7 @@ async def wait_for_approval(
     return {"status": "timeout", "task_id": task_id}
 
 
-async def rollback_state(project_id: str, snapshot_id: int, **kwargs) -> Dict[str, Any]:
+async def rollback_state(project_id: str, snapshot_id: int, **kwargs) -> dict[str, Any]:
     repo = _get_repo()
     try:
         repo.rollback_to_snapshot(project_id, snapshot_id)
@@ -223,7 +219,7 @@ async def rollback_state(project_id: str, snapshot_id: int, **kwargs) -> Dict[st
         return {"status": "failed", "error": str(exc)}
 
 
-async def notify_completion(project_id: str, **kwargs) -> Dict[str, Any]:
+async def notify_completion(project_id: str, **kwargs) -> dict[str, Any]:
     await event_bus.publish(
         Event(
             type=EventTypes.WORKFLOW_COMPLETED,

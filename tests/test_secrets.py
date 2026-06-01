@@ -4,14 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, SystemSecretModel
 from app.core.secrets import (
+    DEFAULT_SECRET_KEY_NAME,
     generate_secret_key,
     get_or_create_secret,
     get_secret,
     rotate_secret,
-    DEFAULT_SECRET_KEY_NAME,
 )
+from app.state.models import Base, SystemSecretModel
 
 
 @pytest.fixture
@@ -51,9 +51,11 @@ class TestGetOrCreateSecret:
         key = get_or_create_secret(db_session)
         assert len(key) == 64
         # 验证数据库中有记录
-        record = db_session.query(SystemSecretModel).filter(
-            SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME
-        ).first()
+        record = (
+            db_session.query(SystemSecretModel)
+            .filter(SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME)
+            .first()
+        )
         assert record is not None
         assert record.key_value == key
 
@@ -65,9 +67,11 @@ class TestGetOrCreateSecret:
     def test_custom_key_name(self, db_session):
         key = get_or_create_secret(db_session, key_name="custom_key")
         assert len(key) == 64
-        record = db_session.query(SystemSecretModel).filter(
-            SystemSecretModel.key_name == "custom_key"
-        ).first()
+        record = (
+            db_session.query(SystemSecretModel)
+            .filter(SystemSecretModel.key_name == "custom_key")
+            .first()
+        )
         assert record is not None
 
 
@@ -91,15 +95,19 @@ class TestRotateSecret:
         assert len(new_key) == 64
 
         # 验证数据库已更新
-        record = db_session.query(SystemSecretModel).filter(
-            SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME
-        ).first()
+        record = (
+            db_session.query(SystemSecretModel)
+            .filter(SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME)
+            .first()
+        )
         assert record.key_value == new_key
 
     def test_creates_new_if_not_exists(self, db_session):
         new_key = rotate_secret(db_session)
         assert len(new_key) == 64
-        record = db_session.query(SystemSecretModel).filter(
-            SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME
-        ).first()
+        record = (
+            db_session.query(SystemSecretModel)
+            .filter(SystemSecretModel.key_name == DEFAULT_SECRET_KEY_NAME)
+            .first()
+        )
         assert record is not None

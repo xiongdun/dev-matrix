@@ -9,10 +9,10 @@
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from app.skills.base import BaseSkill, SkillResult, SkillConfig
-from app.state.models import get_db, ProjectModel
+from app.skills.base import BaseSkill, SkillConfig, SkillResult
+from app.state.models import ProjectModel, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ProjectCrudSkill(BaseSkill):
     def __init__(self, config: SkillConfig = None):
         super().__init__(config)
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行项目 CRUD 操作。
 
         Args:
@@ -65,7 +65,7 @@ class ProjectCrudSkill(BaseSkill):
         finally:
             db.close()
 
-    def _create_project(self, context: Dict[str, Any], db) -> SkillResult:
+    def _create_project(self, context: dict[str, Any], db) -> SkillResult:
         """创建项目。"""
         project = ProjectModel(
             name=context.get("name", "Untitled"),
@@ -89,7 +89,7 @@ class ProjectCrudSkill(BaseSkill):
             metadata={"action": "create"},
         )
 
-    def _get_project(self, context: Dict[str, Any], db) -> SkillResult:
+    def _get_project(self, context: dict[str, Any], db) -> SkillResult:
         """查询项目。"""
         project_id = context.get("project_id")
         if not project_id:
@@ -113,7 +113,7 @@ class ProjectCrudSkill(BaseSkill):
             metadata={"action": "get"},
         )
 
-    def _update_project(self, context: Dict[str, Any], db) -> SkillResult:
+    def _update_project(self, context: dict[str, Any], db) -> SkillResult:
         """更新项目。"""
         project_id = context.get("project_id")
         if not project_id:
@@ -140,7 +140,7 @@ class ProjectCrudSkill(BaseSkill):
             metadata={"action": "update"},
         )
 
-    def _delete_project(self, context: Dict[str, Any], db) -> SkillResult:
+    def _delete_project(self, context: dict[str, Any], db) -> SkillResult:
         """删除项目。"""
         project_id = context.get("project_id")
         if not project_id:
@@ -155,7 +155,7 @@ class ProjectCrudSkill(BaseSkill):
         logger.info("Deleted project id=%d", project_id)
         return SkillResult(output={"deleted": True}, metadata={"action": "delete"})
 
-    def _list_projects(self, context: Dict[str, Any], db) -> SkillResult:
+    def _list_projects(self, context: dict[str, Any], db) -> SkillResult:
         """列出项目。"""
         status = context.get("status")
         query = db.query(ProjectModel)
@@ -187,7 +187,7 @@ class TaskAssignSkill(BaseSkill):
     name = "task_assign"
     description = "Assign tasks to specialized agents"
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行任务分配。
 
         Args:
@@ -243,7 +243,7 @@ class ProgressTrackSkill(BaseSkill):
     name = "progress_track"
     description = "Track project progress and generate status reports"
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行进度跟踪。
 
         Args:

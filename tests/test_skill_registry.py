@@ -1,4 +1,4 @@
-from app.skills.base import BaseSkill, SkillResult, SkillConfig
+from app.skills.base import BaseSkill, SkillConfig, SkillResult
 from app.skills.registry import SkillRegistry, register_skill
 
 

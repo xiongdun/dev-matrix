@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 
 class PromptTemplate(ABC):
@@ -7,11 +7,11 @@ class PromptTemplate(ABC):
     description: str = ""
 
     @abstractmethod
-    def render(self, context: Dict[str, Any]) -> str:
+    def render(self, context: dict[str, Any]) -> str:
         pass
 
     @abstractmethod
-    def validate_context(self, context: Dict[str, Any]) -> bool:
+    def validate_context(self, context: dict[str, Any]) -> bool:
         pass
 
 
@@ -31,12 +31,12 @@ class Jinja2PromptTemplate(PromptTemplate):
         except ImportError:
             raise RuntimeError("jinja2 not installed. Install with: pip install jinja2")
 
-    def render(self, context: Dict[str, Any]) -> str:
+    def render(self, context: dict[str, Any]) -> str:
         if self._template is None:
             raise RuntimeError("Template not compiled")
         return self._template.render(**context)
 
-    def validate_context(self, context: Dict[str, Any]) -> bool:
+    def validate_context(self, context: dict[str, Any]) -> bool:
         try:
             self.render(context)
             return True

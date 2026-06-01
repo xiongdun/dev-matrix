@@ -19,7 +19,6 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
 
 import httpx
 
@@ -54,7 +53,7 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """多轮对话。
 
         Args:
@@ -84,7 +83,7 @@ class OpenAIClient(LLMClient):
 
     name = "openai"
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4"):
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4"):
         """初始化 OpenAI 客户端。
 
         Args:
@@ -120,7 +119,7 @@ class OpenAIClient(LLMClient):
             httpx.NetworkError,
         ),
     )
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """多轮对话。
 
         使用 httpx 异步调用 OpenAI Chat Completions API，
@@ -210,9 +209,7 @@ class AnthropicClient(LLMClient):
 
     name = "anthropic"
 
-    def __init__(
-        self, api_key: Optional[str] = None, model: str = "claude-3-opus-20240229"
-    ):
+    def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229"):
         """初始化 Anthropic 客户端。
 
         Args:
@@ -248,7 +245,7 @@ class AnthropicClient(LLMClient):
             httpx.NetworkError,
         ),
     )
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: list[dict[str, str]], **kwargs) -> str:
         """多轮对话。
 
         使用 httpx 异步调用 Anthropic Messages API，

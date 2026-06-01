@@ -16,15 +16,15 @@
 """
 
 import logging
-from typing import List, Optional, cast
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.state.models import get_db
-from app.state.schemas import ProjectState, StateSnapshot
-from app.state.repository import StateRepository
 from app.api.schemas import ErrorResponse
+from app.state.models import get_db
+from app.state.repository import StateRepository
+from app.state.schemas import ProjectState, StateSnapshot
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -38,7 +38,7 @@ router = APIRouter()
 async def submit_approval(
     project_id: str,
     status: str = Query(..., pattern="^(approved|rejected)$"),
-    comment: Optional[str] = None,
+    comment: str | None = None,
     db: Session = Depends(get_db),
 ):
     """提交项目审批。
@@ -61,9 +61,7 @@ async def submit_approval(
         repo = StateRepository(db)
         state = repo.get_state(project_id)
         if state is None:
-            logger.warning(
-                "Approval submission failed: project '%s' not found", project_id
-            )
+            logger.warning("Approval submission failed: project '%s' not found", project_id)
             raise HTTPException(status_code=404, detail="Project not found")
         repo.create_snapshot(project_id)
         state_json = cast(str, state.state_json)
@@ -108,9 +106,7 @@ async def get_project_state(
         repo = StateRepository(db)
         state = repo.get_state(project_id)
         if state is None:
-            logger.warning(
-                "Get project state failed: project '%s' not found", project_id
-            )
+            logger.warning("Get project state failed: project '%s' not found", project_id)
             raise HTTPException(status_code=404, detail="Project not found")
         logger.debug("Retrieved state for project '%s'", project_id)
         return state
@@ -123,7 +119,7 @@ async def get_project_state(
 
 @router.get(
     "/{project_id}/snapshots",
-    response_model=List[StateSnapshot],
+    response_model=list[StateSnapshot],
     responses={500: {"model": ErrorResponse}},
 )
 async def list_snapshots(
@@ -191,7 +187,5 @@ async def rollback_to_snapshot(
         )
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception(
-            "Failed to rollback project '%s' to snapshot %d", project_id, snapshot_id
-        )
+        logger.exception("Failed to rollback project '%s' to snapshot %d", project_id, snapshot_id)
         raise HTTPException(status_code=500, detail="Internal server error") from exc

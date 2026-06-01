@@ -25,6 +25,8 @@ export interface Tab {
   path: string
   /** 是否可关闭 */
   closable: boolean
+  /** 图标名称 */
+  icon?: string
 }
 
 const tabs = ref<Tab[]>([
@@ -33,6 +35,7 @@ const tabs = ref<Tab[]>([
     title: 'Dashboard',
     path: '/',
     closable: false,
+    icon: 'LayoutDashboard',
   },
 ])
 
@@ -49,7 +52,7 @@ export function useTabs() {
     return tabs.value.find((tab) => tab.id === name)
   }
 
-  const addTab = (name: string, title: string, path: string) => {
+  const addTab = (name: string, title: string, path: string, icon?: string) => {
     const existingTab = findTabByName(name)
     if (existingTab) {
       activeTabId.value = name
@@ -62,6 +65,7 @@ export function useTabs() {
       title,
       path,
       closable: true,
+      icon,
     })
     activeTabId.value = name
     router.push(path)

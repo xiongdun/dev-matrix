@@ -5,10 +5,10 @@
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,19 +20,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AuditLog:
     """审计日志数据类。"""
+
     action: str
-    user_id: Optional[int] = None
-    username: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    user_id: int | None = None
+    username: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+    details: dict[str, Any] | None = None
     status: str = "success"
-    error_message: Optional[str] = None
+    error_message: str | None = None
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             **asdict(self),
             "timestamp": self.timestamp.isoformat(),
@@ -45,7 +46,7 @@ class AuditLog:
 class AuditLogger:
     """审计日志记录器。"""
 
-    def __init__(self, log_file: Optional[str] = None, use_db: bool = True):
+    def __init__(self, log_file: str | None = None, use_db: bool = True):
         self.log_file = Path(log_file) if log_file else Path("logs/audit.log")
         self.use_db = use_db
         self._ensure_log_dir()
@@ -57,15 +58,15 @@ class AuditLogger:
         self,
         db: Session,
         action: str,
-        user_id: Optional[int] = None,
-        username: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        user_id: int | None = None,
+        username: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        details: dict[str, Any] | None = None,
         status: str = "success",
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> AuditLog:
         audit_log = AuditLog(
             action=action,
@@ -106,7 +107,9 @@ class AuditLogger:
                 user_agent=audit_log.user_agent,
                 resource_type=audit_log.resource_type,
                 resource_id=audit_log.resource_id,
-                details=json.dumps(audit_log.details, ensure_ascii=False) if audit_log.details else None,
+                details=json.dumps(audit_log.details, ensure_ascii=False)
+                if audit_log.details
+                else None,
                 status=audit_log.status,
                 error_message=audit_log.error_message,
             )
@@ -119,11 +122,11 @@ class AuditLogger:
     def get_logs(
         self,
         db: Session,
-        action: Optional[str] = None,
-        user_id: Optional[int] = None,
-        resource_type: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        action: str | None = None,
+        user_id: int | None = None,
+        resource_type: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> tuple:
@@ -150,11 +153,7 @@ _default_logger = AuditLogger()
 
 
 def log_audit(
-    db: Session,
-    action: str,
-    user_id: Optional[int] = None,
-    username: Optional[str] = None,
-    **kwargs
+    db: Session, action: str, user_id: int | None = None, username: str | None = None, **kwargs
 ) -> AuditLog:
     """便捷函数，使用默认记录器记录审计日志。"""
     return _default_logger.log(db, action, user_id=user_id, username=username, **kwargs)

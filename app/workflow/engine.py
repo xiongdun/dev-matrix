@@ -17,7 +17,7 @@
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from temporalio.client import Client
 
@@ -36,7 +36,7 @@ class WorkflowEngine:
     """
 
     def __init__(self):
-        self._temporal_client: Optional[Client] = None
+        self._temporal_client: Client | None = None
 
     async def _get_temporal_client(self) -> Client:
         """懒加载 Temporal Client。"""
@@ -51,11 +51,11 @@ class WorkflowEngine:
     async def start_workflow(
         self,
         project_id: str,
-        flow_json: Optional[str] = None,
-        stages: Optional[list] = None,
-        context: Optional[Dict[str, Any]] = None,
-        template_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        flow_json: str | None = None,
+        stages: list | None = None,
+        context: dict[str, Any] | None = None,
+        template_id: int | None = None,
+    ) -> dict[str, Any]:
         """启动工作流。
 
         Args:
@@ -73,7 +73,7 @@ class WorkflowEngine:
         client = await self._get_temporal_client()
         workflow_id = f"dev-workflow-{project_id}"
 
-        config: Dict[str, Any] = {
+        config: dict[str, Any] = {
             "project_id": project_id,
             "context": context or {},
         }
@@ -104,7 +104,7 @@ class WorkflowEngine:
             "workflow_id": workflow_id,
         }
 
-    async def get_workflow_status(self, project_id: str) -> Dict[str, Any]:
+    async def get_workflow_status(self, project_id: str) -> dict[str, Any]:
         """获取工作流状态。
 
         查询 Temporal 工作流状态。
@@ -123,9 +123,7 @@ class WorkflowEngine:
             description = await handle.describe()
             status = description.status
             status_name = (
-                status.name
-                if status is not None and hasattr(status, "name")
-                else str(status)
+                status.name if status is not None and hasattr(status, "name") else str(status)
             )
             return {
                 "project_id": project_id,

@@ -13,19 +13,19 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.orm import Session
 
-from app.state.models import ScheduledTaskModel, ScheduledTaskLogModel, get_db
+from app.state.models import ScheduledTaskLogModel, ScheduledTaskModel, get_db
 
 logger = logging.getLogger(__name__)
 
-_scheduler: Optional[AsyncIOScheduler] = None
+_scheduler: AsyncIOScheduler | None = None
 
 
 def get_scheduler() -> Optional["TaskScheduler"]:
@@ -184,7 +184,7 @@ def _execute_task(task: ScheduledTaskModel, db: Session) -> ScheduledTaskLogMode
     return log
 
 
-def _run_workflow_instance_task(task: ScheduledTaskModel, config: Dict[str, Any], db: Session):
+def _run_workflow_instance_task(task: ScheduledTaskModel, config: dict[str, Any], db: Session):
     """执行创建工作流实例任务。"""
     template_id = config.get("template_id")
     project_id = config.get("project_id")
@@ -193,12 +193,13 @@ def _run_workflow_instance_task(task: ScheduledTaskModel, config: Dict[str, Any]
     if not template_id or not project_id:
         raise ValueError("template_id and project_id are required for workflow_instance task")
 
-    from app.api.workflow_config import instantiate_template
     from pydantic import BaseModel
+
+    from app.api.workflow_config import instantiate_template
 
     class Payload(BaseModel):
         project_id: str
-        context: Dict[str, Any] = {}
+        context: dict[str, Any] = {}
 
     payload = Payload(project_id=project_id, context=context)
     result = instantiate_template(template_id, payload, db)
@@ -209,7 +210,7 @@ def _run_workflow_instance_task(task: ScheduledTaskModel, config: Dict[str, Any]
     )
 
 
-def _run_system_task(task: ScheduledTaskModel, config: Dict[str, Any], db: Session):
+def _run_system_task(task: ScheduledTaskModel, config: dict[str, Any], db: Session):
     """执行系统任务。"""
     task_name = config.get("system_task_name", "unknown")
     logger.info("Running system task: %s", task_name)

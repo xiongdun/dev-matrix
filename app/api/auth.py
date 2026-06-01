@@ -11,16 +11,27 @@
 """
 
 from datetime import datetime
-from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.state.models import UserModel, RoleModel, UserRoleModel, MenuModel, RoleMenuModel, RoleAgentModel
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
 from app.core.limiter import limiter
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_password,
+)
+from app.state.models import (
+    MenuModel,
+    RoleAgentModel,
+    RoleMenuModel,
+    RoleModel,
+    UserModel,
+    UserRoleModel,
+)
 
 router = APIRouter(tags=["auth"])
 
@@ -34,15 +45,15 @@ class LoginResponse(BaseModel):
     token: str
     refresh_token: str
     expires_at: int
-    user: Dict
+    user: dict
 
 
 class UserInfoResponse(BaseModel):
     id: int
     username: str
-    nickname: Optional[str]
-    email: Optional[str]
-    avatar: Optional[str]
+    nickname: str | None
+    email: str | None
+    avatar: str | None
     roles: list
     permissions: list
     agents: list
@@ -78,10 +89,11 @@ def get_user_permissions(db: Session, user_id: int) -> list:
     if not menu_ids:
         return []
 
-    permissions = db.query(MenuModel.permission).filter(
-        MenuModel.id.in_(menu_ids),
-        MenuModel.permission.isnot(None)
-    ).all()
+    permissions = (
+        db.query(MenuModel.permission)
+        .filter(MenuModel.id.in_(menu_ids), MenuModel.permission.isnot(None))
+        .all()
+    )
     return list(set([p[0] for p in permissions]))
 
 
@@ -92,9 +104,12 @@ def get_user_agents(db: Session, user_id: int) -> list:
     if not role_ids:
         return []
 
-    agents = db.query(RoleAgentModel.agent_name).filter(
-        RoleAgentModel.role_id.in_(role_ids)
-    ).distinct().all()
+    agents = (
+        db.query(RoleAgentModel.agent_name)
+        .filter(RoleAgentModel.role_id.in_(role_ids))
+        .distinct()
+        .all()
+    )
     return [a[0] for a in agents]
 
 
@@ -128,7 +143,7 @@ async def login(request: Request, payload: LoginRequest, db: Session = Depends(g
             "email": user.email,
             "avatar": user.avatar,
             "roles": [{"id": r.id, "name": r.name, "display_name": r.display_name} for r in roles],
-        }
+        },
     }
 
 
@@ -139,9 +154,16 @@ async def logout():
 
 
 @router.get("/me", response_model=UserInfoResponse)
-async def get_me(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_me(
+    current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)
+):
     """获取当前登录用户信息。"""
-    roles = db.query(RoleModel).join(UserRoleModel).filter(UserRoleModel.user_id == current_user.id).all()
+    roles = (
+        db.query(RoleModel)
+        .join(UserRoleModel)
+        .filter(UserRoleModel.user_id == current_user.id)
+        .all()
+    )
     permissions = get_user_permissions(db, current_user.id)
     agents = get_user_agents(db, current_user.id)
 
@@ -169,7 +191,9 @@ async def refresh_token(request: Request, db: Session = Depends(get_db)):
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    new_token = create_access_token(db, {"sub": payload["sub"], "username": payload.get("username", "")})
+    new_token = create_access_token(
+        db, {"sub": payload["sub"], "username": payload.get("username", "")}
+    )
     return {"token": new_token, "expires_at": 7200}
 
 
@@ -185,6 +209,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail="Old password is incorrect")
 
     from app.core.security import hash_password
+
     current_user.password_hash = hash_password(new_password)
     db.commit()
     return {"success": True}

@@ -4,7 +4,6 @@ import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -20,9 +19,9 @@ class AbstractSandbox(ABC):
     @abstractmethod
     async def execute(
         self,
-        command: List[str],
-        working_dir: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
+        command: list[str],
+        working_dir: str | None = None,
+        env: dict[str, str] | None = None,
         timeout: float = 60.0,
     ) -> SandboxResult:
         pass
@@ -52,8 +51,8 @@ class DockerSandbox(AbstractSandbox):
         self.memory_limit = memory_limit
         self.cpu_limit = cpu_limit
         self.network = network
-        self.container_id: Optional[str] = None
-        self._temp_dir: Optional[Path] = None
+        self.container_id: str | None = None
+        self._temp_dir: Path | None = None
 
     async def _ensure_container(self) -> str:
         if self.container_id:
@@ -100,9 +99,9 @@ class DockerSandbox(AbstractSandbox):
 
     async def execute(
         self,
-        command: List[str],
-        working_dir: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
+        command: list[str],
+        working_dir: str | None = None,
+        env: dict[str, str] | None = None,
         timeout: float = 60.0,
     ) -> SandboxResult:
         container_id = await self._ensure_container()
@@ -192,8 +191,8 @@ class FirecrackerSandbox(AbstractSandbox):
         self.rootfs_image = rootfs_image
         self.memory_mb = memory_mb
         self.vcpus = vcpus
-        self._socket_path: Optional[str] = None
-        self._temp_dir: Optional[Path] = None
+        self._socket_path: str | None = None
+        self._temp_dir: Path | None = None
 
     async def _start_microvm(self) -> str:
         self._temp_dir = Path(tempfile.mkdtemp(prefix="devmatrix_fc_"))
@@ -207,9 +206,9 @@ class FirecrackerSandbox(AbstractSandbox):
 
     async def execute(
         self,
-        command: List[str],
-        working_dir: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
+        command: list[str],
+        working_dir: str | None = None,
+        env: dict[str, str] | None = None,
         timeout: float = 60.0,
     ) -> SandboxResult:
         await self._start_microvm()
@@ -223,15 +222,11 @@ class FirecrackerSandbox(AbstractSandbox):
 
     async def write_file(self, path: str, content: str) -> None:
         await self._start_microvm()
-        raise NotImplementedError(
-            "Firecracker file operations require agent integration"
-        )
+        raise NotImplementedError("Firecracker file operations require agent integration")
 
     async def read_file(self, path: str) -> str:
         await self._start_microvm()
-        raise NotImplementedError(
-            "Firecracker file operations require agent integration"
-        )
+        raise NotImplementedError("Firecracker file operations require agent integration")
 
     async def cleanup(self) -> None:
         if self._temp_dir and self._temp_dir.exists():

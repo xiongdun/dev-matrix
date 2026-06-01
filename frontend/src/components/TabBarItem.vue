@@ -21,6 +21,10 @@ import {
   Clock,
   KanbanSquare,
   ListTodo,
+  GitPullRequest,
+  Users,
+  UserCog,
+  Menu,
   X,
 } from 'lucide-vue-next'
 
@@ -38,27 +42,37 @@ const emit = defineEmits<{
   (e: 'contextmenu', event: MouseEvent): void
 }>()
 
-const iconMap: Record<string, any> = {
-  dashboard: LayoutDashboard,
-  projects: FolderKanban,
-  agents: Bot,
-  skills: Wrench,
-  settings: Settings,
-  'settings-system': Monitor,
-  'settings-llm': BrainCircuit,
-  'settings-database': Database,
-  'settings-security': Shield,
-  'settings-about': Info,
-  'workflow-list': List,
-  'workflow-editor': Workflow,
-  'workflow-instances': Layers,
-  workbench: ClipboardCheck,
-  'scheduled-tasks': Clock,
-  'my-tasks': ListTodo,
-  'task-board': KanbanSquare,
+const iconComponentMap: Record<string, any> = {
+  LayoutDashboard,
+  Bot,
+  Wrench,
+  GitBranch,
+  Workflow,
+  List,
+  Layers,
+  ClipboardCheck,
+  Settings,
+  Monitor,
+  BrainCircuit,
+  Database,
+  Shield,
+  Info,
+  FolderKanban,
+  Clock,
+  KanbanSquare,
+  ListTodo,
+  GitPullRequest,
+  Users,
+  UserCog,
+  Menu,
 }
 
-const tabIcon = computed(() => iconMap[props.tab.id] || GitBranch)
+const tabIcon = computed(() => {
+  if (props.tab.icon && iconComponentMap[props.tab.icon]) {
+    return iconComponentMap[props.tab.icon]
+  }
+  return GitBranch
+})
 
 const displayTitle = computed(() => {
   const titleMap: Record<string, string> = {
@@ -72,13 +86,16 @@ const displayTitle = computed(() => {
     'settings-database': t('sidebar.settingsDatabase'),
     'settings-security': t('sidebar.settingsSecurity'),
     'settings-about': t('sidebar.settingsAbout'),
-    'workflow-list': t('sidebar.workflowList'),
-    'workflow-editor': t('sidebar.workflowEditor'),
-    'workflow-instances': t('sidebar.workflowInstances'),
+    'workflow_list': t('sidebar.workflowList'),
+    'workflow_editor': t('sidebar.workflowEditor'),
+    'workflow_instances': t('sidebar.workflowInstances'),
     workbench: t('sidebar.workbench'),
     'scheduled-tasks': t('sidebar.scheduledTasks'),
     'my-tasks': t('sidebar.myTasks'),
     'task-board': t('sidebar.taskBoard'),
+    user_management: t('sidebar.userManagement'),
+    role_management: t('sidebar.roleManagement'),
+    menu_management: t('sidebar.menuManagement'),
   }
   return titleMap[props.tab.id] || props.tab.title
 })

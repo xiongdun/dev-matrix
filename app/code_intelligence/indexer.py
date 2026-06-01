@@ -2,7 +2,6 @@ import ast
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -12,9 +11,9 @@ class CodeSymbol:
     file_path: str
     line_start: int
     line_end: int
-    docstring: Optional[str] = None
-    signature: Optional[str] = None
-    dependencies: List[str] = field(default_factory=list)
+    docstring: str | None = None
+    signature: str | None = None
+    dependencies: list[str] = field(default_factory=list)
     content_hash: str = ""
 
 
@@ -22,10 +21,10 @@ class CodeSymbol:
 class FileIndex:
     file_path: str
     language: str
-    symbols: List[CodeSymbol] = field(default_factory=list)
-    imports: List[str] = field(default_factory=list)
+    symbols: list[CodeSymbol] = field(default_factory=list)
+    imports: list[str] = field(default_factory=list)
     content_hash: str = ""
-    last_indexed: Optional[str] = None
+    last_indexed: str | None = None
 
 
 class CodeIndexer:
@@ -40,13 +39,13 @@ class CodeIndexer:
 
     def __init__(self, root_path: str):
         self.root_path = Path(root_path).resolve()
-        self._index: Dict[str, FileIndex] = {}
-        self._symbol_map: Dict[str, List[CodeSymbol]] = {}
+        self._index: dict[str, FileIndex] = {}
+        self._symbol_map: dict[str, list[CodeSymbol]] = {}
 
     def _compute_hash(self, content: str) -> str:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
-    def _detect_language(self, file_path: Path) -> Optional[str]:
+    def _detect_language(self, file_path: Path) -> str | None:
         return self.SUPPORTED_EXTENSIONS.get(file_path.suffix)
 
     def _parse_python_file(self, file_path: Path, content: str) -> FileIndex:
@@ -59,8 +58,8 @@ class CodeIndexer:
                 content_hash=self._compute_hash(content),
             )
 
-        symbols: List[CodeSymbol] = []
-        imports: List[str] = []
+        symbols: list[CodeSymbol] = []
+        imports: list[str] = []
 
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -105,14 +104,14 @@ class CodeIndexer:
             content_hash=self._compute_hash(content),
         )
 
-    def _index_file(self, file_path: Path) -> Optional[FileIndex]:
+    def _index_file(self, file_path: Path) -> FileIndex | None:
         language = self._detect_language(file_path)
         if not language:
             return None
 
         try:
             content = file_path.read_text(encoding="utf-8")
-        except (IOError, UnicodeDecodeError):
+        except (OSError, UnicodeDecodeError):
             return None
 
         if language == "python":
@@ -124,7 +123,7 @@ class CodeIndexer:
             content_hash=self._compute_hash(content),
         )
 
-    def index(self, paths: Optional[List[str]] = None) -> Dict[str, FileIndex]:
+    def index(self, paths: list[str] | None = None) -> dict[str, FileIndex]:
         target_paths = [self.root_path]
         if paths:
             target_paths = [self.root_path / p for p in paths]
@@ -138,8 +137,7 @@ class CodeIndexer:
                 for file_path in target.rglob("*"):
                     if file_path.is_file() and not any(
                         part.startswith(".")
-                        or part
-                        in {"__pycache__", "node_modules", ".git", "venv", ".venv"}
+                        or part in {"__pycache__", "node_modules", ".git", "venv", ".venv"}
                         for part in file_path.parts
                     ):
                         result = self._index_file(file_path)
@@ -157,13 +155,13 @@ class CodeIndexer:
                     self._symbol_map[symbol.name] = []
                 self._symbol_map[symbol.name].append(symbol)
 
-    def get_file_index(self, file_path: str) -> Optional[FileIndex]:
+    def get_file_index(self, file_path: str) -> FileIndex | None:
         return self._index.get(file_path)
 
-    def find_symbol(self, name: str) -> List[CodeSymbol]:
+    def find_symbol(self, name: str) -> list[CodeSymbol]:
         return self._symbol_map.get(name, []).copy()
 
-    def search_files(self, pattern: str) -> List[FileIndex]:
+    def search_files(self, pattern: str) -> list[FileIndex]:
         results = []
         lower_pattern = pattern.lower()
         for file_index in self._index.values():
@@ -171,13 +169,13 @@ class CodeIndexer:
                 results.append(file_index)
         return results
 
-    def get_all_symbols(self) -> Dict[str, List[CodeSymbol]]:
+    def get_all_symbols(self) -> dict[str, list[CodeSymbol]]:
         return {k: v.copy() for k, v in self._symbol_map.items()}
 
-    def get_statistics(self) -> Dict[str, int]:
+    def get_statistics(self) -> dict[str, int]:
         total_files = len(self._index)
         total_symbols = sum(len(f.symbols) for f in self._index.values())
-        language_counts: Dict[str, int] = {}
+        language_counts: dict[str, int] = {}
         for f in self._index.values():
             language_counts[f.language] = language_counts.get(f.language, 0) + 1
 

@@ -4,7 +4,7 @@ import json
 import logging
 import subprocess
 import tempfile
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class StaticAnalysisEngine:
                 "Install with: pip install semgrep"
             )
 
-    def analyze_diff(self, diff: str) -> List[Dict[str, Any]]:
+    def analyze_diff(self, diff: str) -> list[dict[str, Any]]:
         """分析代码 diff。
 
         Args:
@@ -40,9 +40,7 @@ class StaticAnalysisEngine:
         """
         try:
             # 将 diff 写入临时文件
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".diff", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".diff", delete=False) as f:
                 f.write(diff)
                 diff_path = f.name
 
@@ -73,7 +71,9 @@ class StaticAnalysisEngine:
                 issue = {
                     "file": finding.get("path", ""),
                     "line": finding.get("start", {}).get("line"),
-                    "severity": self._map_severity(finding.get("extra", {}).get("severity", "WARNING")),
+                    "severity": self._map_severity(
+                        finding.get("extra", {}).get("severity", "WARNING")
+                    ),
                     "category": self._map_category(finding.get("check_id", "")),
                     "title": finding.get("extra", {}).get("message", "Unknown issue"),
                     "description": finding.get("extra", {}).get("message", ""),
@@ -86,7 +86,7 @@ class StaticAnalysisEngine:
         except subprocess.TimeoutExpired:
             logger.error("semgrep timed out")
             return []
-        except Exception as e:
+        except Exception:
             logger.exception("Static analysis failed")
             return []
 

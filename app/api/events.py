@@ -6,7 +6,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 class SSESubscriber:
-    def __init__(self, role: Optional[str] = None):
+    def __init__(self, role: str | None = None):
         self.role = role
         self._queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
@@ -79,7 +79,7 @@ def _ensure_listener():
 
 @router.get("/stream")
 async def event_stream(
-    role: Optional[str] = Query(None, max_length=64),
+    role: str | None = Query(None, max_length=64),
 ):
     _ensure_listener()
     subscriber = SSESubscriber(role=role)

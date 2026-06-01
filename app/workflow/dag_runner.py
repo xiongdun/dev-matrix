@@ -11,7 +11,7 @@ import json
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,11 @@ class DAGNode:
     requires_approval: bool = False
     timeout_seconds: int = 300
     retries: int = 0
-    condition: Optional[str] = None
-    context: Dict[str, Any] = field(default_factory=dict)
+    condition: str | None = None
+    context: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_stage_dict(cls, data: Dict[str, Any]) -> "DAGNode":
+    def from_stage_dict(cls, data: dict[str, Any]) -> "DAGNode":
         return cls(
             id=data["id"],
             name=data.get("name", data["id"]),
@@ -57,14 +57,14 @@ class DAGEdge:
 class DAG:
     """有向无环图，表示工作流的拓扑结构。"""
 
-    nodes: Dict[str, DAGNode]
-    edges: List[DAGEdge]
-    adjacency: Dict[str, List[str]] = field(default_factory=dict)
-    in_degree: Dict[str, int] = field(default_factory=dict)
+    nodes: dict[str, DAGNode]
+    edges: list[DAGEdge]
+    adjacency: dict[str, list[str]] = field(default_factory=dict)
+    in_degree: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
         self.adjacency = {nid: [] for nid in self.nodes}
-        self.in_degree = {nid: 0 for nid in self.nodes}
+        self.in_degree = dict.fromkeys(self.nodes, 0)
         for edge in self.edges:
             if edge.source in self.nodes and edge.target in self.nodes:
                 self.adjacency[edge.source].append(edge.target)
@@ -99,7 +99,7 @@ class DAG:
         return cls(nodes=nodes, edges=edges)
 
     @classmethod
-    def from_stages(cls, stages: List[Dict[str, Any]]) -> "DAG":
+    def from_stages(cls, stages: list[dict[str, Any]]) -> "DAG":
         """从阶段列表（线性顺序）构建 DAG。"""
         nodes = {}
         edges = []
@@ -110,7 +110,7 @@ class DAG:
             edges.append(DAGEdge(source=stages[i]["id"], target=stages[i + 1]["id"]))
         return cls(nodes=nodes, edges=edges)
 
-    def topological_sort(self) -> List[str]:
+    def topological_sort(self) -> list[str]:
         """Kahn 算法拓扑排序，返回节点 ID 列表。"""
         in_deg = dict(self.in_degree)
         queue = deque([nid for nid, deg in in_deg.items() if deg == 0])
@@ -129,7 +129,7 @@ class DAG:
 
         return result
 
-    def get_ready_nodes(self, completed: Set[str]) -> List[str]:
+    def get_ready_nodes(self, completed: set[str]) -> list[str]:
         """获取所有依赖已满足的节点（可并行执行）。"""
         ready = []
         for nid, node in self.nodes.items():
@@ -141,11 +141,11 @@ class DAG:
                 ready.append(nid)
         return ready
 
-    def get_predecessors(self, node_id: str) -> List[str]:
+    def get_predecessors(self, node_id: str) -> list[str]:
         """获取指定节点的所有前驱节点。"""
         return [edge.source for edge in self.edges if edge.target == node_id]
 
-    def get_successors(self, node_id: str) -> List[str]:
+    def get_successors(self, node_id: str) -> list[str]:
         """获取指定节点的所有后继节点。"""
         return self.adjacency.get(node_id, [])
 
@@ -166,8 +166,8 @@ class DAGRunner:
 
     def __init__(self, dag: DAG):
         self.dag = dag
-        self.completed: Set[str] = set()
-        self.failed: Set[str] = set()
+        self.completed: set[str] = set()
+        self.failed: set[str] = set()
 
     def iter_batches(self):
         """按拓扑层级迭代，每次返回可并行执行的节点批次。"""
@@ -189,6 +189,6 @@ class DAGRunner:
         """检查是否所有节点都已执行完毕。"""
         return len(self.completed) + len(self.failed) >= len(self.dag.nodes)
 
-    def get_node(self, node_id: str) -> Optional[DAGNode]:
+    def get_node(self, node_id: str) -> DAGNode | None:
         """按 ID 获取节点。"""
         return self.dag.nodes.get(node_id)

@@ -2,7 +2,6 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -10,8 +9,8 @@ class RepoConfig:
     name: str
     url: str
     branch: str = "main"
-    local_path: Optional[str] = None
-    auth_token: Optional[str] = None
+    local_path: str | None = None
+    auth_token: str | None = None
 
 
 @dataclass
@@ -29,14 +28,14 @@ class MultiRepoManager:
     def __init__(self, base_dir: str = "./repos"):
         self.base_dir = Path(base_dir).resolve()
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self._repos: Dict[str, RepoConfig] = {}
+        self._repos: dict[str, RepoConfig] = {}
 
     def register(self, config: RepoConfig) -> None:
         if config.local_path is None:
             config.local_path = str(self.base_dir / config.name)
         self._repos[config.name] = config
 
-    def get_local_path(self, name: str) -> Optional[Path]:
+    def get_local_path(self, name: str) -> Path | None:
         config = self._repos.get(name)
         if config and config.local_path:
             return Path(config.local_path)
@@ -128,9 +127,7 @@ class MultiRepoManager:
                 if len(parts) > 1:
                     tracking = parts[1]
                     if "[ahead " in tracking:
-                        ahead_str = (
-                            tracking.split("[ahead ")[1].split(",")[0].split("]")[0]
-                        )
+                        ahead_str = tracking.split("[ahead ")[1].split(",")[0].split("]")[0]
                         ahead = int(ahead_str)
                     if "[behind " in tracking:
                         behind_str = tracking.split("[behind ")[1].split("]")[0]
@@ -167,9 +164,7 @@ class MultiRepoManager:
             capture_output=True,
         )
 
-    def commit_changes(
-        self, name: str, message: str, files: Optional[List[str]] = None
-    ) -> None:
+    def commit_changes(self, name: str, message: str, files: list[str] | None = None) -> None:
         local_path = self.get_local_path(name)
         if not local_path or not local_path.exists():
             raise ValueError(f"Repository '{name}' not cloned")
@@ -194,5 +189,5 @@ class MultiRepoManager:
             capture_output=True,
         )
 
-    def list_repos(self) -> List[str]:
+    def list_repos(self) -> list[str]:
         return list(self._repos.keys())

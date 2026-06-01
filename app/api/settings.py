@@ -19,7 +19,7 @@
 
 import logging
 import os
-from typing import Dict, List, Optional, cast
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -32,14 +32,13 @@ router = APIRouter()
 
 
 # 默认配置定义：key -> (默认值, 分类, 描述, 是否敏感)
-DEFAULT_CONFIGS: Dict[str, tuple] = {
+DEFAULT_CONFIGS: dict[str, tuple] = {
     # 系统设置
     "app_name": ("DevMatrix", "system", "应用名称", False),
     "theme": ("auto", "system", "主题设置 (light/dark/auto)", False),
     "language": ("zh", "system", "默认语言 (zh/en)", False),
     "notifications_enabled": ("true", "system", "是否启用通知", False),
     "auto_save_interval": ("30000", "system", "自动保存间隔 (毫秒)", False),
-
     # LLM 设置
     "llm_provider": ("openai", "llm", "默认 LLM 提供商", False),
     "llm_model": ("gpt-4", "llm", "默认 LLM 模型", False),
@@ -54,19 +53,16 @@ DEFAULT_CONFIGS: Dict[str, tuple] = {
     "deepseek_base_url": ("https://api.deepseek.com/v1", "llm", "DeepSeek API 基础地址", False),
     "claude_sdk_enabled": ("false", "llm", "启用 Claude Agent SDK", False),
     "claude_sdk_session_id": ("", "llm", "Claude Code 会话 ID", False),
-
     # 代码审查质量门禁
     "code_review_enabled": ("true", "llm", "启用代码审查", False),
     "code_review_auto_trigger": ("true", "llm", "开发完成后自动触发审查", False),
     "code_review_score_threshold": ("60", "llm", "审查通过分数阈值", False),
     "code_review_must_fix_block": ("true", "llm", "Must Fix 问题阻止通过", False),
     "code_review_models": ("gpt-4,claude-3-opus", "llm", "代码审查可用模型", False),
-
     # 数据库设置
     "database_url": ("sqlite:///./devmatrix.db", "database", "数据库连接 URL", True),
     "redis_url": ("redis://localhost:6379/0", "database", "Redis 连接 URL", True),
     "temporal_host": ("localhost:7233", "database", "Temporal 主机地址", False),
-
     # 安全设置
     "session_timeout": ("3600", "security", "会话超时时间 (秒)", False),
     "max_login_attempts": ("5", "security", "最大登录尝试次数", False),
@@ -79,27 +75,27 @@ class ConfigItemResponse(BaseModel):
     key: str
     value: str
     category: str
-    description: Optional[str] = None
+    description: str | None = None
     is_sensitive: bool = False
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
 
 class ConfigUpdateRequest(BaseModel):
     """配置更新请求模型。"""
 
-    configs: Dict[str, str] = Field(..., description="要更新的配置键值对")
+    configs: dict[str, str] = Field(..., description="要更新的配置键值对")
 
 
 class ConfigListResponse(BaseModel):
     """配置列表响应模型。"""
 
-    configs: List[ConfigItemResponse]
+    configs: list[ConfigItemResponse]
 
 
 class CategoriesResponse(BaseModel):
     """分类列表响应模型。"""
 
-    categories: List[str]
+    categories: list[str]
 
 
 def _mask_sensitive(value: str) -> str:
@@ -138,9 +134,9 @@ def _model_to_response(model: SystemConfigModel, mask: bool = True) -> ConfigIte
         key=cast(str, model.key),
         value=value,
         category=cast(str, model.category),
-        description=cast(Optional[str], model.description),
+        description=cast(str | None, model.description),
         is_sensitive=is_sensitive,
-        updated_at=cast(Optional[str], model.updated_at.isoformat() if model.updated_at else None),
+        updated_at=cast(str | None, model.updated_at.isoformat() if model.updated_at else None),
     )
 
 
@@ -206,7 +202,7 @@ def init_default_configs(db: Session) -> None:
 
 @router.get("", response_model=ConfigListResponse)
 async def list_configs(
-    category: Optional[str] = None,
+    category: str | None = None,
     db: Session = Depends(get_db),
 ):
     """获取所有配置列表。
@@ -239,10 +235,7 @@ async def list_categories(db: Session = Depends(get_db)):
         CategoriesResponse: 分类列表。
     """
     categories = (
-        db.query(SystemConfigModel.category)
-        .distinct()
-        .order_by(SystemConfigModel.category)
-        .all()
+        db.query(SystemConfigModel.category).distinct().order_by(SystemConfigModel.category).all()
     )
     return CategoriesResponse(categories=[c[0] for c in categories])
 
@@ -337,11 +330,7 @@ async def update_configs(
         logger.info("Updated configs: %s", updated_keys)
 
         # 返回更新后的配置
-        configs = (
-            db.query(SystemConfigModel)
-            .filter(SystemConfigModel.key.in_(updated_keys))
-            .all()
-        )
+        configs = db.query(SystemConfigModel).filter(SystemConfigModel.key.in_(updated_keys)).all()
         return ConfigListResponse(configs=[_model_to_response(c) for c in configs])
 
     except Exception as exc:

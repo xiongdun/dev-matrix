@@ -535,7 +535,7 @@ export const api = {
     if (params?.limit) query.append('limit', String(params.limit))
     if (params?.offset) query.append('offset', String(params.offset))
     const qs = query.toString()
-    return requestWithRetry<{ items: Array<{ id: number; task_id: number; status: string; created_at: string; updated_at: string }>; total: number }>('/code-reviews' + (qs ? '?' + qs : ''))
+    return requestWithRetry<Array<{ id: number; task_id: number; project_id: string; status: string; score: number | null; summary: string | null; created_at: string; updated_at: string }>>('/code-reviews' + (qs ? '?' + qs : ''))
   },
 
   /** 重新运行代码审查 */

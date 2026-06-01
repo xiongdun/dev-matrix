@@ -14,16 +14,15 @@
 """
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.state.models import get_db, ProjectStateModel
-from app.state.schemas import ProjectState, ProjectStateCreate
-from app.state.repository import StateRepository
 from app.api.schemas import ErrorResponse
+from app.state.models import ProjectStateModel, get_db
+from app.state.repository import StateRepository
+from app.state.schemas import ProjectState, ProjectStateCreate
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -42,7 +41,7 @@ class PaginatedRequirementsResponse(BaseModel):
     total: int
     limit: int
     offset: int
-    items: List[ProjectState]
+    items: list[ProjectState]
 
 
 @router.post(
@@ -72,9 +71,7 @@ async def create_requirement(
         repo = StateRepository(db)
         existing = repo.get_state(req.project_id)
         if existing:
-            logger.warning(
-                "Create requirement failed: project '%s' already exists", req.project_id
-            )
+            logger.warning("Create requirement failed: project '%s' already exists", req.project_id)
             raise HTTPException(status_code=400, detail="Project already exists")
         state = repo.update_state(
             project_id=req.project_id,
@@ -86,9 +83,7 @@ async def create_requirement(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception(
-            "Failed to create requirement for project '%s'", req.project_id
-        )
+        logger.exception("Failed to create requirement for project '%s'", req.project_id)
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
@@ -99,9 +94,7 @@ async def create_requirement(
 )
 async def list_requirements(
     db: Session = Depends(get_db),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of items to return"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of items to return"),
     offset: int = Query(0, ge=0, description="Number of items to skip"),
 ):
     """分页列出所有项目需求。

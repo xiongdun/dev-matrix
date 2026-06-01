@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from app.llm.client import LLMClient
 
@@ -10,8 +10,8 @@ class RoutingStrategy(ABC):
     @abstractmethod
     def select_client(
         self,
-        clients: Dict[str, LLMClient],
+        clients: dict[str, LLMClient],
         task_type: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> LLMClient:
         pass

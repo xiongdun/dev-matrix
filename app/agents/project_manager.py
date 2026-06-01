@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
 
@@ -25,9 +25,7 @@ class ProjectManagerAgent(BaseAgent):
         "Be organized, proactive, and ensure timely delivery."
     )
 
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         """生成项目管理提案。
 
         根据项目上下文生成项目计划、任务分配方案或进度报告。
@@ -66,9 +64,7 @@ class ProjectManagerAgent(BaseAgent):
             },
         )
 
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         """验证项目管理提案输出。
 
         检查提案是否包含必要的项目管理要素。
@@ -99,7 +95,7 @@ class ProjectManagerAgent(BaseAgent):
         return ValidationResult(is_valid=len(errors) == 0, errors=errors)
 
     def _build_plan_prompt(
-        self, project_id: str, state: Dict[str, Any], context: Dict[str, Any]
+        self, project_id: str, state: dict[str, Any], context: dict[str, Any]
     ) -> str:
         """构建项目计划提示词。"""
         requirements = state.get("requirement_analysis", "")
@@ -114,7 +110,7 @@ class ProjectManagerAgent(BaseAgent):
         )
 
     def _build_assign_prompt(
-        self, project_id: str, state: Dict[str, Any], context: Dict[str, Any]
+        self, project_id: str, state: dict[str, Any], context: dict[str, Any]
     ) -> str:
         """构建任务分配提示词。"""
         task = context.get("task", "")
@@ -128,7 +124,7 @@ class ProjectManagerAgent(BaseAgent):
         )
 
     def _build_report_prompt(
-        self, project_id: str, state: Dict[str, Any], context: Dict[str, Any]
+        self, project_id: str, state: dict[str, Any], context: dict[str, Any]
     ) -> str:
         """构建进度报告提示词。"""
         return (

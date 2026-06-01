@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
 
@@ -12,9 +12,7 @@ class QAAgent(BaseAgent):
         "cases, and test execution plan. Be thorough and cover all scenarios."
     )
 
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         state = self.read_state(project_id)
         patches = state.get("patches", "")
 
@@ -40,9 +38,7 @@ class QAAgent(BaseAgent):
             },
         )
 
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         content = proposal.content.lower()
         errors = []
         if "test" not in content:

@@ -4,9 +4,8 @@
 首次启动时自动生成 256 位随机密钥并持久化到数据库，后续复用。
 """
 
-import secrets
 import logging
-from typing import Optional
+import secrets
 
 from sqlalchemy.orm import Session
 
@@ -55,7 +54,7 @@ def get_or_create_secret(db: Session, key_name: str = DEFAULT_SECRET_KEY_NAME) -
     return new_key
 
 
-def get_secret(db: Session, key_name: str = DEFAULT_SECRET_KEY_NAME) -> Optional[str]:
+def get_secret(db: Session, key_name: str = DEFAULT_SECRET_KEY_NAME) -> str | None:
     """获取系统密钥。
 
     Args:

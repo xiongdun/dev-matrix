@@ -17,7 +17,6 @@
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -32,8 +31,8 @@ class ProjectStateBase(BaseModel):
     """
 
     project_id: str
-    state_json: Optional[str] = "{}"
-    status: Optional[str] = "pending"
+    state_json: str | None = "{}"
+    status: str | None = "pending"
 
 
 class ProjectStateCreate(ProjectStateBase):
@@ -53,7 +52,7 @@ class ProjectState(ProjectStateBase):
 
     id: int
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

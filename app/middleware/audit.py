@@ -5,7 +5,6 @@
 
 import json
 import logging
-from typing import Optional
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -31,7 +30,9 @@ def _mask_sensitive_data(data: dict) -> dict:
         elif isinstance(value, dict):
             masked[key] = _mask_sensitive_data(value)
         elif isinstance(value, list):
-            masked[key] = [_mask_sensitive_data(item) if isinstance(item, dict) else item for item in value]
+            masked[key] = [
+                _mask_sensitive_data(item) if isinstance(item, dict) else item for item in value
+            ]
         else:
             masked[key] = value
     return masked
@@ -54,10 +55,11 @@ async def audit_middleware(request: Request, call_next):
         return await call_next(request)
 
     # 获取用户信息
-    user_id: Optional[int] = None
-    username: Optional[str] = None
+    user_id: int | None = None
+    username: str | None = None
     try:
         from app.api.auth import get_current_user
+
         db: Session = next(get_db())
         user = await get_current_user(request, db)
         user_id = user.id
@@ -110,7 +112,7 @@ def _extract_resource_type(path: str) -> str:
     return "unknown"
 
 
-def _extract_resource_id(path: str) -> Optional[str]:
+def _extract_resource_id(path: str) -> str | None:
     """从路径提取资源 ID。"""
     parts = path.strip("/").split("/")
     if len(parts) >= 3:

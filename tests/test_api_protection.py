@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, UserModel, get_db, SystemSecretModel
 from app.core.security import hash_password
 from app.main import app
+from app.state.models import Base, SystemSecretModel, UserModel, get_db
 
 
 @pytest.fixture
@@ -24,6 +24,7 @@ def db_session():
     db_url = f"sqlite:///{db_path}"
 
     from app.config import get_settings
+
     original_db_url = get_settings().database_url
     get_settings().database_url = db_url
 
@@ -33,8 +34,16 @@ def db_session():
     # 初始化 JWT secret
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = Session()
-    if not db.query(SystemSecretModel).filter(SystemSecretModel.key_name == "jwt_secret_key").first():
-        db.add(SystemSecretModel(key_name="jwt_secret_key", key_value="test-secret-key-for-testing-only"))
+    if (
+        not db.query(SystemSecretModel)
+        .filter(SystemSecretModel.key_name == "jwt_secret_key")
+        .first()
+    ):
+        db.add(
+            SystemSecretModel(
+                key_name="jwt_secret_key", key_value="test-secret-key-for-testing-only"
+            )
+        )
         db.commit()
     db.close()
 
@@ -46,6 +55,7 @@ def db_session():
         db.close()
         get_settings().database_url = original_db_url
         from app.state.models import _engine, _SessionLocal
+
         global _engine, _SessionLocal
         if _engine is not None:
             _engine.dispose()
@@ -61,6 +71,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """创建测试客户端。"""
+
     def override_get_db():
         try:
             yield db_session
@@ -71,6 +82,7 @@ def client(db_session):
 
     # 重置限流器状态
     from app.core.limiter import limiter
+
     limiter.reset()
 
     with TestClient(app) as c:
@@ -102,10 +114,13 @@ def test_user(db_session):
 @pytest.fixture
 def auth_token(client, test_user):
     """获取测试用户的认证 Token。"""
-    response = client.post("/api/auth/login", json={
-        "username": "testuser",
-        "password": "testpass123",
-    })
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "username": "testuser",
+            "password": "testpass123",
+        },
+    )
     assert response.status_code == 200
     return response.json()["token"]
 
@@ -142,8 +157,11 @@ class TestApiProtection:
 
     def test_login_route_public(self, client):
         """测试登录路由是公开的。"""
-        response = client.post("/api/auth/login", json={
-            "username": "any",
-            "password": "any",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "any",
+                "password": "any",
+            },
+        )
         assert response.status_code in (401, 200)

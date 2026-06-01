@@ -18,8 +18,8 @@
 import asyncio
 import logging
 import random
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Tuple, Type, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ def retry_with_backoff(
     max_retries: int = 3,
     base_delay: float = 1.0,
     max_delay: float = 60.0,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
-    on_retry: Optional[Callable[[Exception, int, float], None]] = None,
+    exceptions: tuple[type[Exception], ...] = (Exception,),
+    on_retry: Callable[[Exception, int, float], None] | None = None,
 ):
     """指数退避重试装饰器。
 
@@ -78,8 +78,7 @@ def retry_with_backoff(
                     jitter = random.uniform(0, delay * 0.1)
                     sleep_time = delay + jitter
                     logger.warning(
-                        "Function '%s' failed (attempt %d/%d): %s. "
-                        "Retrying in %.2fs...",
+                        "Function '%s' failed (attempt %d/%d): %s. Retrying in %.2fs...",
                         func.__name__,
                         attempt + 1,
                         max_retries,
@@ -111,8 +110,7 @@ def retry_with_backoff(
                     jitter = random.uniform(0, delay * 0.1)
                     sleep_time = delay + jitter
                     logger.warning(
-                        "Function '%s' failed (attempt %d/%d): %s. "
-                        "Retrying in %.2fs...",
+                        "Function '%s' failed (attempt %d/%d): %s. Retrying in %.2fs...",
                         func.__name__,
                         attempt + 1,
                         max_retries,

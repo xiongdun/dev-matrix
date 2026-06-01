@@ -2,9 +2,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.events.bus import EventBus
 from app.state.models import Base
 from app.state.repository import StateRepository
-from app.events.bus import EventBus
 
 
 @pytest.fixture

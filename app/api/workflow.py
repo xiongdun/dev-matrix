@@ -15,15 +15,15 @@
 """
 
 import logging
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.api.schemas import ErrorResponse
 from app.state.models import get_db
 from app.state.repository import StateRepository
-from app.api.schemas import ErrorResponse
 from app.workflow.engine import WorkflowEngine
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class StartWorkflowPayload(BaseModel):
         template_id: 模板 ID（可选）。
     """
 
-    context: Dict[str, Any] = Field(default_factory=dict)
+    context: dict[str, Any] = Field(default_factory=dict)
     initiated_by: str = Field(default="system", min_length=1)
     priority: str = Field(default="normal", pattern="^(low|normal|high|critical)$")
     flow_json: str = Field(default="")
@@ -184,9 +184,7 @@ async def get_workflow_status(
         result = await engine.get_workflow_status(project_id)
 
         if result.get("status") == "not_found":
-            logger.warning(
-                "Get workflow status failed: project '%s' not found", project_id
-            )
+            logger.warning("Get workflow status failed: project '%s' not found", project_id)
             raise HTTPException(status_code=404, detail="Project not found")
 
         return WorkflowStatusResponse(

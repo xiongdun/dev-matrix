@@ -1,5 +1,7 @@
-import pytest
 import asyncio
+from unittest.mock import patch
+
+import pytest
 
 from app.events.bus import EventBus
 from app.events.types import Event
@@ -47,15 +49,17 @@ class TestEventBus:
         await bus.publish(event)
 
     @pytest.mark.asyncio
-    async def test_publish_handler_exception(self, bus, caplog):
+    async def test_publish_handler_exception(self, bus):
         def bad_handler(event):
             raise RuntimeError("handler error")
 
         bus.subscribe("test.event", bad_handler)
         event = Event(type="test.event", payload={})
-        await bus.publish(event)
 
-        assert "raised an exception" in caplog.text
+        with patch("app.events.bus.logger.exception") as mock_log:
+            await bus.publish(event)
+            mock_log.assert_called_once()
+            assert "raised an exception" in mock_log.call_args[0][0]
 
     @pytest.mark.asyncio
     async def test_clear(self, bus):
@@ -112,13 +116,15 @@ class TestEventBus:
         bus.unsubscribe("test.event", handler)
 
     @pytest.mark.asyncio
-    async def test_handler_timeout(self, bus, monkeypatch, caplog):
+    async def test_handler_timeout(self, bus, monkeypatch):
         async def slow_handler(event):
             await asyncio.sleep(100)
 
         monkeypatch.setattr("app.events.bus.DEFAULT_SUBSCRIBER_TIMEOUT", 0.01)
         bus.subscribe("test.event", slow_handler)
         event = Event(type="test.event")
-        await bus.publish(event)
 
-        assert "timed out" in caplog.text
+        with patch("app.events.bus.logger.error") as mock_log:
+            await bus.publish(event)
+            mock_log.assert_called_once()
+            assert "timed out" in mock_log.call_args[0][0]

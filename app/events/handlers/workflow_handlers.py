@@ -14,6 +14,4 @@ def on_workflow_completed(event: Event) -> None:
 
 
 def on_workflow_failed(event: Event) -> None:
-    logger.error(
-        "Workflow failed: project=%s, error=%s", event.project_id, event.payload
-    )
+    logger.error("Workflow failed: project=%s, error=%s", event.project_id, event.payload)

@@ -13,17 +13,16 @@
     - GET    /scheduled-tasks/{id}/logs    执行历史
 """
 
-import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.state.models import ScheduledTaskModel, ScheduledTaskLogModel, get_db
 from app.scheduler.engine import get_scheduler
+from app.state.models import ScheduledTaskLogModel, ScheduledTaskModel, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -44,13 +43,13 @@ class ScheduledTaskCreate(BaseModel):
 class ScheduledTaskUpdate(BaseModel):
     """更新定时任务请求模型。"""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=128)
-    description: Optional[str] = None
-    task_type: Optional[str] = None
-    trigger_type: Optional[str] = None
-    cron_expression: Optional[str] = None
-    is_enabled: Optional[int] = None
-    config_json: Optional[str] = None
+    name: str | None = Field(None, min_length=1, max_length=128)
+    description: str | None = None
+    task_type: str | None = None
+    trigger_type: str | None = None
+    cron_expression: str | None = None
+    is_enabled: int | None = None
+    config_json: str | None = None
 
 
 class ScheduledTaskOut(BaseModel):
@@ -64,10 +63,10 @@ class ScheduledTaskOut(BaseModel):
     cron_expression: str
     is_enabled: int
     config_json: str
-    last_run_at: Optional[datetime] = None
-    next_run_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    last_run_at: datetime | None = None
+    next_run_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -81,8 +80,8 @@ class ScheduledTaskLogOut(BaseModel):
     status: str
     output: str
     error: str
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -98,10 +97,10 @@ def _model_to_out(model: ScheduledTaskModel) -> ScheduledTaskOut:
         cron_expression=cast(str, model.cron_expression),
         is_enabled=cast(int, model.is_enabled),
         config_json=cast(str, model.config_json),
-        last_run_at=cast(Optional[datetime], model.last_run_at),
-        next_run_at=cast(Optional[datetime], model.next_run_at),
-        created_at=cast(Optional[datetime], model.created_at),
-        updated_at=cast(Optional[datetime], model.updated_at),
+        last_run_at=cast(datetime | None, model.last_run_at),
+        next_run_at=cast(datetime | None, model.next_run_at),
+        created_at=cast(datetime | None, model.created_at),
+        updated_at=cast(datetime | None, model.updated_at),
     )
 
 
@@ -112,12 +111,12 @@ def _log_to_out(model: ScheduledTaskLogModel) -> ScheduledTaskLogOut:
         status=cast(str, model.status),
         output=cast(str, model.output),
         error=cast(str, model.error),
-        started_at=cast(Optional[datetime], model.started_at),
-        completed_at=cast(Optional[datetime], model.completed_at),
+        started_at=cast(datetime | None, model.started_at),
+        completed_at=cast(datetime | None, model.completed_at),
     )
 
 
-@router.get("", response_model=Dict[str, List[ScheduledTaskOut]])
+@router.get("", response_model=dict[str, list[ScheduledTaskOut]])
 def list_scheduled_tasks(db: Session = Depends(get_db)):
     """获取定时任务列表。"""
     tasks = db.query(ScheduledTaskModel).order_by(ScheduledTaskModel.id.desc()).all()
@@ -150,9 +149,7 @@ def get_scheduled_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{task_id}", response_model=ScheduledTaskOut)
-def update_scheduled_task(
-    task_id: int, data: ScheduledTaskUpdate, db: Session = Depends(get_db)
-):
+def update_scheduled_task(task_id: int, data: ScheduledTaskUpdate, db: Session = Depends(get_db)):
     """更新定时任务。"""
     task = db.query(ScheduledTaskModel).filter(ScheduledTaskModel.id == task_id).first()
     if not task:
@@ -228,10 +225,8 @@ def run_scheduled_task_now(task_id: int, db: Session = Depends(get_db)):
     return _log_to_out(log)
 
 
-@router.get("/{task_id}/logs", response_model=Dict[str, List[ScheduledTaskLogOut]])
-def get_scheduled_task_logs(
-    task_id: int, limit: int = 50, db: Session = Depends(get_db)
-):
+@router.get("/{task_id}/logs", response_model=dict[str, list[ScheduledTaskLogOut]])
+def get_scheduled_task_logs(task_id: int, limit: int = 50, db: Session = Depends(get_db)):
     """获取定时任务执行历史。"""
     logs = (
         db.query(ScheduledTaskLogModel)

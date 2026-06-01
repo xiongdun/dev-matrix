@@ -17,7 +17,7 @@ Example (Temporal):
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from app.workflow.dag_runner import DAG, DAGNode
 
@@ -29,9 +29,9 @@ class ExecutionContext:
     """工作流执行上下文，跨阶段共享状态。"""
 
     project_id: str
-    results: Dict[str, Any] = field(default_factory=dict)
-    artifacts: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    results: dict[str, Any] = field(default_factory=dict)
+    artifacts: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def set_result(self, stage_id: str, result: Any):
         self.results[stage_id] = result
@@ -53,7 +53,7 @@ class StageExecutor(ABC):
     """
 
     @abstractmethod
-    async def execute(self, node: DAGNode, ctx: ExecutionContext) -> Dict[str, Any]:
+    async def execute(self, node: DAGNode, ctx: ExecutionContext) -> dict[str, Any]:
         """执行单个阶段。
 
         Returns:
@@ -65,12 +65,12 @@ class StageExecutor(ABC):
         ...
 
     @abstractmethod
-    async def on_batch_start(self, batch: List[str], ctx: ExecutionContext):
+    async def on_batch_start(self, batch: list[str], ctx: ExecutionContext):
         """批次开始前的回调。"""
         ...
 
     @abstractmethod
-    async def on_batch_complete(self, batch: List[str], ctx: ExecutionContext):
+    async def on_batch_complete(self, batch: list[str], ctx: ExecutionContext):
         """批次完成后的回调。"""
         ...
 
@@ -93,8 +93,8 @@ class GraphRunner:
 
     def __init__(self, dag: DAG):
         self.dag = dag
-        self.completed: Set[str] = set()
-        self.failed: Set[str] = set()
+        self.completed: set[str] = set()
+        self.failed: set[str] = set()
 
     @classmethod
     def from_flow_json(cls, flow_json_str: str) -> "GraphRunner":
@@ -103,7 +103,7 @@ class GraphRunner:
         return cls(dag)
 
     @classmethod
-    def from_stages(cls, stages: List[Dict[str, Any]]) -> "GraphRunner":
+    def from_stages(cls, stages: list[dict[str, Any]]) -> "GraphRunner":
         """从阶段列表创建 GraphRunner（线性兼容）。"""
         dag = DAG.from_stages(stages)
         return cls(dag)
@@ -115,9 +115,7 @@ class GraphRunner:
             if not ready:
                 remaining = set(self.dag.nodes.keys()) - self.completed - self.failed
                 if remaining:
-                    logger.error(
-                        "Deadlock detected: nodes %s cannot be scheduled", remaining
-                    )
+                    logger.error("Deadlock detected: nodes %s cannot be scheduled", remaining)
                 break
             yield ready
 
@@ -125,8 +123,8 @@ class GraphRunner:
         self,
         project_id: str,
         executor: StageExecutor,
-        initial_context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        initial_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """执行完整工作流。
 
         Args:
@@ -179,10 +177,10 @@ class GraphRunner:
 
     async def _execute_batch(
         self,
-        batch: List[str],
+        batch: list[str],
         executor: StageExecutor,
         ctx: ExecutionContext,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """执行一个批次的节点。"""
         import asyncio
 
@@ -200,7 +198,7 @@ class GraphRunner:
             return {node_id: result}
 
         # 并行执行多个节点
-        async def run_node(node_id: str) -> Tuple[str, Dict[str, Any]]:
+        async def run_node(node_id: str) -> tuple[str, dict[str, Any]]:
             node = self.dag.nodes.get(node_id)
             if not node:
                 return node_id, {"status": "failed", "error": "Node not found"}
@@ -210,7 +208,7 @@ class GraphRunner:
         tasks = [run_node(nid) for nid in batch]
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
-        batch_results: Dict[str, Any] = {}
+        batch_results: dict[str, Any] = {}
         for item in results_list:
             if isinstance(item, BaseException):
                 continue
@@ -228,7 +226,7 @@ class GraphRunner:
 
         return batch_results
 
-    def get_node(self, node_id: str) -> Optional[DAGNode]:
+    def get_node(self, node_id: str) -> DAGNode | None:
         """按 ID 获取节点。"""
         return self.dag.nodes.get(node_id)
 
@@ -236,6 +234,6 @@ class GraphRunner:
         """检查是否所有节点都已执行完毕。"""
         return len(self.completed) + len(self.failed) >= len(self.dag.nodes)
 
-    def get_ready_nodes(self) -> List[str]:
+    def get_ready_nodes(self) -> list[str]:
         """获取当前可执行的节点。"""
         return self.dag.get_ready_nodes(self.completed | self.failed)

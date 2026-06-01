@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, UserModel, get_db, SystemSecretModel
 from app.core.security import hash_password
 from app.main import app
+from app.state.models import Base, SystemSecretModel, UserModel, get_db
 
 
 @pytest.fixture
@@ -24,6 +24,7 @@ def db_session():
     db_url = f"sqlite:///{db_path}"
 
     from app.config import get_settings
+
     original_db_url = get_settings().database_url
     get_settings().database_url = db_url
 
@@ -33,8 +34,16 @@ def db_session():
     # 初始化 JWT secret
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = Session()
-    if not db.query(SystemSecretModel).filter(SystemSecretModel.key_name == "jwt_secret_key").first():
-        db.add(SystemSecretModel(key_name="jwt_secret_key", key_value="test-secret-key-for-testing-only"))
+    if (
+        not db.query(SystemSecretModel)
+        .filter(SystemSecretModel.key_name == "jwt_secret_key")
+        .first()
+    ):
+        db.add(
+            SystemSecretModel(
+                key_name="jwt_secret_key", key_value="test-secret-key-for-testing-only"
+            )
+        )
         db.commit()
     db.close()
 
@@ -46,6 +55,7 @@ def db_session():
         db.close()
         get_settings().database_url = original_db_url
         from app.state.models import _engine, _SessionLocal
+
         global _engine, _SessionLocal
         if _engine is not None:
             _engine.dispose()
@@ -61,6 +71,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """创建测试客户端。"""
+
     def override_get_db():
         try:
             yield db_session
@@ -71,6 +82,7 @@ def client(db_session):
 
     # 重置限流器状态
     from app.core.limiter import limiter
+
     limiter.reset()
 
     with TestClient(app) as c:
@@ -104,10 +116,13 @@ class TestLogin:
 
     def test_login_success(self, client, test_user):
         """测试正常登录。"""
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass123",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass123",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "token" in data
@@ -116,25 +131,34 @@ class TestLogin:
 
     def test_login_wrong_password(self, client, test_user):
         """测试密码错误。"""
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "wrongpassword",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "wrongpassword",
+            },
+        )
         assert response.status_code == 401
 
     def test_login_nonexistent_user(self, client):
         """测试不存在的用户。"""
-        response = client.post("/api/auth/login", json={
-            "username": "nonexistent",
-            "password": "anypassword",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "nonexistent",
+                "password": "anypassword",
+            },
+        )
         assert response.status_code == 401
 
     def test_login_missing_fields(self, client):
         """测试缺少必填字段。"""
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+            },
+        )
         assert response.status_code == 422
 
 
@@ -143,24 +167,33 @@ class TestTokenRefresh:
 
     def test_refresh_token_success(self, client, test_user):
         """测试正常刷新 Token。"""
-        login_response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass123",
-        })
+        login_response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass123",
+            },
+        )
         refresh_token = login_response.json()["refresh_token"]
 
-        response = client.post("/api/auth/refresh", headers={
-            "Authorization": f"Bearer {refresh_token}",
-        })
+        response = client.post(
+            "/api/auth/refresh",
+            headers={
+                "Authorization": f"Bearer {refresh_token}",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "token" in data
 
     def test_refresh_token_invalid(self, client):
         """测试无效的 refresh token。"""
-        response = client.post("/api/auth/refresh", headers={
-            "Authorization": "Bearer invalid_token",
-        })
+        response = client.post(
+            "/api/auth/refresh",
+            headers={
+                "Authorization": "Bearer invalid_token",
+            },
+        )
         assert response.status_code == 401
 
 
@@ -169,15 +202,21 @@ class TestGetMe:
 
     def test_get_me_success(self, client, test_user):
         """测试获取当前用户信息。"""
-        login_response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass123",
-        })
+        login_response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass123",
+            },
+        )
         token = login_response.json()["token"]
 
-        response = client.get("/api/auth/me", headers={
-            "Authorization": f"Bearer {token}",
-        })
+        response = client.get(
+            "/api/auth/me",
+            headers={
+                "Authorization": f"Bearer {token}",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "testuser"
@@ -189,7 +228,10 @@ class TestGetMe:
 
     def test_get_me_invalid_token(self, client):
         """测试无效的 Token。"""
-        response = client.get("/api/auth/me", headers={
-            "Authorization": "Bearer invalid_token",
-        })
+        response = client.get(
+            "/api/auth/me",
+            headers={
+                "Authorization": "Bearer invalid_token",
+            },
+        )
         assert response.status_code == 401

@@ -1,7 +1,8 @@
 import pytest
-from app.skills.base import BaseSkill, SkillResult, SkillConfig
-from app.skills.registry import SkillRegistry, register_skill
+
 from app.agents.base import BaseAgent, Proposal
+from app.skills.base import BaseSkill, SkillConfig, SkillResult
+from app.skills.registry import SkillRegistry, register_skill
 
 
 class TestSkillBase:
@@ -185,9 +186,7 @@ class TestArchitectAgentWithSkills:
 
         assert agent.has_skill("code_search")
 
-        result = await agent.call_skill(
-            "code_search", {"query": "auth", "repo_path": "."}
-        )
+        result = await agent.call_skill("code_search", {"query": "auth", "repo_path": "."})
         assert isinstance(result, SkillResult)
 
 

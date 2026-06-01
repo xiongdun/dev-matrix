@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.state.models import Base, UserModel, get_db
 from app.core.security import hash_password
 from app.main import app
+from app.state.models import Base, UserModel, get_db
 
 
 @pytest.fixture
@@ -21,6 +21,7 @@ def db_session():
     db_url = f"sqlite:///{db_path}"
 
     from app.config import get_settings
+
     original_db_url = get_settings().database_url
     get_settings().database_url = db_url
 
@@ -34,6 +35,7 @@ def db_session():
         db.close()
         get_settings().database_url = original_db_url
         from app.state.models import _engine, _SessionLocal
+
         global _engine, _SessionLocal
         if _engine is not None:
             _engine.dispose()
@@ -49,6 +51,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """创建测试客户端。"""
+
     def override_get_db():
         try:
             yield db_session
@@ -59,6 +62,7 @@ def client(db_session):
 
     # 重置限流器状态
     from app.core.limiter import limiter
+
     limiter.reset()
 
     user = UserModel(
@@ -80,32 +84,44 @@ class TestRateLimit:
         """登录接口 5 次/分钟限流生效。"""
         # 先成功登录 5 次
         for i in range(5):
-            response = client.post("/api/auth/login", json={
-                "username": "testuser",
-                "password": "testpass",
-            })
-            assert response.status_code == 200, f"Login {i+1} should succeed"
+            response = client.post(
+                "/api/auth/login",
+                json={
+                    "username": "testuser",
+                    "password": "testpass",
+                },
+            )
+            assert response.status_code == 200, f"Login {i + 1} should succeed"
 
         # 第 6 次应该被限流
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass",
+            },
+        )
         assert response.status_code == 429, f"Expected 429, got {response.status_code}"
 
     def test_login_rate_limit_blocks(self, client):
         """限流触发后阻止额外请求。"""
         # 先成功登录 5 次触发限流
         for i in range(5):
-            response = client.post("/api/auth/login", json={
-                "username": "testuser",
-                "password": "testpass",
-            })
-            assert response.status_code == 200, f"Login {i+1} should succeed"
+            response = client.post(
+                "/api/auth/login",
+                json={
+                    "username": "testuser",
+                    "password": "testpass",
+                },
+            )
+            assert response.status_code == 200, f"Login {i + 1} should succeed"
 
         # 第 6 次应该被限流
-        response = client.post("/api/auth/login", json={
-            "username": "testuser",
-            "password": "testpass",
-        })
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": "testuser",
+                "password": "testpass",
+            },
+        )
         assert response.status_code == 429

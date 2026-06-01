@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Optional, cast
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -18,16 +18,12 @@ router = APIRouter()
 
 
 class LifecycleAction(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @router.post("/{project_id}/pause")
 async def pause_workflow(project_id: str, db: Session = Depends(get_db)):
-    state = (
-        db.query(ProjectStateModel)
-        .filter(ProjectStateModel.project_id == project_id)
-        .first()
-    )
+    state = db.query(ProjectStateModel).filter(ProjectStateModel.project_id == project_id).first()
     if state is None:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
     status_val = cast(str, state.status)
@@ -43,11 +39,7 @@ async def pause_workflow(project_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{project_id}/resume")
 async def resume_workflow(project_id: str, db: Session = Depends(get_db)):
-    state = (
-        db.query(ProjectStateModel)
-        .filter(ProjectStateModel.project_id == project_id)
-        .first()
-    )
+    state = db.query(ProjectStateModel).filter(ProjectStateModel.project_id == project_id).first()
     if state is None:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
     status_val = cast(str, state.status)
@@ -65,14 +57,10 @@ async def resume_workflow(project_id: str, db: Session = Depends(get_db)):
 @router.post("/{project_id}/cancel")
 async def cancel_workflow(
     project_id: str,
-    payload: Optional[LifecycleAction] = None,
+    payload: LifecycleAction | None = None,
     db: Session = Depends(get_db),
 ):
-    state = (
-        db.query(ProjectStateModel)
-        .filter(ProjectStateModel.project_id == project_id)
-        .first()
-    )
+    state = db.query(ProjectStateModel).filter(ProjectStateModel.project_id == project_id).first()
     if state is None:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
     status_val = cast(str, state.status)

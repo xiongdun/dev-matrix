@@ -19,7 +19,8 @@
     ```
 """
 
-from typing import Dict, Type, Callable, TypeVar, Generic, Optional
+from collections.abc import Callable
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -47,9 +48,9 @@ class Registry(Generic[T]):
 
     def __init__(self):
         """初始化空注册表。"""
-        self._items: Dict[str, Type[T]] = {}
+        self._items: dict[str, type[T]] = {}
 
-    def register(self, name: str, cls: Type[T]) -> None:
+    def register(self, name: str, cls: type[T]) -> None:
         """注册类到指定名称。
 
         Args:
@@ -58,7 +59,7 @@ class Registry(Generic[T]):
         """
         self._items[name] = cls
 
-    def get(self, name: str) -> Type[T]:
+    def get(self, name: str) -> type[T]:
         """按名称检索已注册的类。
 
         Args:
@@ -72,14 +73,12 @@ class Registry(Generic[T]):
             KeyError: 名称未在注册表中找到时抛出。
         """
         if not isinstance(name, str):
-            raise TypeError(
-                f"Registry name must be a string, got {type(name).__name__}"
-            )
+            raise TypeError(f"Registry name must be a string, got {type(name).__name__}")
         if name not in self._items:
             raise KeyError(f"Item '{name}' not found in registry")
         return self._items[name]
 
-    def list(self) -> Dict[str, Type[T]]:
+    def list(self) -> dict[str, type[T]]:
         """返回所有已注册项的浅拷贝。
 
         Returns:
@@ -108,7 +107,7 @@ class Registry(Generic[T]):
             del self._items[name]
 
 
-def register_in(registry: Registry, name: Optional[str] = None) -> Callable:
+def register_in(registry: Registry, name: str | None = None) -> Callable:
     """注册装饰器，将类注册到指定注册表。
 
     Args:
@@ -128,7 +127,7 @@ def register_in(registry: Registry, name: Optional[str] = None) -> Callable:
         ```
     """
 
-    def decorator(cls: Type) -> Type:
+    def decorator(cls: type) -> type:
         registry.register(name or cls.__name__, cls)
         return cls
 

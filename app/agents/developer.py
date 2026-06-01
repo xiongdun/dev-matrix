@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from app.agents.base import BaseAgent, Proposal, ValidationResult
 
@@ -13,9 +13,7 @@ class DeveloperAgent(BaseAgent):
         "Be precise and follow best practices."
     )
 
-    async def generate_proposal(
-        self, project_id: str, context: Dict[str, Any]
-    ) -> Proposal:
+    async def generate_proposal(self, project_id: str, context: dict[str, Any]) -> Proposal:
         state = self.read_state(project_id)
         architecture = state.get("architecture", "")
 
@@ -41,9 +39,7 @@ class DeveloperAgent(BaseAgent):
             },
         )
 
-    async def validate_output(
-        self, project_id: str, proposal: Proposal
-    ) -> ValidationResult:
+    async def validate_output(self, project_id: str, proposal: Proposal) -> ValidationResult:
         content = proposal.content.lower()
         errors = []
         if "diff" not in content and "code" not in content:

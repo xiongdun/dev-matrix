@@ -17,7 +17,7 @@
     ```
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from app.skills.base import BaseSkill, SkillResult
 
@@ -45,7 +45,7 @@ class CodeSearchSkill(BaseSkill):
     name = "code_search"
     description = "Search codebase for relevant files and functions"
 
-    async def execute(self, context: Dict[str, Any]) -> SkillResult:
+    async def execute(self, context: dict[str, Any]) -> SkillResult:
         """执行代码搜索。
 
         对指定仓库路径进行索引，然后基于查询字符串检索相关代码。

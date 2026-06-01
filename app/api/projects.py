@@ -11,7 +11,6 @@
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -31,21 +30,21 @@ class ProjectCreate(BaseModel):
     priority: str = Field(default="medium")
     status: str = Field(default="planning")
     progress: float = Field(default=0.0, ge=0.0, le=100.0)
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
 
 class ProjectUpdate(BaseModel):
     """更新项目请求模型。"""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=128)
-    description: Optional[str] = Field(default=None, max_length=2000)
-    owner: Optional[str] = Field(default=None, max_length=64)
-    priority: Optional[str] = None
-    status: Optional[str] = None
-    progress: Optional[float] = Field(default=None, ge=0.0, le=100.0)
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    description: str | None = Field(default=None, max_length=2000)
+    owner: str | None = Field(default=None, max_length=64)
+    priority: str | None = None
+    status: str | None = None
+    progress: float | None = Field(default=None, ge=0.0, le=100.0)
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
 
 class ProjectOut(BaseModel):
@@ -58,8 +57,8 @@ class ProjectOut(BaseModel):
     priority: str
     status: str
     progress: float
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -70,7 +69,7 @@ class ProjectOut(BaseModel):
 class ProjectListOut(BaseModel):
     """项目列表响应模型。"""
 
-    items: List[ProjectOut]
+    items: list[ProjectOut]
     total: int
     page: int
     page_size: int
@@ -80,9 +79,9 @@ class ProjectListOut(BaseModel):
 def list_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status: Optional[str] = Query(None),
-    priority: Optional[str] = Query(None),
-    keyword: Optional[str] = Query(None),
+    status: str | None = Query(None),
+    priority: str | None = Query(None),
+    keyword: str | None = Query(None),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     db: Session = Depends(get_db),
@@ -99,9 +98,7 @@ def list_projects(
         query = query.filter(ProjectModel.priority == priority)
     if keyword:
         like = f"%{keyword}%"
-        query = query.filter(
-            ProjectModel.name.ilike(like) | ProjectModel.description.ilike(like)
-        )
+        query = query.filter(ProjectModel.name.ilike(like) | ProjectModel.description.ilike(like))
 
     total = query.count()
 
@@ -142,9 +139,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{project_id}", response_model=ProjectOut)
-def update_project(
-    project_id: int, data: ProjectUpdate, db: Session = Depends(get_db)
-):
+def update_project(project_id: int, data: ProjectUpdate, db: Session = Depends(get_db)):
     """更新项目。"""
     project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
     if not project:

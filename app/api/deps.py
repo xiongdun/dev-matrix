@@ -3,11 +3,11 @@
 提供 FastAPI 路由使用的依赖注入函数。
 """
 
-from fastapi import Request, HTTPException, Depends
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.state.models import get_db, UserModel
 from app.core.security import decode_token
+from app.state.models import UserModel, get_db
 
 __all__ = ["get_db", "get_current_user", "require_permission"]
 
@@ -50,12 +50,14 @@ def require_permission(permission: str):
     Returns:
         Callable: FastAPI 依赖函数。
     """
+
     def checker(user: UserModel = Depends(get_current_user)) -> UserModel:
         # 权限检查逻辑：从用户角色关联的菜单中获取权限列表
-        from app.state.models import UserRoleModel, RoleMenuModel, MenuModel
-        from sqlalchemy.orm import Session
         from fastapi import Depends
+        from sqlalchemy.orm import Session
+
         from app.api.deps import get_db
+        from app.state.models import MenuModel, RoleMenuModel, UserRoleModel
 
         db: Session = Depends(get_db)
         role_ids = db.query(UserRoleModel.role_id).filter(UserRoleModel.user_id == user.id).all()
@@ -66,13 +68,15 @@ def require_permission(permission: str):
         menu_ids = db.query(RoleMenuModel.menu_id).filter(RoleMenuModel.role_id.in_(role_ids)).all()
         menu_ids = [m[0] for m in menu_ids]
 
-        permissions = db.query(MenuModel.permission).filter(
-            MenuModel.id.in_(menu_ids),
-            MenuModel.permission.isnot(None)
-        ).all()
+        permissions = (
+            db.query(MenuModel.permission)
+            .filter(MenuModel.id.in_(menu_ids), MenuModel.permission.isnot(None))
+            .all()
+        )
         user_permissions = [p[0] for p in permissions]
 
         if permission not in user_permissions:
             raise HTTPException(status_code=403, detail=f"Permission '{permission}' required")
         return user
+
     return checker

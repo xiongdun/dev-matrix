@@ -12,7 +12,7 @@ import logging
 import os
 import re
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,37 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 
 # Bash 命令白名单（只允许安全的命令）
 BASH_ALLOWED_COMMANDS = [
-    "ls", "cat", "grep", "find", "head", "tail", "wc", "echo",
-    "python", "python3", "pytest", "ruff", "mypy", "git", "npm", "node",
-    "pwd", "cd", "mkdir", "touch", "rm", "cp", "mv", "diff",
-    "sort", "uniq", "awk", "sed", "xargs", "which", "file",
+    "ls",
+    "cat",
+    "grep",
+    "find",
+    "head",
+    "tail",
+    "wc",
+    "echo",
+    "python",
+    "python3",
+    "pytest",
+    "ruff",
+    "mypy",
+    "git",
+    "npm",
+    "node",
+    "pwd",
+    "cd",
+    "mkdir",
+    "touch",
+    "rm",
+    "cp",
+    "mv",
+    "diff",
+    "sort",
+    "uniq",
+    "awk",
+    "sed",
+    "xargs",
+    "which",
+    "file",
 ]
 
 # 危险命令黑名单
@@ -78,7 +105,7 @@ def _validate_bash_command(command: str) -> None:
             raise ValueError(f"Command contains blocked pattern: {pattern}")
 
 
-def tool_read(path: str, offset: Optional[int] = None, limit: Optional[int] = None) -> Dict[str, Any]:
+def tool_read(path: str, offset: int | None = None, limit: int | None = None) -> dict[str, Any]:
     """读取文件内容。
 
     Args:
@@ -96,7 +123,7 @@ def tool_read(path: str, offset: Optional[int] = None, limit: Optional[int] = No
         return {"error": f"Path is a directory: {path}", "path": resolved}
 
     try:
-        with open(resolved, "r", encoding="utf-8") as f:
+        with open(resolved, encoding="utf-8") as f:
             lines = f.readlines()
     except UnicodeDecodeError:
         return {"error": f"File is not text-readable: {path}", "path": resolved}
@@ -124,7 +151,7 @@ def tool_read(path: str, offset: Optional[int] = None, limit: Optional[int] = No
     }
 
 
-def tool_search(query: str, path: Optional[str] = None, glob: Optional[str] = None) -> Dict[str, Any]:
+def tool_search(query: str, path: str | None = None, glob: str | None = None) -> dict[str, Any]:
     """在代码库中搜索文本。
 
     Args:
@@ -149,7 +176,11 @@ def tool_search(query: str, path: Optional[str] = None, glob: Optional[str] = No
 
     for root, _dirs, files in os.walk(search_root):
         # 跳过隐藏目录和依赖目录
-        _dirs[:] = [d for d in _dirs if not d.startswith(".") and d not in ("node_modules", "__pycache__", "venv", ".git")]
+        _dirs[:] = [
+            d
+            for d in _dirs
+            if not d.startswith(".") and d not in ("node_modules", "__pycache__", "venv", ".git")
+        ]
 
         for filename in files:
             if filename.startswith("."):
@@ -159,15 +190,17 @@ def tool_search(query: str, path: Optional[str] = None, glob: Optional[str] = No
 
             file_path = os.path.join(root, filename)
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     for line_no, line in enumerate(f, 1):
                         if pattern.search(line):
                             rel_path = os.path.relpath(file_path, PROJECT_ROOT)
-                            matches.append({
-                                "path": rel_path,
-                                "line": line_no,
-                                "content": line.rstrip("\n"),
-                            })
+                            matches.append(
+                                {
+                                    "path": rel_path,
+                                    "line": line_no,
+                                    "content": line.rstrip("\n"),
+                                }
+                            )
                             if len(matches) >= 50:
                                 break
             except (UnicodeDecodeError, OSError):
@@ -180,7 +213,7 @@ def tool_search(query: str, path: Optional[str] = None, glob: Optional[str] = No
     return {"matches": matches, "total": len(matches), "query": query}
 
 
-def tool_write(path: str, content: str) -> Dict[str, Any]:
+def tool_write(path: str, content: str) -> dict[str, Any]:
     """写入/创建文件。
 
     Args:
@@ -206,7 +239,7 @@ def tool_write(path: str, content: str) -> Dict[str, Any]:
         return {"error": f"Write failed: {exc}", "path": resolved}
 
 
-def tool_edit(path: str, old_string: str, new_string: str) -> Dict[str, Any]:
+def tool_edit(path: str, old_string: str, new_string: str) -> dict[str, Any]:
     """编辑文件（搜索替换）。
 
     Args:
@@ -222,7 +255,7 @@ def tool_edit(path: str, old_string: str, new_string: str) -> Dict[str, Any]:
         return {"error": f"File not found: {path}", "path": resolved}
 
     try:
-        with open(resolved, "r", encoding="utf-8") as f:
+        with open(resolved, encoding="utf-8") as f:
             content = f.read()
     except Exception as exc:
         return {"error": f"Read failed: {exc}", "path": resolved}
@@ -245,7 +278,7 @@ def tool_edit(path: str, old_string: str, new_string: str) -> Dict[str, Any]:
         return {"error": f"Write failed: {exc}", "path": resolved}
 
 
-def tool_bash(command: str, timeout: int = 30) -> Dict[str, Any]:
+def tool_bash(command: str, timeout: int = 30) -> dict[str, Any]:
     """执行 shell 命令。
 
     Args:
@@ -279,7 +312,7 @@ def tool_bash(command: str, timeout: int = 30) -> Dict[str, Any]:
 
 
 # 工具注册表
-TOOL_REGISTRY: Dict[str, Any] = {
+TOOL_REGISTRY: dict[str, Any] = {
     "Read": tool_read,
     "Search": tool_search,
     "Write": tool_write,
@@ -301,7 +334,7 @@ class ToolExecutor:
         """初始化工具执行器，注册默认工具。"""
         self.registry = dict(TOOL_REGISTRY)
 
-    def execute(self, tool_name: str, **kwargs) -> Dict[str, Any]:
+    def execute(self, tool_name: str, **kwargs) -> dict[str, Any]:
         """按名称执行工具。
 
         Args:
@@ -316,11 +349,15 @@ class ToolExecutor:
         """
         tool = self.registry.get(tool_name)
         if tool is None:
-            raise ValueError(f"Tool '{tool_name}' not found. Available: {list(self.registry.keys())}")
+            raise ValueError(
+                f"Tool '{tool_name}' not found. Available: {list(self.registry.keys())}"
+            )
 
         logger.info("Executing tool '%s' with args: %s", tool_name, kwargs)
         result = tool(**kwargs)
-        logger.info("Tool '%s' result: %s", tool_name, "success" if "error" not in result else "error")
+        logger.info(
+            "Tool '%s' result: %s", tool_name, "success" if "error" not in result else "error"
+        )
         return result
 
     def list_tools(self) -> list:
@@ -332,7 +369,7 @@ class ToolExecutor:
         return list(self.registry.keys())
 
 
-def execute_tool(tool_name: str, **kwargs) -> Dict[str, Any]:
+def execute_tool(tool_name: str, **kwargs) -> dict[str, Any]:
     """便捷函数：按名称执行工具。
 
     Args:

@@ -46,7 +46,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-vue-next'
-import api from '../api'
+import { api } from '../api'
 import ReviewReport from '../components/code-review/ReviewReport.vue'
 
 const route = useRoute()
