@@ -1,9 +1,9 @@
-# DevMatrix - Claude Coding Context
+# DevMatrix — Claude Coding Context
 
 ## Project Overview
 
 DevMatrix is a **Multi-role Collaborative Software Development Agent Operating System**.
-It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect, Developer, QA) through a state-driven workflow with human-in-the-loop approval checkpoints.
+It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect, Developer, QA, Code Reviewer) through state-driven workflows with human-in-the-loop approval checkpoints, powered by Temporal workflow engine.
 
 ## Architecture
 
@@ -13,9 +13,9 @@ It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect
 ┌─────────────────────────────────────────────────────────────┐
 │  Layer 6: Execution Layer (Docker/Firecracker Sandbox)     │
 ├─────────────────────────────────────────────────────────────┤
-│  Layer 5: Human Approval (REST API + Web UI)               │
+│  Layer 5: Human Approval (REST API + Vue 3 Web UI)         │
 ├─────────────────────────────────────────────────────────────┤
-│  Layer 4: Multi-Agent Layer (5 Specialized Agents)         │
+│  Layer 4: Multi-Agent Layer (6 Specialized Agents)         │
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 3: Code Intelligence (Code Graph + Neo4j)           │
 ├─────────────────────────────────────────────────────────────┤
@@ -25,67 +25,51 @@ It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Tech Stack & Frameworks
+### Tech Stack
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Workflow Engine | Temporal | Latest |
-| API Framework | FastAPI | Python 3.10+ |
-| Frontend Framework | Vue 3 + TypeScript + Vite | Vue 3.4+ |
-| State Storage | SQLite (dev) / PostgreSQL (prod) | - |
+| API Framework | FastAPI | 0.136+ |
+| Frontend | Vue 3 + TypeScript + Vite | Vue 3.4+, Vite 5.1+ |
+| State Storage | SQLite (dev) / PostgreSQL (prod) | SQLAlchemy 2.0 |
 | Code Graph | In-memory (dev) / Neo4j (prod) | - |
 | Sandbox | Docker (dev) / Firecracker (prod) | - |
-| LLM Providers | OpenAI, Anthropic, Azure | - |
-| i18n | vue-i18n (frontend), JSON-based (backend) | vue-i18n 9.9+ |
+| LLM Providers | OpenAI, Anthropic, Azure | openai 2.36+, claude-agent-sdk 0.2+ |
+| Auth | JWT (PyJWT 2.12) + RBAC | - |
+| i18n | vue-i18n 9.9+ (frontend), JSON-based (backend) | zh / en |
+| State Management | Pinia 3.0 + persistedstate plugin | - |
+| Workflow Visualization | @vue-flow/core 1.48+ | - |
+| Icons | lucide-vue-next | 1.0+ |
+| Task Scheduling | APScheduler 3.11 | - |
+| Rate Limiting | slowapi (via core/limiter.py) | - |
 
-### Design Patterns Used
+### Design Patterns
 
-- **Registry Pattern** - Agent, LLM Provider, Prompt registration
-- **Strategy Pattern** - LLM routing strategies (quality_first / cost_first / config_driven)
-- **Template Method** - Agent base class with overrides
-- **Observer Pattern** - EventBus for decoupled module communication
-- **Repository Pattern** - StateRepository with snapshot/rollback
-- **Pipeline Pattern** - Configurable workflow stages via YAML
-- **Factory Pattern** - Sandbox provider selection
+| Pattern | Application |
+|---------|------------|
+| Registry | Agent, LLM Provider, Skill, Prompt registration |
+| Strategy | LLM routing (quality_first / cost_first / config_driven) |
+| Template Method | BaseAgent with abstract generate_proposal / validate_output |
+| Observer | EventBus for decoupled module communication |
+| Repository | StateRepository with snapshot/rollback |
+| Pipeline | Configurable workflow stages via YAML |
+| Factory | Sandbox provider selection |
 
 ## Project Structure
 
 ```
 dev-matrix/
-├── app/                          # Core application (Python)
-│   ├── agents/                   # AI Agent implementations
-│   ├── api/                      # FastAPI REST endpoints
-│   ├── code_intelligence/        # Code analysis & graph
-│   ├── core/registry/            # Component registration (Registry Pattern)
-│   ├── events/                   # Event-driven architecture (EventBus)
-│   ├── i18n/                     # Backend internationalization
-│   ├── llm/                      # LLM abstraction layer + strategies
-│   ├── prompts/                  # Prompt template engine (Jinja2)
-│   ├── state/                    # State management + snapshots
-│   ├── utils/                    # Utilities (retry, audit, sandbox, git)
-│   ├── workflow/                 # Temporal workflows + configurable pipeline
-│   ├── config.py                 # Pydantic Settings
-│   └── main.py                   # FastAPI application entry
-├── config/                       # YAML configurations
-│   ├── llm-routing.yaml         # LLM routing rules
-│   └── workflow-pipeline.yaml   # Workflow stage definitions
-├── frontend/                     # Vue 3 + TypeScript frontend
-│   ├── src/
-│   │   ├── i18n/                # Frontend internationalization (vue-i18n)
-│   │   ├── components/          # Vue components
-│   │   ├── api/                 # API service layer
-│   │   ├── App.vue              # Root component
-│   │   └── main.ts              # Application entry
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.ts           # Vite + proxy config
-│   └── tsconfig.json            # TypeScript config
-├── tests/                        # Test suite (pytest)
-├── docs/                         # Documentation
-├── docker-compose.yml            # Infrastructure services
+├── app/                          # Backend (Python 3.10+)
+├── docker-compose.yml            # Infrastructure (Temporal, Postgres, Redis)
 ├── Dockerfile                    # Application container
+├── alembic.ini                   # Alembic migration config
+├── pyproject.toml                # Ruff + Black + MyPy config
 ├── requirements.txt              # Python dependencies
-├── pytest.ini                   # Test configuration
+├── requirements-dev.txt          # Dev dependencies
+├── pytest.ini                    # Test configuration
+├── .env.example                  # Environment variables template
+├── CLAUDE.md                     # This file
 └── README.md                     # Project documentation
 ```
 
@@ -93,18 +77,82 @@ dev-matrix/
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Backend API | **8000** | FastAPI REST server |
-| Frontend Dev | **3000** | Vite dev server (falls back to 3001 if busy) |
+| Backend API | **8000** | FastAPI REST server (uvicorn) |
+| Frontend Dev | **3000** | Vite dev server (strictPort) |
 | Temporal Server | 7233 | Temporal gRPC |
 | Temporal UI | 8088 | Temporal Web UI |
-| PostgreSQL | 5432 | Database (optional) |
-| Redis | 6379 | Cache (optional) |
+| PostgreSQL | 5432 | Database (prod) |
+| Redis | 6379 | Cache |
 
 ### Port Configuration
 
-- **Backend**: Configured in `app/config.py` (`app_port: int = 8000`)
-- **Frontend**: Configured in `frontend/vite.config.ts` (`port: 3000`)
-- **API Proxy**: Frontend Vite proxies `/requirements`, `/approvals`, `/workflow`, `/health` to `http://localhost:8000`
+- **Backend**: `app/config.py` → `app_port: int = 8000`
+- **Frontend**: `frontend/vite.config.ts` → `port: 3000, strictPort: true`
+- **API Proxy**: Vite proxies `/api` and `/health` to `http://localhost:8000`
+
+## Database Models (17 tables)
+
+| Model | Table | Purpose |
+|-------|-------|---------|
+| ProjectModel | projects | Project management |
+| ProjectStateModel | project_states | Project state JSON + version |
+| StateSnapshotModel | state_snapshots | State history for rollback |
+| WorkflowConfigModel | workflow_configs | Workflow templates (Vue Flow JSON) |
+| WorkflowInstanceModel | workflow_instances | Running workflow instances |
+| WorkflowTaskModel | workflow_tasks | Workbench tasks per stage |
+| CodeReviewModel | code_reviews | AI code review results |
+| TaskChatMessageModel | task_chat_messages | Agent chat messages |
+| SystemConfigModel | system_configs | Key-value settings |
+| SystemSecretModel | system_secrets | JWT secret etc. |
+| TaskManagementModel | task_management | Jira-like task system |
+| ScheduledTaskModel | scheduled_tasks | Cron-based task scheduling |
+| ScheduledTaskLogModel | scheduled_task_logs | Task execution logs |
+| UserModel | users | User accounts |
+| RoleModel | roles | RBAC roles |
+| UserRoleModel | user_roles | User-role mapping |
+| MenuModel | menus | Sidebar menu tree |
+| RoleMenuModel | role_menus | Role-menu permission mapping |
+| RoleAgentModel | role_agents | Role-agent mapping |
+| AuditLogModel | audit_logs | Audit trail |
+
+## API Routes
+
+### Public (no auth required)
+- `POST /api/auth/login` — Login
+- `GET /api/menus/tree` — Menu tree (for login page)
+- `GET /health/live`, `GET /health/ready`, `GET /health` — Health checks
+
+### Protected (JWT Bearer required)
+- `/api/auth/me`, `/api/auth/refresh`, `/api/auth/logout`, `/api/auth/password`
+- `/api/users` — User CRUD
+- `/api/roles` — Role CRUD
+- `/api/menus/my`, `/api/menus` — Menu CRUD
+- `/api/projects` — Project CRUD + pagination
+- `/api/tasks` — Task CRUD (Jira-like)
+- `/api/workbench/tasks`, `/api/workbench/stats`, `/api/workbench/models`
+- `/api/workflow/{project_id}/start`
+- `/api/workflow-config`, `/api/workflow-config/templates`
+- `/api/workflow-instances`
+- `/api/code-reviews` — Code review CRUD + re-run
+- `/api/registry/agents`, `/api/registry/skills`
+- `/api/settings`, `/api/settings/categories`
+- `/api/scheduled-tasks` — Scheduled task CRUD + toggle + run
+- `/api/requirements`, `/api/approvals`
+- `/api/events/stream` — SSE event stream
+- `/api/audit/logs`
+- `/api/lifecycle/{project_id}/pause|resume|cancel`
+
+**Important**: All backend route decorators use `""` (empty string) for collection endpoints, not `"/"`. This avoids FastAPI 307 redirects that strip Authorization headers.
+
+## Authentication & Authorization
+
+- **JWT-based auth**: Access token (2h) + Refresh token (7d)
+- **RBAC**: User → Roles → Menus (with permissions) + Agents
+- **Route guard**: `get_current_user` dependency extracts Bearer token, validates JWT, loads user
+- **Permission guard**: `require_permission("code_review:view")` checks role-menu-permission chain
+- **Frontend guard**: `router.beforeEach` checks `localStorage.token`, redirects to `/login` if missing
+- **Frontend directive**: `v-permission="'user:manage'"` conditionally renders elements
+- **Default admin**: Created by `app/scripts/init_rbac.py` (admin/admin123)
 
 ## Development Workflow
 
@@ -121,51 +169,59 @@ Developer → Patch Generation
     ↓ [Human Approval]
 QA Agent → Test Generation & Execution
     ↓ [Human Approval]
+Code Reviewer → AI Code Review
+    ↓
 Auto PR / Release
 ```
 
-## Quick Start Commands
+## Quick Start
 
 ```bash
-# 1. Start infrastructure (optional)
-docker-compose up -d temporal-server postgres redis
+# 1. Start infrastructure (optional, for Temporal/Postgres/Redis)
+docker-compose up -d
 
-# 2. Install backend dependencies
+# 2. Backend setup
 pip install -r requirements.txt
-
-# 3. Initialize database
 python -c "from app.state.models import init_db; init_db()"
+python app/scripts/init_rbac.py  # Create default admin + roles + menus
 
-# 4. Start Temporal Worker
+# 3. Start Temporal Worker (optional, for workflow execution)
 python app/worker.py
 
-# 5. Start API Server (port 8000)
+# 4. Start API Server (port 8000)
 uvicorn app.main:app --reload --port 8000
 
-# 6. Start Frontend (port 3000)
+# 5. Frontend setup
 cd frontend
 npm install
-npm run dev
+npm run dev  # port 3000
 ```
+
+Open http://localhost:3000, login with admin/admin123.
 
 ## Key Files for Development
 
 | File | Purpose |
 |------|---------|
-| `app/config.py` | Application settings (database, LLM, locale) |
-| `app/main.py` | FastAPI app entry with lifespan |
+| `app/config.py` | Pydantic Settings (all env vars) |
+| `app/main.py` | FastAPI app + lifespan + middleware + route registration |
 | `app/worker.py` | Temporal worker entry |
-| `frontend/vite.config.ts` | Vite config + API proxy |
-| `frontend/src/i18n/index.ts` | i18n configuration |
+| `app/state/models.py` | All SQLAlchemy models |
+| `app/api/deps.py` | Dependency injection (auth, permissions) |
+| `app/core/security.py` | JWT + password hashing |
+| `app/core/secrets.py` | Auto-generated JWT secret storage |
+| `app/agents/base.py` | BaseAgent + Claude Agent SDK integration |
+| `app/llm/router.py` | LLM routing with strategy pattern |
+| `app/workflow/engine.py` | Temporal-based workflow engine |
+| `app/scripts/init_rbac.py` | Default RBAC data seeding |
+| `frontend/src/main.ts` | Vue app entry (Pinia, Router, i18n, theme) |
+| `frontend/src/router.ts` | Route definitions + auth/permission guards |
+| `frontend/src/api/index.ts` | Unified API client (fetch + retry + 401 handling) |
+| `frontend/src/stores/user.ts` | User store (Pinia + persistedstate) |
+| `frontend/src/composables/useTabs.ts` | Tab state management |
+| `frontend/vite.config.ts` | Vite + SPA fallback + API proxy |
 | `config/llm-routing.yaml` | LLM provider routing rules |
 | `config/workflow-pipeline.yaml` | Workflow stage config |
-
-## Internationalization (i18n)
-
-- **Backend**: `app/i18n/` - JSON-based translation with dot notation keys
-- **Frontend**: `frontend/src/i18n/` - vue-i18n with JSON locale files
-- **Default Locale**: `zh` (configurable via `default_locale` in `app/config.py`)
-- **Supported Locales**: zh, en
 
 ## Environment Variables
 
@@ -173,12 +229,40 @@ Copy `.env.example` to `.env`:
 
 ```env
 OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-DATABASE_URL=sqlite:///./devmatrix.db
-TEMPORAL_HOST=localhost:7233
-DEFAULT_LOCALE=zh
-GITHUB_TOKEN=ghp_...  # Optional, for PR automation
-NEO4J_URI=bolt://localhost:7687  # Optional
+## Known Pitfalls
+
+1. **FastAPI trailing slash redirects**: Backend routes use `""` (no trailing slash) for collection endpoints. If a route uses `"/"`, FastAPI returns 307 redirect which strips the `Authorization` header, causing 401 errors. Always use `""` for new routes.
+
+2. **Pinia persist key**: User store persists to `localStorage` under key `devmatrix-user`, but the API client reads token from `localStorage.getItem('token')`. The `setToken()` method writes to both.
+
+3. **Vite proxy**: Only `/api` and `/health` paths are proxied to backend. Other paths serve `index.html` (SPA fallback).
+
+4. **SQLite WAL mode**: Dev mode uses SQLite with WAL journal mode for concurrent read/write support.
+
+5. **Theme initialization**: Theme is resolved from `localStorage('devmatrix-settings')` before Vue mounts to prevent flash of wrong theme.
+
+## Testing
+
+```bash
+# Backend tests
+pytest tests/ -v
+
+# Frontend build check
+cd frontend && npm run build
+```
+
+## Linting & Formatting
+
+```bash
+# Python (Ruff)
+ruff check app/ tests/
+ruff format app/ tests/
+
+# Python (Black)
+black app/ tests/ --line-length 100
+
+# TypeScript
+cd frontend && npx vue-tsc --noEmit
 ```
 
 ---
@@ -193,7 +277,7 @@ NEO4J_URI=bolt://localhost:7687  # Optional
 
 Before implementing:
 - State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- If multiple interpretations exist, present them — don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
@@ -207,8 +291,6 @@ Before implementing:
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
 ### 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
@@ -217,13 +299,11 @@ When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+- If you notice unrelated dead code, mention it — don't delete it.
 
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
 
 ### 4. Goal-Driven Execution
 
@@ -240,8 +320,6 @@ For multi-step tasks, state a brief plan:
 2. [Step] → verify: [check]
 3. [Step] → verify: [check]
 ```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
 ---
 
