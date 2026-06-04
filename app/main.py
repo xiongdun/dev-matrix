@@ -228,6 +228,14 @@ async def lifespan(app: FastAPI):
         logger.exception("Template seeding failed")
         raise
     try:
+        from app.core.registry.agent_registry import _register_builtin_agents
+
+        _register_builtin_agents()
+        logger.info("Built-in agents registered")
+    except Exception:
+        logger.exception("Agent registration failed")
+        raise
+    try:
         discover_and_register("app.skills", skill_registry, BaseSkill)
         logger.info("Skill discovery completed")
     except Exception:

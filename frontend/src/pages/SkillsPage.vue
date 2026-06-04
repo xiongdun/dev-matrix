@@ -61,6 +61,7 @@
               <span v-else class="used-by-empty">—</span>
             </td>
           </tr>
+          <EmptyTableRow v-if="skills.length === 0" :colspan="3" :message="t('skills.empty')" />
         </tbody>
       </table>
     </div>
@@ -71,6 +72,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
+import EmptyTableRow from '../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
 

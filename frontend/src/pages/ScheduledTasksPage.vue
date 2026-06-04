@@ -2,7 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
-import { Plus, Clock, Play, Pause, Trash2, Edit3, History, X, CheckCircle, XCircle, Loader } from 'lucide-vue-next'
+import EmptyTableRow from '../components/EmptyTableRow.vue'
+import { Plus, Play, Pause, Trash2, Edit3, History, X, CheckCircle, XCircle, Loader } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -235,51 +236,59 @@ const cronPresets = [
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="tasks.length === 0" class="empty">
-      {{ t('scheduledTasks.empty') }}
-    </div>
-    <div v-else class="task-list">
-      <div v-for="task in tasks" :key="task.id" class="task-card" :class="{ disabled: !task.is_enabled }">
-        <div class="task-header">
-          <div class="task-info">
-            <h3 class="task-name">{{ task.name }}</h3>
-            <span class="task-type-badge">{{ getTaskTypeLabel(task.task_type) }}</span>
-            <span class="trigger-badge">{{ getTriggerLabel(task.trigger_type) }}</span>
-          </div>
-          <div class="task-actions">
-            <button class="icon-btn" :title="t('scheduledTasks.runNow')" @click="runTaskNow(task.id)">
-              <Play :size="16" />
-            </button>
-            <button class="icon-btn" :title="task.is_enabled ? t('scheduledTasks.disable') : t('scheduledTasks.enable')" @click="toggleTask(task.id)">
-              <Pause v-if="task.is_enabled" :size="16" />
-              <Play v-else :size="16" />
-            </button>
-            <button class="icon-btn" :title="t('scheduledTasks.logs')" @click="openLogs(task.id)">
-              <History :size="16" />
-            </button>
-            <button class="icon-btn" :title="t('common.edit')" @click="openEditModal(task)">
-              <Edit3 :size="16" />
-            </button>
-            <button class="icon-btn danger" :title="t('common.delete')" @click="deleteTask(task.id)">
-              <Trash2 :size="16" />
-            </button>
-          </div>
-        </div>
-        <p v-if="task.description" class="task-desc">{{ task.description }}</p>
-        <div class="task-meta">
-          <div class="meta-item">
-            <Clock :size="14" />
-            <span>{{ task.cron_expression }}</span>
-          </div>
-          <div class="meta-item">
-            <span :class="['status-dot', task.is_enabled ? 'enabled' : 'disabled']" />
-            <span>{{ task.is_enabled ? t('scheduledTasks.enabled') : t('scheduledTasks.disabled') }}</span>
-          </div>
-          <div v-if="task.last_run_at" class="meta-item">
-            {{ t('scheduledTasks.lastRun') }}: {{ formatDate(task.last_run_at) }}
-          </div>
-        </div>
-      </div>
+    <div v-else class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{{ t('scheduledTasks.name') }}</th>
+            <th>{{ t('scheduledTasks.taskType') }}</th>
+            <th>{{ t('scheduledTasks.triggerType') }}</th>
+            <th>{{ t('scheduledTasks.cronExpression') }}</th>
+            <th>{{ t('scheduledTasks.enabled') }}</th>
+            <th>{{ t('scheduledTasks.lastRun') }}</th>
+            <th>{{ t('common.edit') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="task in tasks" :key="task.id" :class="{ 'row-disabled': !task.is_enabled }">
+            <td class="cell-name">
+              {{ task.name }}
+              <span v-if="task.description" class="cell-desc-inline">{{ task.description }}</span>
+            </td>
+            <td>
+              <span class="type-badge">{{ getTaskTypeLabel(task.task_type) }}</span>
+            </td>
+            <td>
+              <span class="trigger-badge">{{ getTriggerLabel(task.trigger_type) }}</span>
+            </td>
+            <td class="cell-cron">{{ task.cron_expression }}</td>
+            <td>
+              <span :class="['status-dot', task.is_enabled ? 'enabled' : 'disabled']" />
+              <span>{{ task.is_enabled ? t('scheduledTasks.enabled') : t('scheduledTasks.disabled') }}</span>
+            </td>
+            <td class="cell-time">{{ formatDate(task.last_run_at) }}</td>
+            <td class="cell-actions">
+              <button class="icon-btn" :title="t('scheduledTasks.runNow')" @click="runTaskNow(task.id)">
+                <Play :size="14" />
+              </button>
+              <button class="icon-btn" :title="task.is_enabled ? t('scheduledTasks.disable') : t('scheduledTasks.enable')" @click="toggleTask(task.id)">
+                <Pause v-if="task.is_enabled" :size="14" />
+                <Play v-else :size="14" />
+              </button>
+              <button class="icon-btn" :title="t('scheduledTasks.logs')" @click="openLogs(task.id)">
+                <History :size="14" />
+              </button>
+              <button class="icon-btn" :title="t('common.edit')" @click="openEditModal(task)">
+                <Edit3 :size="14" />
+              </button>
+              <button class="icon-btn danger" :title="t('common.delete')" @click="deleteTask(task.id)">
+                <Trash2 :size="14" />
+              </button>
+            </td>
+          </tr>
+          <EmptyTableRow v-if="tasks.length === 0" :colspan="7" :message="t('scheduledTasks.empty')" />
+        </tbody>
+      </table>
     </div>
 
     <!-- Create/Edit Modal -->
@@ -434,105 +443,86 @@ const cronPresets = [
   margin: 4px 0 0;
 }
 
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.task-card {
-  background: var(--surface-color);
+.table-wrapper {
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
-.task-card.disabled {
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover td {
+  background-color: var(--bg-hover);
+}
+
+.row-disabled td {
   opacity: 0.6;
 }
 
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.task-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.task-name {
-  font-size: 1rem;
+.cell-name {
   font-weight: 600;
-  margin: 0;
+  font-size: 13px;
 }
 
-.task-type-badge,
+.cell-desc-inline {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.type-badge,
 .trigger-badge {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
+  display: inline-block;
 }
 
-.task-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.icon-btn:hover {
-  background: var(--hover-color);
-  color: var(--text-primary);
-}
-
-.icon-btn.danger:hover {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.task-desc {
-  color: var(--text-secondary);
-  font-size: 13px;
-  margin: 0 0 8px;
-}
-
-.task-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+.cell-cron {
+  font-family: 'SF Mono', Monaco, monospace;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .status-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .status-dot.enabled {
@@ -543,8 +533,42 @@ const cronPresets = [
   background: #9ca3af;
 }
 
+.cell-time {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.cell-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 .loading,
-.empty,
 .error {
   text-align: center;
   padding: 48px;
@@ -775,10 +799,6 @@ const cronPresets = [
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
-  }
-  .task-header {
-    flex-direction: column;
-    gap: 8px;
   }
 }
 </style>

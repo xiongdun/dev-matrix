@@ -232,7 +232,8 @@
     "uploadText": "点击或拖拽上传技能配置文件",
     "uploadHint": "支持 JSON 格式",
     "uploadSuccess": "技能 {name} 上传并注册成功",
-    "errorInvalidFile": "请上传有效的 JSON 文件"
+    "errorInvalidFile": "请上传有效的 JSON 文件",
+    "empty": "暂无技能数据"
   },
   "workflow": {
     "title": "工作流管理",
@@ -276,6 +277,9 @@
     "title": "工作流实例",
     "subtitle": "查看和管理所有流程实例的运行状态",
     "empty": "暂无流程实例",
+    "instanceId": "实例 ID",
+    "status": "状态",
+    "actions": "操作",
     "refresh": "刷新",
     "allStatus": "全部状态",
     "statusRunning": "运行中",

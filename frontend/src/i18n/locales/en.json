@@ -232,7 +232,8 @@
     "uploadText": "Click or drag to upload skill config file",
     "uploadHint": "JSON format supported",
     "uploadSuccess": "Skill {name} uploaded and registered successfully",
-    "errorInvalidFile": "Please upload a valid JSON file"
+    "errorInvalidFile": "Please upload a valid JSON file",
+    "empty": "No skills found"
   },
   "workflow": {
     "title": "Workflow Management",
@@ -276,6 +277,9 @@
     "title": "Workflow Instances",
     "subtitle": "View and manage all workflow instance runtime states",
     "empty": "No workflow instances",
+    "instanceId": "Instance ID",
+    "status": "Status",
+    "actions": "Actions",
     "refresh": "Refresh",
     "allStatus": "All Status",
     "statusRunning": "Running",

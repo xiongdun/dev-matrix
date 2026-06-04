@@ -6,6 +6,7 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { X, GitBranch } from 'lucide-vue-next'
 import { api } from '../api'
+import { useAgentI18n } from '../composables/useAgentI18n'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { getAgentDisplayName, getAgentDescription } = useAgentI18n()
 
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
@@ -60,13 +62,15 @@ async function loadFlow() {
       nodes.value = rawNodes.map((n: any) => {
         const isCurrent = n.id === currentNodeId.value
         const isCompleted = isNodeCompleted(n.id, rawEdges)
+        const agentName = n.data?.name || n.data?.label || n.id
         return {
           ...n,
           type: 'agent',
           data: {
             ...n.data,
-            label: n.data?.name || n.data?.label || n.id,
-            description: n.data?.agent || '',
+            label: getAgentDisplayName(agentName),
+            name: agentName,
+            description: getAgentDescription(agentName) || n.data?.agent || '',
             status: isCurrent ? 'current' : isCompleted ? 'completed' : 'pending',
           },
           style: {
