@@ -14,9 +14,6 @@
     <div v-else-if="error" class="empty-state" style="color: var(--accent-red)">
       {{ t('common.error') }}: {{ error }}
     </div>
-    <div v-else-if="workflows.length === 0" class="empty-state">
-      {{ t('workflow.empty') }}
-    </div>
     <div v-else class="table-wrapper">
       <table class="wf-table">
         <thead>
@@ -49,6 +46,7 @@
               <button v-if="wf.status === 'archived'" class="btn-action btn-delete" @click="handleDelete(wf)">{{ t('common.delete') }}</button>
             </td>
           </tr>
+          <EmptyTableRow v-if="workflows.length === 0" :colspan="6" :message="t('workflow.empty')" />
         </tbody>
       </table>
     </div>
@@ -60,6 +58,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { api } from '../api'
+import EmptyTableRow from '../components/EmptyTableRow.vue'
 import { useTabs } from '../composables/useTabs'
 import { useDialog } from '../composables/useDialog'
 

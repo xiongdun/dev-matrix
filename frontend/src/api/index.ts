@@ -160,12 +160,12 @@ export const api = {
 
   /** 获取需求列表 */
   getRequirements() {
-    return requestWithRetry<Array<{ id: string; title: string; status: string }>>('/requirements/')
+    return requestWithRetry<Array<{ id: string; title: string; status: string }>>('/requirements')
   },
 
   /** 创建需求 */
   createRequirement(data: { requirement_raw_input: string }) {
-    return requestWithRetry<{ id: string }>('/requirements/', {
+    return requestWithRetry<{ id: string }>('/requirements', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -227,7 +227,7 @@ export const api = {
 
   /** 获取工作流列表 */
   getWorkflows() {
-    return requestWithRetry<{ workflows: Array<{ id: number; name: string; description: string; version: string; status: string; is_template: boolean; category: string | null; created_at: string; updated_at: string }> }>('/workflow-config/')
+    return requestWithRetry<{ workflows: Array<{ id: number; name: string; description: string; version: string; status: string; is_template: boolean; category: string | null; created_at: string; updated_at: string }> }>('/workflow-config')
   },
 
   /** 获取工作流模板列表 */
@@ -237,33 +237,33 @@ export const api = {
 
   /** 获取单个工作流 */
   getWorkflow(id: number) {
-    return requestWithRetry<{ id: number; name: string; description: string; version: string; flow_json: string; status: string; is_template: boolean; category: string | null }>('/workflow-config/' + id)
+    return requestWithRetry<{ id: number; name: string; description: string; version: string; flow_json: string; status: string; is_template: boolean; category: string | null }>(`/workflow-config/${id}`)
   },
 
   /** 创建工作流 */
   createWorkflow(data: { name: string; description?: string; flow_json?: string }) {
-    return requestWithRetry<{ id: number; name: string }>('/workflow-config/', { method: 'POST', body: JSON.stringify(data) })
+    return requestWithRetry<{ id: number; name: string }>('/workflow-config', { method: 'POST', body: JSON.stringify(data) })
   },
 
   /** 从模板创建实例（自动启动工作流） */
   instantiateTemplate(configId: number, projectId: string, context?: Record<string, unknown>) {
-    return requestWithRetry<{ id: number; instance_id: string; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-config/' + configId + '/instantiate', { method: 'POST', body: JSON.stringify({ project_id: projectId, context: context || {} }) })
+    return requestWithRetry<{ id: number; instance_id: string; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>(`/workflow-config/${configId}/instantiate`, { method: 'POST', body: JSON.stringify({ project_id: projectId, context: context || {} }) })
   },
 
   /** 保存工作流 */
   saveWorkflow(id: number, data: { name?: string; description?: string; flow_json?: string; status?: string }) {
-    return requestWithRetry<{ id: number; name: string }>('/workflow-config/' + id, { method: 'PUT', body: JSON.stringify(data) })
+    return requestWithRetry<{ id: number; name: string }>(`/workflow-config/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   },
 
   /** 删除工作流 */
   deleteWorkflow(id: number) {
-    return requestWithRetry<{ success: boolean }>('/workflow-config/' + id, { method: 'DELETE' })
+    return requestWithRetry<{ success: boolean }>(`/workflow-config/${id}`, { method: 'DELETE' })
   },
 
   /** 获取工作流实例列表 */
   getWorkflowInstances(status?: string) {
     const params = status ? `?status=${status}` : ''
-    return requestWithRetry<{ instances: Array<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string; started_at: string | null; completed_at: string | null }> }>('/workflow-instances/' + params)
+    return requestWithRetry<{ instances: Array<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string; started_at: string | null; completed_at: string | null }> }>('/workflow-instances' + params)
   },
 
   /** 按 project_id 获取工作流实例 */
@@ -273,7 +273,7 @@ export const api = {
 
   /** 获取单个工作流实例 */
   getWorkflowInstance(instanceId: string) {
-    return requestWithRetry<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>('/workflow-instances/' + instanceId)
+    return requestWithRetry<{ id: number; instance_id: string; template_id: number | null; project_id: string; current_state: string; participants: string[]; artifacts: any[]; status: string }>(`/workflow-instances/${instanceId}`)
   },
 
   getWorkbenchTasks(role: string) {
@@ -338,17 +338,17 @@ export const api = {
 
   /** 获取项目详情 */
   getProject(id: number) {
-    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>('/projects/' + id)
+    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>(`/projects/${id}`)
   },
 
   /** 更新项目 */
   updateProject(id: number, data: Partial<{ name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null }>) {
-    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>('/projects/' + id, { method: 'PUT', body: JSON.stringify(data) })
+    return requestWithRetry<{ id: number; name: string; description: string; owner: string; priority: string; status: string; progress: number; start_date: string | null; end_date: string | null; created_at: string; updated_at: string }>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   },
 
   /** 删除项目 */
   deleteProject(id: number) {
-    return requestWithRetry<void>('/projects/' + id, { method: 'DELETE' })
+    return requestWithRetry<void>(`/projects/${id}`, { method: 'DELETE' })
   },
 
   // ==================== 系统设置 API ====================
@@ -366,7 +366,7 @@ export const api = {
 
   /** 获取单个配置 */
   getSetting(key: string) {
-    return requestWithRetry<{ key: string; value: string; category: string; description: string | null; is_sensitive: boolean; updated_at: string | null }>('/settings/' + key)
+    return requestWithRetry<{ key: string; value: string; category: string; description: string | null; is_sensitive: boolean; updated_at: string | null }>(`/settings/${key}`)
   },
 
   /** 批量更新配置 */
@@ -396,33 +396,33 @@ export const api = {
 
   /** 获取定时任务详情 */
   getScheduledTask(id: number) {
-    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id)
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>(`/scheduled-tasks/${id}`)
   },
 
   /** 更新定时任务 */
   updateScheduledTask(id: number, data: Partial<{ name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string }>) {
-    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id, { method: 'PUT', body: JSON.stringify(data) })
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>(`/scheduled-tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   },
 
   /** 删除定时任务 */
   deleteScheduledTask(id: number) {
-    return requestWithRetry<void>('/scheduled-tasks/' + id, { method: 'DELETE' })
+    return requestWithRetry<void>(`/scheduled-tasks/${id}`, { method: 'DELETE' })
   },
 
   /** 启用/禁用定时任务 */
   toggleScheduledTask(id: number) {
-    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>('/scheduled-tasks/' + id + '/toggle', { method: 'POST' })
+    return requestWithRetry<{ id: number; name: string; description: string; task_type: string; trigger_type: string; cron_expression: string; is_enabled: number; config_json: string; last_run_at: string | null; next_run_at: string | null; created_at: string; updated_at: string }>(`/scheduled-tasks/${id}/toggle`, { method: 'POST' })
   },
 
   /** 立即执行定时任务 */
   runScheduledTask(id: number) {
-    return requestWithRetry<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }>('/scheduled-tasks/' + id + '/run', { method: 'POST' })
+    return requestWithRetry<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }>(`/scheduled-tasks/${id}/run`, { method: 'POST' })
   },
 
   /** 获取定时任务执行历史 */
   getScheduledTaskLogs(id: number, limit?: number) {
     const params = limit ? '?limit=' + limit : ''
-    return requestWithRetry<{ logs: Array<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }> }>('/scheduled-tasks/' + id + '/logs' + params)
+    return requestWithRetry<{ logs: Array<{ id: number; task_id: number; status: string; output: string; error: string; started_at: string; completed_at: string | null }> }>(`/scheduled-tasks/${id}/logs` + params)
   },
 
   // ==================== 任务管理 API ====================
@@ -450,17 +450,17 @@ export const api = {
 
   /** 更新任务 */
   updateTask(id: number, data: Partial<{ title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; project_id: number | null; tags: string[]; due_date: string | null }>) {
-    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>('/tasks/' + id, { method: 'PUT', body: JSON.stringify(data) })
+    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   },
 
   /** 更新任务状态 */
   updateTaskStatus(id: number, status: string) {
-    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>('/tasks/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) })
+    return requestWithRetry<{ id: number; title: string; description: string; status: string; priority: string; assignee_id: string | null; assignee_name: string | null; reporter_id: string; reporter_name: string; project_id: number | null; tags: string[]; due_date: string | null; created_at: string; updated_at: string }>(`/tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
   },
 
   /** 删除任务 */
   deleteTask(id: number) {
-    return requestWithRetry<void>('/tasks/' + id, { method: 'DELETE' })
+    return requestWithRetry<void>(`/tasks/${id}`, { method: 'DELETE' })
   },
 
   subscribeToEvents(role?: string, onEvent?: (data: any) => void): () => void {
@@ -517,7 +517,7 @@ export const api = {
 
   /** 获取代码审查详情 */
   getCodeReview(reviewId: number) {
-    return requestWithRetry<{ id: number; task_id: number; status: string; result: any; created_at: string; updated_at: string }>('/code-reviews/' + reviewId)
+    return requestWithRetry<{ id: number; task_id: number; status: string; result: any; created_at: string; updated_at: string }>(`/code-reviews/${reviewId}`)
   },
 
   /** 获取代码审查列表 */
@@ -540,7 +540,7 @@ export const api = {
 
   /** 重新运行代码审查 */
   rerunCodeReview(reviewId: number) {
-    return requestWithRetry<{ id: number; task_id: number; status: string; created_at: string; updated_at: string }>('/code-reviews/' + reviewId + '/re-run', {
+    return requestWithRetry<{ id: number; task_id: number; status: string; created_at: string; updated_at: string }>(`/code-reviews/${reviewId}/re-run`, {
       method: 'POST',
     })
   },

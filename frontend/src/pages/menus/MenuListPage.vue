@@ -14,9 +14,6 @@
     <div v-else-if="error" class="empty-state" style="color: var(--accent-red)">
       {{ t('common.error') }}: {{ error }}
     </div>
-    <div v-else-if="menus.length === 0" class="empty-state">
-      暂无菜单数据
-    </div>
     <div v-else class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -68,6 +65,7 @@
               </td>
             </tr>
           </template>
+          <EmptyTableRow v-if="menus.length === 0" :colspan="8" message="暂无菜单数据" />
         </tbody>
       </table>
     </div>
@@ -86,6 +84,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../../api'
+import EmptyTableRow from '../../components/EmptyTableRow.vue'
 import MenuFormModal from './MenuFormModal.vue'
 
 const { t } = useI18n()

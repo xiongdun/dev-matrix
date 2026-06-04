@@ -23,9 +23,6 @@
     <div v-else-if="error" class="empty-state" style="color: var(--accent-red)">
       {{ t('common.error') }}: {{ error }}
     </div>
-    <div v-else-if="users.length === 0" class="empty-state">
-      暂无用户数据
-    </div>
     <div v-else class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -59,6 +56,7 @@
               <button class="btn-action btn-delete" @click="deleteUser(user)">删除</button>
             </td>
           </tr>
+          <EmptyTableRow v-if="users.length === 0" :colspan="6" message="暂无用户数据" />
         </tbody>
       </table>
     </div>
@@ -77,6 +75,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '../../api'
 import UserFormModal from './UserFormModal.vue'
+import EmptyTableRow from '../../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
 

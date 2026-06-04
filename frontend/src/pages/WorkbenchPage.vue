@@ -11,9 +11,6 @@
     <div v-else-if="error" class="empty-state" style="color: var(--accent-red)">
       {{ t('common.error') }}: {{ error }}
     </div>
-    <div v-else-if="tasks.length === 0" class="empty-state">
-      {{ t('workbench.noTasks') }}
-    </div>
     <div v-else class="task-table-wrapper">
       <table class="task-table">
         <thead>
@@ -48,6 +45,7 @@
               </button>
             </td>
           </tr>
+          <EmptyTableRow v-if="tasks.length === 0" :colspan="6" :message="t('workbench.noTasks')" />
         </tbody>
       </table>
     </div>
@@ -61,6 +59,7 @@ import { useI18n } from 'vue-i18n'
 import { ArrowRight } from 'lucide-vue-next'
 import { api } from '../api'
 import { useAgentI18n } from '../composables/useAgentI18n'
+import EmptyTableRow from '../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -79,71 +78,8 @@ interface Task {
   processed_at: string | null
 }
 
-const mockTasks: Task[] = [
-  {
-    id: 1,
-    project_id: 'dev-matrix-001',
-    stage_id: 'analyze_requirement',
-    stage_name: '需求分析',
-    agent_role: 'business_analyst',
-    status: 'pending',
-    output_json: JSON.stringify({ content: '需求分析内容...', metadata: {} }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    processed_at: null,
-  },
-  {
-    id: 2,
-    project_id: 'dev-matrix-002',
-    stage_id: 'generate_prd',
-    stage_name: 'PRD 生成',
-    agent_role: 'product_manager',
-    status: 'pending',
-    output_json: JSON.stringify({ content: 'PRD 内容...', metadata: {} }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    processed_at: null,
-  },
-  {
-    id: 3,
-    project_id: 'dev-matrix-003',
-    stage_id: 'analyze_code_impact',
-    stage_name: '代码影响分析',
-    agent_role: 'architect',
-    status: 'retrying',
-    output_json: JSON.stringify({ content: '影响分析内容...', metadata: {} }, null, 2),
-    feedback: '请补充数据库迁移脚本的影响分析',
-    arrived_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    processed_at: null,
-  },
-  {
-    id: 4,
-    project_id: 'dev-matrix-004',
-    stage_id: 'generate_patch',
-    stage_name: '补丁生成',
-    agent_role: 'developer',
-    status: 'approved',
-    output_json: JSON.stringify({ content: '补丁内容...', metadata: {} }, null, 2),
-    feedback: null,
-    arrived_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    processed_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: 5,
-    project_id: 'hotfix-2026-001',
-    stage_id: 'execute_tests',
-    stage_name: '测试执行',
-    agent_role: 'qa',
-    status: 'rejected',
-    output_json: JSON.stringify({ content: '测试结果...', metadata: {} }, null, 2),
-    feedback: '集成测试失败，请修复后再提交',
-    arrived_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    processed_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-  },
-]
-
-const tasks = ref<Task[]>(mockTasks)
-const loading = ref(false)
+const tasks = ref<Task[]>([])
+const loading = ref(true)
 const error = ref('')
 
 let closeSSE: (() => void) | null = null
@@ -168,10 +104,21 @@ function formatTime(dateStr: string) {
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await api.getWorkbenchTasks('')
+    tasks.value = res.tasks
+  } catch (e: any) {
+    error.value = e.message || String(e)
+  } finally {
+    loading.value = false
+  }
+
   closeSSE = api.subscribeToEvents(undefined, (data) => {
     if (data.type === 'approval.required') {
-      // refresh
+      api.getWorkbenchTasks('').then(res => {
+        tasks.value = res.tasks
+      }).catch(() => {})
     }
   })
 })

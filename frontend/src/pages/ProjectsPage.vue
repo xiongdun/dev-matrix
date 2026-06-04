@@ -38,58 +38,58 @@
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="projects.length === 0" class="empty-state">
-      <FolderOpen :size="48" class="empty-icon" />
-      <p>{{ t('projects.empty') }}</p>
-    </div>
-    <div v-else class="project-grid">
-      <div
-        v-for="project in projects"
-        :key="project.id"
-        class="project-card"
-        @click="goToDetail(project.id)"
-      >
-        <div class="card-header">
-          <h3 class="project-name">{{ project.name }}</h3>
-          <span class="priority-badge" :class="project.priority">
-            {{ t(`projects.priority${project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}`) }}
-          </span>
-        </div>
-        <p class="project-desc">{{ project.description || t('projects.noDescription') }}</p>
-        <div class="project-meta">
-          <span class="meta-item">
-            <User :size="14" />
-            {{ project.owner || t('projects.noOwner') }}
-          </span>
-          <span class="meta-item">
-            <Calendar :size="14" />
-            {{ formatDate(project.created_at) }}
-          </span>
-        </div>
-        <div class="project-progress">
-          <div class="progress-bar-bg">
-            <div
-              class="progress-bar-fill"
-              :style="{ width: `${project.progress}%` }"
-              :class="project.status"
-            />
-          </div>
-          <span class="progress-text">{{ project.progress }}%</span>
-        </div>
-        <div class="project-footer">
-          <span class="status-badge" :class="project.status">
-            {{ t(`projects.status${project.status.charAt(0).toUpperCase() + project.status.slice(1)}`) }}
-          </span>
-          <div class="actions" @click.stop>
-            <button class="icon-btn" @click="editProject(project)">
-              <Pencil :size="14" />
-            </button>
-            <button class="icon-btn danger" @click="confirmDelete(project)">
-              <Trash2 :size="14" />
-            </button>
-          </div>
-        </div>
-      </div>
+    <div v-else class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{{ t('projects.name') }}</th>
+            <th>{{ t('projects.description') }}</th>
+            <th>{{ t('projects.owner') }}</th>
+            <th>{{ t('projects.priority') }}</th>
+            <th>{{ t('projects.status') }}</th>
+            <th>{{ t('projects.progress') }}</th>
+            <th>{{ t('projects.createdAt') }}</th>
+            <th>{{ t('projects.actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="project in projects" :key="project.id" class="project-row" @click="goToDetail(project.id)">
+            <td class="cell-name">{{ project.name }}</td>
+            <td class="cell-desc">{{ project.description || t('projects.noDescription') }}</td>
+            <td class="cell-owner">{{ project.owner || t('projects.noOwner') }}</td>
+            <td>
+              <span class="priority-badge" :class="project.priority">
+                {{ t(`projects.priority${project.priority.charAt(0).toUpperCase() + project.priority.slice(1)}`) }}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" :class="project.status">
+                {{ t(`projects.status${project.status.charAt(0).toUpperCase() + project.status.slice(1)}`) }}
+              </span>
+            </td>
+            <td class="cell-progress">
+              <div class="progress-bar-bg">
+                <div
+                  class="progress-bar-fill"
+                  :style="{ width: `${project.progress}%` }"
+                  :class="project.status"
+                />
+              </div>
+              <span class="progress-text">{{ project.progress }}%</span>
+            </td>
+            <td class="cell-time">{{ formatDate(project.created_at) }}</td>
+            <td class="cell-actions" @click.stop>
+              <button class="icon-btn" @click="editProject(project)">
+                <Pencil :size="14" />
+              </button>
+              <button class="icon-btn danger" @click="confirmDelete(project)">
+                <Trash2 :size="14" />
+              </button>
+            </td>
+          </tr>
+          <EmptyTableRow v-if="projects.length === 0" :colspan="8" :message="t('projects.empty')" />
+        </tbody>
+      </table>
     </div>
 
     <div v-if="total > pageSize" class="pagination">
@@ -197,9 +197,6 @@ import { useI18n } from 'vue-i18n'
 import {
   Plus,
   Search,
-  FolderOpen,
-  User,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Pencil,
@@ -207,6 +204,7 @@ import {
   X,
 } from 'lucide-vue-next'
 import { api } from '../api'
+import EmptyTableRow from '../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -400,40 +398,85 @@ onMounted(loadProjects)
   cursor: pointer;
 }
 
-.project-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.project-card {
-  background: var(--bg-secondary);
+.table-wrapper {
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px;
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
-.project-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-
-.project-name {
-  font-size: 16px;
+.data-table th {
+  text-align: left;
+  padding: 12px 16px;
   font-weight: 600;
-  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
-  flex: 1;
-  word-break: break-all;
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.project-row {
+  cursor: pointer;
+}
+
+.project-row:hover td {
+  background-color: var(--bg-hover);
+}
+
+.cell-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cell-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-owner {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cell-progress {
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cell-time {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.cell-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .priority-badge {
@@ -441,8 +484,7 @@ onMounted(loadProjects)
   padding: 2px 8px;
   border-radius: 12px;
   font-weight: 500;
-  margin-left: 8px;
-  flex-shrink: 0;
+  display: inline-block;
 }
 
 .priority-badge.high {
@@ -460,36 +502,37 @@ onMounted(loadProjects)
   color: #10b981;
 }
 
-.project-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 0 0 12px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  display: inline-block;
 }
 
-.project-meta {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+.status-badge.planning {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
 }
 
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.status-badge.in_progress {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
 }
 
-.project-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+.status-badge.completed {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.status-badge.on_hold {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.status-badge.cancelled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 .progress-bar-bg {
@@ -506,50 +549,17 @@ onMounted(loadProjects)
   transition: width 0.3s;
 }
 
-.progress-bar-fill.planning {
-  background: #9ca3af;
-}
-
-.progress-bar-fill.in_progress {
-  background: #3b82f6;
-}
-
-.progress-bar-fill.completed {
-  background: #10b981;
-}
-
-.progress-bar-fill.on_hold {
-  background: #f59e0b;
-}
-
-.progress-bar-fill.cancelled {
-  background: #ef4444;
-}
+.progress-bar-fill.planning { background: #9ca3af; }
+.progress-bar-fill.in_progress { background: #3b82f6; }
+.progress-bar-fill.completed { background: #10b981; }
+.progress-bar-fill.on_hold { background: #f59e0b; }
+.progress-bar-fill.cancelled { background: #ef4444; }
 
 .progress-text {
   font-size: 12px;
   color: var(--text-secondary);
   min-width: 36px;
   text-align: right;
-}
-
-.project-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.status-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.actions {
-  display: flex;
-  gap: 4px;
 }
 
 .icon-btn {
@@ -574,16 +584,10 @@ onMounted(loadProjects)
   color: #ef4444;
 }
 
-.loading,
-.empty-state {
+.loading {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-secondary);
-}
-
-.empty-icon {
-  margin-bottom: 16px;
-  opacity: 0.5;
 }
 
 .pagination {

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, Search, Calendar, User, Tag, Trash2, Edit3 } from 'lucide-vue-next'
 import { api } from '../../api'
+import EmptyTableRow from '../../components/EmptyTableRow.vue'
 import { useDialog } from '../../composables/useDialog'
 
 const { t } = useI18n()
@@ -272,9 +273,6 @@ onMounted(loadTasks)
     </div>
 
     <div v-if="loading" class="empty-state">{{ t('common.loading') }}</div>
-    <div v-else-if="filteredTasks.length === 0" class="empty-state">
-      {{ t('taskManagement.empty') }}
-    </div>
     <div v-else class="task-table-wrapper">
       <table class="task-table">
         <thead>
@@ -335,6 +333,7 @@ onMounted(loadTasks)
               </div>
             </td>
           </tr>
+          <EmptyTableRow v-if="filteredTasks.length === 0" :colspan="7" :message="t('taskManagement.empty')" />
         </tbody>
       </table>
     </div>
