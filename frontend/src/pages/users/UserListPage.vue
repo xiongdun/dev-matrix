@@ -49,6 +49,7 @@
             </td>
             <td class="user-time">{{ user.last_login_at ? formatDate(user.last_login_at) : '—' }}</td>
             <td class="user-actions">
+              <button class="btn-action btn-view" @click="router.push(`/users/${user.id}`)">查看</button>
               <button class="btn-action" @click="editUser(user)">编辑</button>
               <button class="btn-action" :class="user.status === 'active' ? 'btn-archive' : 'btn-enable'" @click="toggleStatus(user)">
                 {{ user.status === 'active' ? '禁用' : '启用' }}
@@ -73,11 +74,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { api } from '../../api'
 import UserFormModal from './UserFormModal.vue'
 import EmptyTableRow from '../../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const users = ref<any[]>([])
 const keyword = ref('')
@@ -307,6 +310,15 @@ onMounted(loadUsers)
 .btn-action:hover {
   border-color: var(--border-hover);
   color: var(--text-primary);
+}
+
+.btn-view {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.btn-view:hover {
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .btn-delete:hover {

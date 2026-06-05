@@ -3,7 +3,9 @@
 ## Project Overview
 
 DevMatrix is a **Multi-role Collaborative Software Development Agent Operating System**.
-It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect, Developer, QA, Code Reviewer) through state-driven workflows with human-in-the-loop approval checkpoints, powered by Temporal workflow engine.
+It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect, Developer, QA, Code Reviewer) through state-driven workflows with human-in-the-loop approval checkpoints.
+
+**LLM Backend**: Xiaomi mimo-v2.5-pro via Anthropic protocol (claude-agent-sdk + Claude Code CLI).
 
 ## Architecture
 
@@ -27,50 +29,51 @@ It orchestrates multiple AI agents (Business Analyst, Product Manager, Architect
 
 ### Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Workflow Engine | Temporal | Latest |
-| API Framework | FastAPI | 0.136+ |
-| Frontend | Vue 3 + TypeScript + Vite | Vue 3.4+, Vite 5.1+ |
-| State Storage | SQLite (dev) / PostgreSQL (prod) | SQLAlchemy 2.0 |
-| Code Graph | In-memory (dev) / Neo4j (prod) | - |
-| Sandbox | Docker (dev) / Firecracker (prod) | - |
-| LLM Providers | OpenAI, Anthropic, Azure | openai 2.36+, claude-agent-sdk 0.2+ |
-| Auth | JWT (PyJWT 2.12) + RBAC | - |
-| i18n | vue-i18n 9.9+ (frontend), JSON-based (backend) | zh / en |
-| State Management | Pinia 3.0 + persistedstate plugin | - |
-| Workflow Visualization | @vue-flow/core 1.48+ | - |
-| Icons | lucide-vue-next | 1.0+ |
-| Task Scheduling | APScheduler 3.11 | - |
-| Rate Limiting | slowapi (via core/limiter.py) | - |
-
-### Design Patterns
-
-| Pattern | Application |
-|---------|------------|
-| Registry | Agent, LLM Provider, Skill, Prompt registration |
-| Strategy | LLM routing (quality_first / cost_first / config_driven) |
-| Template Method | BaseAgent with abstract generate_proposal / validate_output |
-| Observer | EventBus for decoupled module communication |
-| Repository | StateRepository with snapshot/rollback |
-| Pipeline | Configurable workflow stages via YAML |
-| Factory | Sandbox provider selection |
+| Layer | Technology |
+|-------|-----------|
+| API Framework | FastAPI 0.136+ |
+| Frontend | Vue 3 + TypeScript + Vite |
+| State Storage | SQLite (dev) / PostgreSQL (prod), SQLAlchemy 2.0 |
+| LLM | claude-agent-sdk 0.2.88 + Claude Code CLI 2.1.150 |
+| LLM Provider | Xiaomi mimo-v2.5-pro (Anthropic protocol) |
+| Auth | JWT (PyJWT) + RBAC |
+| i18n | vue-i18n 9.9+ (zh/en) |
+| Markdown | marked + highlight.js |
+| Icons | lucide-vue-next |
 
 ## Project Structure
 
 ```
 dev-matrix/
 ├── app/                          # Backend (Python 3.10+)
-├── docker-compose.yml            # Infrastructure (Temporal, Postgres, Redis)
-├── Dockerfile                    # Application container
-├── alembic.ini                   # Alembic migration config
-├── pyproject.toml                # Ruff + Black + MyPy config
-├── requirements.txt              # Python dependencies
-├── requirements-dev.txt          # Dev dependencies
-├── pytest.ini                    # Test configuration
-├── .env.example                  # Environment variables template
-├── CLAUDE.md                     # This file
-└── README.md                     # Project documentation
+│   ├── agents/                   # 7 AI Agents + BaseAgent
+│   ├── api/                      # 25+ FastAPI endpoint modules
+│   ├── memory/                   # 记忆系统 (user/soul/skill/mcp)
+│   ├── llm/                      # LLM client + routing strategies
+│   ├── skills/                   # Pluggable skill system
+│   ├── state/                    # SQLAlchemy models + repository
+│   ├── workflow/                 # Temporal workflow engine
+│   ├── config.py                 # Pydantic Settings
+│   └── main.py                   # FastAPI app entry
+├── workspace/                    # 用户工作空间
+│   └── users/                    # 按 user_id 隔离
+│       ├── {user_id}/
+│       │   ├── profile.md        # 用户偏好
+│       │   ├── memory.md         # 用户记忆
+│       │   ├── soul.md           # AI 人设 + 用户画像
+│       │   ├── skill/            # 自定义技能
+│       │   ├── mcp/              # MCP 服务器配置
+│       │   └── projects/         # 项目记忆
+│       └── _shared/              # Agent 共享记忆
+├── frontend/                     # Vue 3 + TypeScript + Vite
+│   └── src/
+│       ├── api/                  # Unified API client
+│       ├── components/           # 25+ Vue components
+│       ├── pages/                # 25+ route pages
+│       └── stores/               # Pinia stores
+├── tests/                        # pytest test suite
+├── docs/                         # 设计文档
+└── CLAUDE.md                     # This file
 ```
 
 ## Service Ports
@@ -78,11 +81,7 @@ dev-matrix/
 | Service | Port | Description |
 |---------|------|-------------|
 | Backend API | **8000** | FastAPI REST server (uvicorn) |
-| Frontend Dev | **3000** | Vite dev server (strictPort) |
-| Temporal Server | 7233 | Temporal gRPC |
-| Temporal UI | 8088 | Temporal Web UI |
-| PostgreSQL | 5432 | Database (prod) |
-| Redis | 6379 | Cache |
+| Frontend Dev | **3000** | Vite dev server |
 
 ### Port Configuration
 
@@ -90,237 +89,126 @@ dev-matrix/
 - **Frontend**: `frontend/vite.config.ts` → `port: 3000, strictPort: true`
 - **API Proxy**: Vite proxies `/api` and `/health` to `http://localhost:8000`
 
-## Database Models (17 tables)
+## Key Modules
 
-| Model | Table | Purpose |
-|-------|-------|---------|
-| ProjectModel | projects | Project management |
-| ProjectStateModel | project_states | Project state JSON + version |
-| StateSnapshotModel | state_snapshots | State history for rollback |
-| WorkflowConfigModel | workflow_configs | Workflow templates (Vue Flow JSON) |
-| WorkflowInstanceModel | workflow_instances | Running workflow instances |
-| WorkflowTaskModel | workflow_tasks | Workbench tasks per stage |
-| CodeReviewModel | code_reviews | AI code review results |
-| TaskChatMessageModel | task_chat_messages | Agent chat messages |
-| SystemConfigModel | system_configs | Key-value settings |
-| SystemSecretModel | system_secrets | JWT secret etc. |
-| TaskManagementModel | task_management | Jira-like task system |
-| ScheduledTaskModel | scheduled_tasks | Cron-based task scheduling |
-| ScheduledTaskLogModel | scheduled_task_logs | Task execution logs |
-| UserModel | users | User accounts |
-| RoleModel | roles | RBAC roles |
-| UserRoleModel | user_roles | User-role mapping |
-| MenuModel | menus | Sidebar menu tree |
-| RoleMenuModel | role_menus | Role-menu permission mapping |
-| RoleAgentModel | role_agents | Role-agent mapping |
-| AuditLogModel | audit_logs | Audit trail |
+### Memory System (`app/memory/manager.py`)
 
-## API Routes
+文件系统级用户记忆，按 `workspace/users/{user_id}/` 隔离：
 
-### Public (no auth required)
-- `POST /api/auth/login` — Login
-- `GET /api/menus/tree` — Menu tree (for login page)
-- `GET /health/live`, `GET /health/ready`, `GET /health` — Health checks
+| 文件 | 作用 | 注入位置 |
+|------|------|----------|
+| `profile.md` | 用户偏好（语言、风格） | system prompt |
+| `memory.md` | 纠正/反馈/学习记忆 | system prompt |
+| `soul.md` | AI 人设 + 用户画像 | system prompt 最前面 |
+| `skill/*.md` | 用户自定义技能指令 | system prompt |
+| `mcp/*.md` | MCP 服务器配置 | ClaudeAgentOptions.mcp_servers |
+| `projects/*.md` | 项目决策/反馈 | system prompt |
 
-### Protected (JWT Bearer required)
-- `/api/auth/me`, `/api/auth/refresh`, `/api/auth/logout`, `/api/auth/password`
-- `/api/users` — User CRUD
-- `/api/roles` — Role CRUD
-- `/api/menus/my`, `/api/menus` — Menu CRUD
-- `/api/projects` — Project CRUD + pagination
-- `/api/tasks` — Task CRUD (Jira-like)
-- `/api/workbench/tasks`, `/api/workbench/stats`, `/api/workbench/models`
-- `/api/workflow/{project_id}/start`
-- `/api/workflow-config`, `/api/workflow-config/templates`
-- `/api/workflow-instances`
-- `/api/code-reviews` — Code review CRUD + re-run
-- `/api/registry/agents`, `/api/registry/skills`
-- `/api/settings`, `/api/settings/categories`
-- `/api/scheduled-tasks` — Scheduled task CRUD + toggle + run
-- `/api/requirements`, `/api/approvals`
-- `/api/events/stream` — SSE event stream
-- `/api/audit/logs`
-- `/api/lifecycle/{project_id}/pause|resume|cancel`
+核心函数：
+- `get_soul_prompt(user_id)` — 读取 soul.md
+- `get_skills_prompt(user_id)` — 扫描 skill/*.md
+- `build_memory_prompt(user_id, agent_role, project_id)` — 组装完整记忆上下文
+- `build_mcp_options(user_id)` — 转换 MCP 配置为 SDK 格式
 
-**Important**: All backend route decorators use `""` (empty string) for collection endpoints, not `"/"`. This avoids FastAPI 307 redirects that strip Authorization headers.
+### User Workspace API (`app/api/user_workspace.py`)
 
-## Authentication & Authorization
+| 端点 | 说明 |
+|------|------|
+| `GET /api/users/{id}/workspace` | 获取完整 workspace 数据 |
+| `GET /api/users/{id}/workspace/soul` | 获取 soul.md |
+| `GET /api/users/{id}/workspace/memory` | 获取记忆 |
+| `GET /api/users/{id}/workspace/skills` | 获取技能列表 |
+| `GET /api/users/{id}/workspace/mcp` | 获取 MCP 配置 |
+| `GET /api/users/{id}/workspace/projects` | 获取项目记忆 |
 
-- **JWT-based auth**: Access token (2h) + Refresh token (7d)
-- **RBAC**: User → Roles → Menus (with permissions) + Agents
-- **Route guard**: `get_current_user` dependency extracts Bearer token, validates JWT, loads user
-- **Permission guard**: `require_permission("code_review:view")` checks role-menu-permission chain
-- **Frontend guard**: `router.beforeEach` checks `localStorage.token`, redirects to `/login` if missing
-- **Frontend directive**: `v-permission="'user:manage'"` conditionally renders elements
-- **Default admin**: Created by `app/scripts/init_rbac.py` (admin/admin123)
+### Memory API (`app/api/memory.py`)
 
-## Development Workflow
+| 端点 | 说明 |
+|------|------|
+| `GET /api/memory/memories` | 获取当前用户记忆 |
+| `POST /api/memory/memories` | 添加记忆 |
+| `DELETE /api/memory/memories/{key}` | 删除记忆 |
+| `GET /api/memory/profile` | 获取用户画像 |
+| `PUT /api/memory/profile` | 更新用户画像 |
 
-```
-Requirement Input
-    ↓
-Business Analyst → Requirement Analysis
-    ↓ [Human Approval]
-Product Manager → PRD Generation
-    ↓ [Human Approval]
-Architect → Code Impact Analysis
-    ↓ [Human Approval]
-Developer → Patch Generation
-    ↓ [Human Approval]
-QA Agent → Test Generation & Execution
-    ↓ [Human Approval]
-Code Reviewer → AI Code Review
-    ↓
-Auto PR / Release
-```
+### Workbench Chat (`app/api/workbench.py`)
+
+| 端点 | 说明 |
+|------|------|
+| `POST /api/workbench/tasks/{id}/chat` | 与 Agent 对话（claude-agent-sdk） |
+| `GET /api/workbench/tasks/{id}/chat` | 获取对话历史 |
+| `POST /api/workbench/tasks/{id}/approve` | 审批通过 |
+| `POST /api/workbench/tasks/{id}/reject` | 打回 |
+| `POST /api/workbench/tasks/{id}/retry` | 重试 |
+
+**关键配置**：
+- `SDK_MAX_TURNS` — 最大工具调用轮次（默认 20）
+- `ANTHROPIC_API_KEY` — 小米 API Key
+- `ANTHROPIC_BASE_URL` — 小米 API 端点
+- `claude_sdk_enabled` — 数据库配置，启用 SDK
+
+### Frontend Components
+
+| 组件 | 说明 |
+|------|------|
+| `ChatMessage.vue` | 消息气泡（Markdown 渲染、代码高亮、工具卡片、复制/重生成按钮） |
+| `TaskDetailPage.vue` | 工作台任务详情（对话 + 操作面板） |
+| `UserDetailPage.vue` | 用户详情页（workspace 内容展示） |
+| `App.vue` | 根组件（侧边栏 + 顶部导航 + 用户头像下拉菜单） |
 
 ## Quick Start
 
 ```bash
-# 1. Start infrastructure (optional, for Temporal/Postgres/Redis)
-docker-compose up -d
-
-# 2. Backend setup
+# 1. Backend setup
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+
+# 2. Initialize database
 python -c "from app.state.models import init_db; init_db()"
-python app/scripts/init_rbac.py  # Create default admin + roles + menus
+python app/scripts/init_rbac.py
 
-# 3. Start Temporal Worker (optional, for workflow execution)
-python app/worker.py
+# 3. Configure .env
+# ANTHROPIC_API_KEY=your-xiaomi-api-key
+# ANTHROPIC_BASE_URL=https://token-plan-cn.xiaomimimo.com/anthropic/v1
+# DEFAULT_LLM_MODEL=mimo-v2.5-pro
 
-# 4. Start API Server (port 8000)
-uvicorn app.main:app --reload --port 8000
+# 4. Start API Server
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# 5. Frontend setup
-cd frontend
-npm install
-npm run dev  # port 3000
+# 5. Frontend
+cd frontend && npm install && npx vite --host 0.0.0.0 --port 3000
 ```
 
-Open http://localhost:3000, login with admin/admin123.
-
-## Key Files for Development
-
-| File | Purpose |
-|------|---------|
-| `app/config.py` | Pydantic Settings (all env vars) |
-| `app/main.py` | FastAPI app + lifespan + middleware + route registration |
-| `app/worker.py` | Temporal worker entry |
-| `app/state/models.py` | All SQLAlchemy models |
-| `app/api/deps.py` | Dependency injection (auth, permissions) |
-| `app/core/security.py` | JWT + password hashing |
-| `app/core/secrets.py` | Auto-generated JWT secret storage |
-| `app/agents/base.py` | BaseAgent + Claude Agent SDK integration |
-| `app/llm/router.py` | LLM routing with strategy pattern |
-| `app/workflow/engine.py` | Temporal-based workflow engine |
-| `app/scripts/init_rbac.py` | Default RBAC data seeding |
-| `frontend/src/main.ts` | Vue app entry (Pinia, Router, i18n, theme) |
-| `frontend/src/router.ts` | Route definitions + auth/permission guards |
-| `frontend/src/api/index.ts` | Unified API client (fetch + retry + 401 handling) |
-| `frontend/src/stores/user.ts` | User store (Pinia + persistedstate) |
-| `frontend/src/composables/useTabs.ts` | Tab state management |
-| `frontend/vite.config.ts` | Vite + SPA fallback + API proxy |
-| `config/llm-routing.yaml` | LLM provider routing rules |
-| `config/workflow-pipeline.yaml` | Workflow stage config |
+Login: `admin` / `admin123`
 
 ## Environment Variables
 
-Copy `.env.example` to `.env`:
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `DATABASE_URL` | `sqlite:///./devmatrix.db` | 数据库连接 |
+| `ANTHROPIC_API_KEY` | — | 小米 API Key |
+| `ANTHROPIC_BASE_URL` | `https://api.anthropic.com/v1` | API 端点 |
+| `DEFAULT_LLM_MODEL` | `mimo-v2.5-pro` | 默认模型 |
+| `SDK_MAX_TURNS` | `20` | SDK 最大轮次 |
+| `DEBUG` | `false` | 调试模式 |
+| `DEFAULT_LOCALE` | `zh` | 默认语言 |
 
-```env
-OPENAI_API_KEY=sk-...
 ## Known Pitfalls
 
-1. **FastAPI trailing slash redirects**: Backend routes use `""` (no trailing slash) for collection endpoints. If a route uses `"/"`, FastAPI returns 307 redirect which strips the `Authorization` header, causing 401 errors. Always use `""` for new routes.
+1. **FastAPI trailing slash**: 后端路由用 `""` 不用 `"/"`，否则 307 重定向会丢失 Authorization header。
 
-2. **Pinia persist key**: User store persists to `localStorage` under key `devmatrix-user`, but the API client reads token from `localStorage.getItem('token')`. The `setToken()` method writes to both.
+2. **Vite HMR on NTFS**: Windows 文件系统 (NTFS) 上 Vite HMR 不可靠，CSS 修改需重启 dev server。
 
-3. **Vite proxy**: Only `/api` and `/health` paths are proxied to backend. Other paths serve `index.html` (SPA fallback).
+3. **claude-agent-sdk 超时**: SDK 调用 Claude Code CLI 可能需要 10-30 秒，前端 chat 请求超时设为 5 分钟，不重试。
 
-4. **SQLite WAL mode**: Dev mode uses SQLite with WAL journal mode for concurrent read/write support.
+4. **重复请求**: 不要同时使用 `session_id` 复用 + 历史消息拼接，会导致 SDK 重复执行。
 
-5. **Theme initialization**: Theme is resolved from `localStorage('devmatrix-settings')` before Vue mounts to prevent flash of wrong theme.
+5. **代理**: 异步 httpx 客户端默认使用系统代理，小米 API 可能需要 `trust_env=False`。
 
-## Testing
+## Development Guidelines
 
-```bash
-# Backend tests
-pytest tests/ -v
-
-# Frontend build check
-cd frontend && npm run build
-```
-
-## Linting & Formatting
-
-```bash
-# Python (Ruff)
-ruff check app/ tests/
-ruff format app/ tests/
-
-# Python (Black)
-black app/ tests/ --line-length 100
-
-# TypeScript
-cd frontend && npx vue-tsc --noEmit
-```
-
----
-
-## Behavioral Guidelines
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-### 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-### 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-### 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+1. **Think Before Coding** — 明确假设，不确定就问
+2. **Simplicity First** — 最少代码解决问题，不做推测性功能
+3. **Surgical Changes** — 只改必要部分，不碰无关代码
+4. **Goal-Driven Execution** — 定义可验证的成功标准

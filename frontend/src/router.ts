@@ -176,6 +176,12 @@ const routes = [
     meta: { title: 'User Management', icon: 'users', permission: 'user:manage' },
   },
   {
+    path: '/users/:id',
+    name: 'user-detail',
+    component: () => import('./pages/users/UserDetailPage.vue'),
+    meta: { title: 'User Detail', icon: 'user', permission: 'user:manage' },
+  },
+  {
     path: '/roles',
     name: 'roles',
     component: () => import('./pages/roles/RoleListPage.vue'),

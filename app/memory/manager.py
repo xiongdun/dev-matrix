@@ -23,6 +23,7 @@
 """
 
 import logging
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +31,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-MEMORY_ROOT = Path(__file__).parent.parent.parent / "user"
+MEMORY_ROOT = Path(__file__).parent.parent.parent / "workspace" / "users"
 
 
 def _ensure_dir(path: Path) -> None:
@@ -567,3 +568,245 @@ def build_memory_prompt(user_id: int, agent_role: str, project_id: str | None = 
         return ""
 
     return "\n\n---\n记忆上下文（仅供参考，不要主动提及）：\n" + "\n\n".join(parts)
+
+
+# ===== Soul 解析 =====
+
+
+def _parse_soul_md(content: str) -> dict[str, Any]:
+    """解析 soul.md，提取 AI 人设和用户画像。"""
+    data: dict[str, Any] = {}
+    ai_persona: dict[str, str] = {}
+    user_profile: dict[str, str] = {}
+    project_context: dict[str, str] = {}
+    section = ""
+
+    for line in content.split("\n"):
+        if "## AI 人设" in line:
+            section = "ai"
+            continue
+        if "## 用户画像" in line:
+            section = "user"
+            continue
+        if "## 项目上下文" in line:
+            section = "project"
+            continue
+
+        m = re.match(r"^- \*\*(.+?)\*\*:\s*(.+)$", line)
+        if m:
+            k, v = m.group(1).strip(), m.group(2).strip()
+            if section == "ai":
+                ai_persona[k] = v
+            elif section == "user":
+                user_profile[k] = v
+            elif section == "project":
+                project_context[k] = v
+
+    if ai_persona:
+        data["ai_persona"] = ai_persona
+    if user_profile:
+        data["user_profile"] = user_profile
+    if project_context:
+        data["project_context"] = project_context
+    return data
+
+
+def get_soul_prompt(user_id: int) -> str:
+    """读取 soul.md 并返回注入到 system prompt 的内容。"""
+    soul_path = MEMORY_ROOT / str(user_id) / "soul.md"
+    if not soul_path.exists():
+        return ""
+
+    content = _read_file(soul_path)
+    data = _parse_soul_md(content)
+    if not data:
+        return ""
+
+    parts = []
+
+    ai = data.get("ai_persona", {})
+    if ai:
+        lines = [f"- {k}: {v}" for k, v in ai.items()]
+        parts.append("AI 人设：\n" + "\n".join(lines))
+
+    user = data.get("user_profile", {})
+    if user:
+        lines = [f"- {k}: {v}" for k, v in user.items()]
+        parts.append("用户画像：\n" + "\n".join(lines))
+
+    proj = data.get("project_context", {})
+    if proj:
+        lines = [f"- {k}: {v}" for k, v in proj.items()]
+        parts.append("项目上下文：\n" + "\n".join(lines))
+
+    return "\n\n".join(parts)
+
+
+# ===== Skill 解析 =====
+
+
+def get_user_skills(user_id: int) -> list[dict[str, Any]]:
+    """扫描用户 skill/ 目录，返回技能列表。"""
+    skill_dir = MEMORY_ROOT / str(user_id) / "skill"
+    if not skill_dir.exists():
+        return []
+
+    skills = []
+    for md_file in sorted(skill_dir.glob("*.md")):
+        content = _read_file(md_file)
+        skill = _parse_skill_md(content, md_file.stem)
+        if skill:
+            skills.append(skill)
+    return skills
+
+
+def _parse_skill_md(content: str, name: str) -> dict[str, Any]:
+    """解析技能 .md 文件。"""
+    skill: dict[str, Any] = {"name": name}
+    section = ""
+
+    for line in content.split("\n"):
+        if line.startswith("# ") and not skill.get("title"):
+            skill["title"] = line[2:].strip()
+            continue
+        if "## 描述" in line:
+            section = "desc"
+            continue
+        if "## 触发条件" in line:
+            section = "trigger"
+            continue
+        if "## 执行步骤" in line:
+            section = "steps"
+            continue
+        if "## 输出格式" in line:
+            section = "output"
+            continue
+        if "## 约束" in line:
+            section = "constraints"
+            continue
+
+        if section == "desc" and line.strip():
+            skill["description"] = skill.get("description", "") + line.strip() + "\n"
+        elif section == "trigger" and line.startswith("- "):
+            skill.setdefault("triggers", []).append(line[2:].strip())
+        elif section == "steps" and line.strip():
+            skill.setdefault("steps", []).append(line.strip())
+        elif section == "constraints" and line.startswith("- "):
+            skill.setdefault("constraints", []).append(line[2:].strip())
+
+    return skill
+
+
+def get_skills_prompt(user_id: int) -> str:
+    """组装用户技能注入到 system prompt。"""
+    skills = get_user_skills(user_id)
+    if not skills:
+        return ""
+
+    parts = []
+    for skill in skills:
+        lines = [f"### {skill.get('name', '')}"]
+        if skill.get("description"):
+            lines.append(skill["description"].strip())
+        if skill.get("triggers"):
+            lines.append("触发条件：" + "、".join(skill["triggers"]))
+        if skill.get("constraints"):
+            lines.append("约束：" + "、".join(skill["constraints"]))
+        parts.append("\n".join(lines))
+
+    return "\n\n## 可用技能\n\n" + "\n\n".join(parts)
+
+
+# ===== MCP 解析 =====
+
+
+def get_user_mcp_servers(user_id: int) -> list[dict[str, Any]]:
+    """扫描用户 mcp/ 目录，返回 MCP 服务器配置列表。"""
+    mcp_dir = MEMORY_ROOT / str(user_id) / "mcp"
+    if not mcp_dir.exists():
+        return []
+
+    servers = []
+    for md_file in sorted(mcp_dir.glob("*.md")):
+        content = _read_file(md_file)
+        server = _parse_mcp_md(content, md_file.stem)
+        if server:
+            servers.append(server)
+    return servers
+
+
+def _parse_mcp_md(content: str, name: str) -> dict[str, Any]:
+    """解析 MCP 服务器 .md 文件。"""
+    server: dict[str, Any] = {"name": name}
+    section = ""
+
+    for line in content.split("\n"):
+        if line.startswith("# ") and not server.get("title"):
+            server["title"] = line[2:].strip()
+            continue
+        if "## 服务器信息" in line:
+            section = "info"
+            continue
+        if "## 环境变量" in line:
+            section = "env"
+            continue
+        if "## 可用工具" in line:
+            section = "tools"
+            continue
+
+        if section == "info":
+            m = re.match(r"^- \*\*(.+?)\*\*:\s*(.+)$", line)
+            if m:
+                k, v = m.group(1).strip(), m.group(2).strip()
+                server[k] = v
+
+        elif section == "env":
+            m = re.match(r"^\|\s*(.+?)\s*\|\s*(.+?)\s*\|.*\|$", line)
+            if m and m.group(1).strip() != "变量" and "---" not in line:
+                var_name = m.group(1).strip()
+                var_desc = m.group(2).strip()
+                server.setdefault("env_vars", []).append(
+                    {"name": var_name, "description": var_desc}
+                )
+
+        elif section == "tools":
+            m = re.match(r"^\|\s*(.+?)\s*\|\s*(.+?)\s*\|$", line)
+            if m and m.group(1).strip() != "工具" and "---" not in line:
+                server.setdefault("tools", []).append(
+                    {"name": m.group(1).strip(), "description": m.group(2).strip()}
+                )
+
+    return server
+
+
+def build_mcp_options(user_id: int) -> list[dict[str, Any]]:
+    """将用户 MCP 配置转换为 ClaudeAgentOptions.mcp_servers 格式。"""
+    servers = get_user_mcp_servers(user_id)
+    mcp_configs = []
+
+    for server in servers:
+        command = server.get("命令", "")
+        if not command:
+            continue
+
+        # 解析命令和参数
+        cmd_parts = command.split()
+        cmd = cmd_parts[0] if cmd_parts else ""
+        args = cmd_parts[1:] if len(cmd_parts) > 1 else []
+
+        # 从环境变量读取实际值
+        env = {}
+        for var in server.get("env_vars", []):
+            var_name = var["name"]
+            env[var_name] = os.environ.get(var_name, "")
+
+        mcp_configs.append(
+            {
+                "name": server.get("name", ""),
+                "command": cmd,
+                "args": args,
+                "env": env,
+            }
+        )
+
+    return mcp_configs

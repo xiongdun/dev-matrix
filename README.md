@@ -2,26 +2,20 @@
 
 **Multi-role Collaborative Software Development Agent Operating System**
 
-DevMatrix is an enterprise-grade AI software development platform that orchestrates multiple specialized AI agents through state-driven workflows with human-in-the-loop approval. Powered by Temporal workflow engine, it combines LLM intelligence with robust orchestration, code analysis, and human oversight to automate and enhance the software development lifecycle.
+DevMatrix 是一个企业级 AI 软件开发平台，通过状态驱动的工作流编排多个专业 AI Agent 协作完成软件开发生命周期，每个阶段都需人工审批后才能进入下一步。
 
-## Key Features
+## 核心特性
 
-- **Multi-Agent Collaboration** — 6 specialized agents: Business Analyst, Product Manager, Architect, Developer, QA, Code Reviewer
-- **State-Driven Workflow** — Each agent reads state, generates proposals, awaits human approval, then commits
-- **Human-in-the-Loop** — Approval checkpoints between every workflow phase
-- **AI Code Review** — Automated code review with severity scoring, issue detection, and improvement suggestions
-- **RBAC & User Management** — Role-based access control with menu/agent permissions
-- **Workflow Visualization** — Visual workflow editor powered by Vue Flow with drag-and-drop node design
-- **Code Intelligence** — AST-based code indexing with context retrieval and Neo4j graph backend
-- **Sandbox Execution** — Docker containers (dev) + Firecracker microVMs (production)
-- **Task Management** — Jira-like task system with Kanban board and assignment tracking
-- **Scheduled Tasks** — Cron-based task scheduling with execution history
-- **Real-time Events** — SSE event stream for live workflow updates
-- **Audit Logging** — Complete traceability of all user actions and system events
-- **i18n** — Full Chinese/English support for both backend and frontend
-- **Dark/Light Theme** — CSS variable-based theming with one-click toggle
+- **多 Agent 协作** — 7 个专业 Agent：业务分析师、产品经理、架构师、开发者、QA、代码审查员、项目经理
+- **Claude Agent SDK 集成** — 通过 Claude Code CLI 实现工具调用（Read/Write/Edit/Bash）
+- **用户记忆系统** — 按用户隔离的 workspace，包含 profile、memory、soul、skill、mcp
+- **RBAC 权限管理** — 用户→角色→菜单→权限的完整链路
+- **工作台对话** — 与 Agent 实时对话，支持 Markdown 渲染、代码高亮、工具调用展示
+- **AI 代码审查** — 自动化代码审查，含评分、问题检测、改进建议
+- **可视化工作流** — Vue Flow 拖拽式工作流编辑器
+- **中英文双语** — 前后端完整 i18n 支持
 
-## Architecture
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -39,318 +33,154 @@ DevMatrix is an enterprise-grade AI software development platform that orchestra
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Tech Stack
+## 技术栈
 
-| Category | Technology |
-|----------|-----------|
-| **Backend** | Python 3.10+, FastAPI, SQLAlchemy 2.0, Pydantic |
-| **Frontend** | Vue 3.4+, TypeScript 5.3+, Vite 5.1+, Pinia 3.0 |
-| **Workflow** | Temporal, APScheduler |
-| **Database** | SQLite (dev) / PostgreSQL (prod), Alembic migrations |
-| **LLM** | OpenAI, Anthropic, Claude Agent SDK |
-| **Auth** | JWT (PyJWT), RBAC, bcrypt password hashing |
-| **Visualization** | @vue-flow/core (workflow editor), lucide-vue-next (icons) |
-| **i18n** | vue-i18n 9.9+ (frontend), JSON locales (backend) |
-| **Infrastructure** | Docker Compose (Temporal, PostgreSQL, Redis) |
-| **Code Quality** | Ruff, Black, MyPy, vue-tsc |
+| 类别 | 技术 |
+|------|------|
+| **后端** | Python 3.10+, FastAPI, SQLAlchemy 2.0, Pydantic |
+| **前端** | Vue 3, TypeScript, Vite, Pinia |
+| **AI** | claude-agent-sdk, Claude Code CLI, 小米 mimo-v2.5-pro |
+| **认证** | JWT (PyJWT), RBAC |
+| **数据库** | SQLite (开发) / PostgreSQL (生产), Alembic |
+| **Markdown** | marked + highlight.js |
 
-## Development Workflow
+## 快速开始
 
-```
-Requirement Input
-    ↓
-Business Analyst → Requirement Analysis
-    ↓ [Human Approval]
-Product Manager → PRD Generation
-    ↓ [Human Approval]
-Architect → Code Impact Analysis
-    ↓ [Human Approval]
-Developer → Patch Generation
-    ↓ [Human Approval]
-QA Agent → Test Generation & Execution
-    ↓ [Human Approval]
-Code Reviewer → AI Code Review
-    ↓
-Auto PR / Release
-```
-
-Each phase requires human approval before proceeding, ensuring quality control throughout the automated process.
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-- Docker & Docker Compose (optional, for Temporal/PostgreSQL/Redis)
-
-### 1. Start Infrastructure (Optional)
+### 1. 后端
 
 ```bash
-docker-compose up -d temporal-server postgres redis
-```
-
-### 2. Backend Setup
-
-```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+
+# 初始化数据库
 python -c "from app.state.models import init_db; init_db()"
-python app/scripts/init_rbac.py   # Create default admin user, roles, and menus
+python app/scripts/init_rbac.py
+
+# 配置 .env
+cp .env.example .env
+# 编辑 .env，填入 API Key
 ```
 
-### 3. Start Temporal Worker (Optional)
+### 2. 配置 .env
 
-```bash
-python app/worker.py
+```env
+DATABASE_URL=sqlite:///./devmatrix.db
+ANTHROPIC_API_KEY=your-api-key
+ANTHROPIC_BASE_URL=https://token-plan-cn.xiaomimimo.com/anthropic/v1
+DEFAULT_LLM_MODEL=mimo-v2.5-pro
+SDK_MAX_TURNS=20
+DEBUG=true
+DEFAULT_LOCALE=zh
 ```
 
-### 4. Start API Server
+### 3. 启动服务
 
 ```bash
-uvicorn app.main:app --reload --port 8000
-```
+# 后端 (端口 8000)
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-### 5. Start Frontend
-
-```bash
+# 前端 (端口 3000)
 cd frontend
 npm install
-npm run dev
+npx vite --host 0.0.0.0 --port 3000
 ```
 
-Open **http://localhost:3000** and login with `admin` / `admin123`.
+打开 http://localhost:3000，使用 `admin` / `admin123` 登录。
 
-## Project Structure
+## 用户记忆系统
+
+每个用户有独立的 workspace 目录，存储个性化配置和记忆：
+
+```
+workspace/users/{user_id}/
+├── profile.md     # 用户偏好设置
+├── memory.md      # 记忆（纠正/反馈/学习）
+├── soul.md        # AI 人设 + 用户画像
+├── skill/         # 自定义技能
+│   └── *.md
+├── mcp/           # MCP 服务器配置
+│   └── *.md
+└── projects/      # 项目记忆
+    └── *.md
+```
+
+记忆内容会自动注入到 Agent 的 system prompt 中，实现个性化交互。
+
+## API 概览
+
+### 认证
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 登录（返回 JWT） |
+| GET | `/api/auth/me` | 获取当前用户信息 |
+
+### 核心资源
+
+| 资源 | 端点 | 说明 |
+|------|------|------|
+| 工作台 | `/api/workbench/tasks` | Agent 任务队列 |
+| 对话 | `/api/workbench/tasks/{id}/chat` | 与 Agent 对话 |
+| 项目 | `/api/projects` | 项目 CRUD |
+| 用户 | `/api/users` | 用户管理 |
+| 记忆 | `/api/memory` | 用户记忆管理 |
+| Workspace | `/api/users/{id}/workspace` | 用户 workspace |
+| 设置 | `/api/settings` | 系统配置 |
+| 审计 | `/api/audit/logs` | 审计日志 |
+
+## 开发工作流
+
+```
+需求输入
+    ↓
+业务分析师 → 需求分析
+    ↓ [人工审批]
+产品经理 → PRD 生成
+    ↓ [人工审批]
+架构师 → 代码影响分析
+    ↓ [人工审批]
+开发者 → 代码补丁生成
+    ↓ [人工审批]
+QA → 测试生成与执行
+    ↓ [人工审批]
+代码审查员 → AI 代码审查
+    ↓
+自动 PR / 发布
+```
+
+## 项目结构
 
 ```
 dev-matrix/
-├── app/                          # Backend (Python 3.10+)
-│   ├── agents/                   # 6 AI Agents + BaseAgent
-│   ├── api/                      # 20+ FastAPI endpoint modules
-│   ├── code_intelligence/        # AST indexing + code graph
-│   ├── core/                     # Registry, security, rate limiting
-│   ├── events/                   # EventBus + handlers
-│   ├── i18n/                     # Backend i18n (zh/en)
-│   ├── llm/                      # LLM client + routing strategies
-│   ├── prompts/                  # Jinja2 prompt template engine
-│   ├── skills/                   # Pluggable skill system
-│   ├── state/                    # SQLAlchemy models + repository
-│   ├── workflow/                 # Temporal workflow engine
-│   ├── config.py                 # Pydantic Settings
-│   └── main.py                   # FastAPI app entry
-├── config/                       # YAML configs (LLM routing, workflows)
-├── frontend/                     # Vue 3 + TypeScript + Vite
+├── app/                          # 后端 (Python)
+│   ├── agents/                   # AI Agent 实现
+│   ├── api/                      # FastAPI 端点
+│   ├── memory/                   # 记忆系统
+│   ├── llm/                      # LLM 客户端
+│   ├── skills/                   # 技能系统
+│   ├── state/                    # 数据模型
+│   └── workflow/                 # 工作流引擎
+├── workspace/users/              # 用户工作空间
+├── frontend/                     # 前端 (Vue 3)
 │   └── src/
-│       ├── api/                  # Unified API client
-│       ├── components/           # 20+ Vue components
-│       ├── composables/          # Vue composables (tabs, dialog, etc.)
-│       ├── pages/                # 20+ route pages
-│       ├── stores/               # Pinia stores
-│       └── i18n/                 # Frontend i18n (zh/en)
-├── tests/                        # pytest test suite
-├── alembic/                      # Database migrations
-├── docker-compose.yml            # Infrastructure services
-└── Dockerfile                    # Application container
+│       ├── components/           # Vue 组件
+│       ├── pages/                # 页面
+│       └── api/                  # API 客户端
+├── docs/                         # 设计文档
+└── tests/                        # 测试
 ```
 
-## API Overview
-
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Login (returns JWT) |
-| POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Get current user info |
-| POST | `/api/auth/refresh` | Refresh access token |
-| POST | `/api/auth/password` | Change password |
-
-### Core Resources
-
-| Resource | Endpoints | Description |
-|----------|-----------|-------------|
-| Projects | `/api/projects` | Project CRUD + pagination |
-| Tasks | `/api/tasks` | Jira-like task management |
-| Workbench | `/api/workbench/tasks` | Agent task queue + chat |
-| Workflows | `/api/workflow-config` | Workflow template CRUD |
-| Instances | `/api/workflow-instances` | Running workflow instances |
-| Code Reviews | `/api/code-reviews` | AI code review + re-run |
-| Settings | `/api/settings` | System configuration |
-| Scheduled | `/api/scheduled-tasks` | Cron task management |
-| Users | `/api/users` | User CRUD |
-| Roles | `/api/roles` | Role CRUD |
-| Menus | `/api/menus` | Menu tree CRUD |
-| Audit | `/api/audit/logs` | Audit log query |
-
-### Example API Calls
+## 测试
 
 ```bash
-# Login
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-
-# Start a workflow
-curl -X POST http://localhost:8000/api/workflow/{project_id}/start \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"repo_path": "/path/to/repo", "raw_input": "Add user authentication"}'
-
-# Submit approval
-curl -X POST "http://localhost:8000/api/approvals/{project_id}?status=approved&comment=Looks+good" \
-  -H "Authorization: Bearer <token>"
-
-# Create code review
-curl -X POST http://localhost:8000/api/code-reviews \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"task_id": 1, "diff": "diff --git a/..."}'
-```
-
-## Frontend Pages
-
-| Page | Route | Description |
-|------|-------|-------------|
-| Dashboard | `/` | Overview with stats, activity, tasks |
-| Projects | `/projects` | Project list + detail |
-| Agents | `/agents` | Agent registry |
-| Skills | `/skills` | Skill registry |
-| Workbench | `/workbench` | Task queue with chat |
-| Workflows | `/workflow/list` | Workflow templates |
-| Workflow Editor | `/workflow/editor/:id?` | Visual flow editor |
-| Workflow Instances | `/workflow/instances` | Running instances |
-| Tasks | `/tasks/my`, `/tasks/board` | My tasks + Kanban |
-| Code Reviews | `/code-reviews` | Review list + detail |
-| Scheduled Tasks | `/scheduled-tasks` | Cron management |
-| Settings | `/settings/system` | System/LLM/DB/Security/About |
-| Users | `/users` | User management |
-| Roles | `/roles` | Role management |
-| Menus | `/menus` | Menu management |
-
-## Design Patterns
-
-| Pattern | Application |
-|---------|------------|
-| **Registry** | Agent, LLM Provider, Skill, Prompt registration |
-| **Strategy** | LLM routing (quality_first / cost_first / config_driven) |
-| **Template Method** | BaseAgent with abstract generate_proposal / validate_output |
-| **Observer** | EventBus for decoupled module communication |
-| **Repository** | StateRepository with snapshot/rollback |
-| **Pipeline** | Configurable workflow stages via YAML |
-| **Factory** | Sandbox provider selection |
-
-## Agent System
-
-### Built-in Agents
-
-| Agent | Role | Description |
-|-------|------|-------------|
-| BusinessAnalyst | Requirement Analysis | Analyzes raw requirements, extracts acceptance criteria |
-| ProductManager | PRD Generation | Generates Product Requirements Document |
-| Architect | Code Impact Analysis | Analyzes codebase, identifies affected components |
-| Developer | Patch Generation | Generates code patches for approved proposals |
-| QA | Test Generation | Creates and executes test cases |
-| CodeReviewer | Code Review | AI-powered code review with scoring and issue detection |
-| ProjectManager | Project Management | Tracks project progress and coordinates agents |
-
-### Skill System
-
-Skills are independent, reusable capability units that can be composed with Agents:
-
-```python
-from app.agents.architect import ArchitectAgent
-from app.skills.code_search import CodeSearchSkill
-
-agent = ArchitectAgent(llm_router, state_repo)
-agent.use_skill(CodeSearchSkill())
-
-proposal = await agent.generate_proposal("proj_1", {"prd": "..."})
-```
-
-Register custom skills:
-
-```python
-from app.skills.base import BaseSkill, SkillResult
-from app.skills.registry import register_skill
-
-@register_skill("my_skill")
-class MySkill(BaseSkill):
-    name = "my_skill"
-    description = "My custom skill"
-
-    async def execute(self, context):
-        return SkillResult(output="done")
-```
-
-## Environment Variables
-
-Copy `.env.example` to `.env`:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OPENAI_API_KEY` | — | OpenAI API key |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key |
-| `DATABASE_URL` | `sqlite:///./devmatrix.db` | Database connection |
-| `TEMPORAL_HOST` | `localhost:7233` | Temporal server address |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection |
-| `APP_HOST` | `0.0.0.0` | API server host |
-| `APP_PORT` | `8000` | API server port |
-| `DEBUG` | `false` | Debug mode |
-| `DEFAULT_LOCALE` | `zh` | Default language (zh/en) |
-| `LLM_STRATEGY` | `quality_first` | LLM routing strategy |
-| `GITHUB_TOKEN` | — | GitHub token for PR automation |
-| `NEO4J_URI` | — | Neo4j connection for code graph |
-
-## Development
-
-### Run Tests
-
-```bash
-# Backend
+# 后端测试
 pytest tests/ -v
 
-# Frontend type check
-cd frontend && npx vue-tsc --noEmit
-
-# Frontend build
+# 前端构建检查
 cd frontend && npm run build
 ```
 
-### Code Quality
+## 许可证
 
-```bash
-# Python linting
-ruff check app/ tests/
-
-# Python formatting
-ruff format app/ tests/
-# or
-black app/ tests/ --line-length 100
-```
-
-### Database Migrations
-
-```bash
-# Generate migration
-alembic revision --autogenerate -m "description"
-
-# Apply migration
-alembic upgrade head
-```
-
-## Docker Deployment
-
-```bash
-# Build and start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-
-# Stop all services
-docker-compose down
-```
-
-## License
-
-MIT License — See [LICENSE](LICENSE) for details.
+MIT License
