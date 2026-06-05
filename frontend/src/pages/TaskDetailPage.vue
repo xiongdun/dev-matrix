@@ -39,9 +39,12 @@
 
         <div v-else class="chat-messages" ref="messagesRef">
           <ChatMessage
-            v-for="msg in messages"
+            v-for="(msg, idx) in messages"
             :key="msg.id"
             :message="msg"
+            :message-index="idx"
+            :is-streaming="isSending && msg.role === 'assistant' && msg === messages[messages.length - 1]"
+            @regenerate="regenerateMessage"
           />
         </div>
 
@@ -74,7 +77,7 @@
               rows="1"
               class="chat-input"
               :placeholder="t('workbench.inputPlaceholder')"
-              @keydown.enter.prevent="sendMessage"
+              @keydown="handleKeydown"
               @input="autoResize"
               ref="inputRef"
             />
@@ -128,13 +131,22 @@
                   <Mic :size="18" />
                 </button>
 
-                <!-- 发送按钮 -->
+                <!-- 发送/停止按钮 -->
                 <button
+                  v-if="!isSending"
                   class="chat-send-btn"
-                  :disabled="!canSend || isSending"
+                  :disabled="!canSend"
                   @click="sendMessage"
                 >
                   <ArrowUp :size="18" />
+                </button>
+                <button
+                  v-else
+                  class="chat-send-btn stop-btn"
+                  @click="stopGeneration"
+                  title="停止生成"
+                >
+                  <Square :size="16" />
                 </button>
               </div>
             </div>
@@ -143,12 +155,16 @@
       </div>
     </div>
 
-    <!-- 右侧：操作面板 -->
-    <div class="content-right">
+    <!-- 右侧：操作面板（可折叠） -->
+    <button class="panel-toggle" @click="panelCollapsed = !panelCollapsed" :title="panelCollapsed ? '展开面板' : '折叠面板'">
+      <PanelRightClose v-if="!panelCollapsed" :size="16" />
+      <PanelLeft v-else :size="16" />
+    </button>
+    <div v-if="!panelCollapsed" class="content-right">
       <div class="action-panel">
         <h4>{{ t('workbench.actions') }}</h4>
 
-        <button class="action-btn action-btn--approve" @click="handleApprove">
+        <button class="action-btn action-btn--approve" @click="confirmApprove">
           <CheckCircle :size="18" />
           <div class="action-btn__text">
             <span class="action-btn__label">{{ t('workbench.approve') }}</span>
@@ -244,6 +260,8 @@ import {
   X,
   Square,
   AlertCircle,
+  PanelRightClose,
+  PanelLeft,
 } from 'lucide-vue-next'
 import { api } from '../api'
 import { useDialog } from '../composables/useDialog'
@@ -267,6 +285,12 @@ interface TaskContext {
   }
 }
 
+interface ToolCall {
+  name: string
+  input: Record<string, unknown>
+  result?: Record<string, unknown>
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -274,6 +298,8 @@ interface Message {
   previousContent?: string
   timestamp: string
   images?: string[]
+  toolCalls?: ToolCall[]
+  isThinking?: boolean
 }
 
 interface Task {
@@ -558,6 +584,21 @@ const showReject = ref(false)
 const showRetry = ref(false)
 const rejectComment = ref('')
 const retryFeedback = ref('')
+const panelCollapsed = ref(false)
+
+// UX-17: 审批确认
+async function confirmApprove() {
+  const confirmed = await showConfirm({
+    title: '确认通过',
+    message: '确定要通过当前产出物吗？通过后将进入下一阶段。',
+    type: 'info',
+    confirmText: '确认通过',
+    cancelText: '取消',
+  })
+  if (confirmed) {
+    await handleApprove()
+  }
+}
 
 const statusLabel = computed(() => {
   const map: Record<string, string> = {
@@ -588,6 +629,30 @@ function autoResize() {
   // 固定高度，由 CSS 控制，不需要动态调整
 }
 
+// UX-01: Shift+Enter 换行，Enter 发送
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    sendMessage()
+  }
+}
+
+// UX-04: 停止生成
+const abortController = ref<AbortController | null>(null)
+
+function stopGeneration() {
+  abortController.value?.abort()
+  abortController.value = null
+  isSending.value = false
+  // 标记最后一条 AI 消息为已停止
+  const lastMsg = messages.value[messages.value.length - 1]
+  if (lastMsg?.role === 'assistant' && lastMsg.isThinking) {
+    lastMsg.isThinking = false
+    lastMsg.content = lastMsg.content || '[已停止生成]'
+  }
+  scrollToBottom()
+}
+
 function scrollToBottom() {
   nextTick(() => {
     if (messagesRef.value) {
@@ -616,28 +681,58 @@ async function sendMessage() {
   scrollToBottom()
 
   isSending.value = true
+
+  // 插入思考中状态的 AI 消息
+  const aiMsg: Message = {
+    id: `msg-ai-${Date.now()}`,
+    role: 'assistant',
+    content: '',
+    timestamp: new Date().toISOString(),
+    isThinking: true,
+    toolCalls: [],
+  }
+  messages.value.push(aiMsg)
+  scrollToBottom()
+
   try {
     const res = await api.sendTaskChatMessage(taskId.value, text, selectedModel.value)
 
-    const aiMsg: Message = {
-      id: `msg-${res.message.id}`,
-      role: 'assistant',
-      content: res.message.content,
-      timestamp: res.message.created_at || new Date().toISOString(),
+    aiMsg.isThinking = false
+    aiMsg.content = res.message.content
+    aiMsg.id = `msg-${res.message.id}`
+    if (res.message.created_at) aiMsg.timestamp = res.message.created_at
+
+    // 解析工具调用
+    if (res.tool_calls?.length) {
+      aiMsg.toolCalls = res.tool_calls
     }
-    messages.value.push(aiMsg)
   } catch (e: any) {
-    const errorMsg: Message = {
-      id: `msg-${taskId.value}-${Date.now()}-error`,
-      role: 'assistant',
-      content: `发送失败: ${e.message || String(e)}`,
-      timestamp: new Date().toISOString(),
-    }
-    messages.value.push(errorMsg)
+    aiMsg.isThinking = false
+    aiMsg.content = `发送失败: ${e.message || String(e)}`
   } finally {
     isSending.value = false
+    abortController.value = null
     scrollToBottom()
   }
+}
+
+// UX-03: 重新生成
+async function regenerateMessage(msgIndex: number) {
+  if (isSending.value) return
+  // 找到该 AI 消息前面的用户消息
+  let userMsgContent = ''
+  for (let i = msgIndex - 1; i >= 0; i--) {
+    if (messages.value[i].role === 'user') {
+      userMsgContent = messages.value[i].content
+      break
+    }
+  }
+  if (!userMsgContent) return
+  // 删除旧的 AI 回复
+  messages.value.splice(msgIndex, 1)
+  // 重新设置输入并发送
+  inputMessage.value = userMsgContent
+  await sendMessage()
 }
 
 async function handleApprove() {
@@ -1088,6 +1183,28 @@ onUnmounted(() => {
 .chat-send-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* 面板折叠按钮 */
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  align-self: center;
+}
+
+.panel-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* 右侧操作面板 */

@@ -65,6 +65,9 @@ from app.api import (
     auth as auth_api,
 )
 from app.api import (
+    memory as memory_api,
+)
+from app.api import (
     health as health_api,
 )
 from app.api import (
@@ -379,6 +382,7 @@ protected_routers = [
     (users_api.router, "/api/users", ["users"]),
     (roles_api.router, "/api/roles", ["roles"]),
     (audit_api.router, "/api/audit", ["audit"]),
+    (memory_api.router, "/api/memory", ["memory"]),
 ]
 
 for router, prefix, tags in protected_routers:

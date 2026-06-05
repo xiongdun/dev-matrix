@@ -300,14 +300,33 @@ export const api = {
     return requestWithRetry<{messages: Array<{id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}>}>('/workbench/tasks/' + taskId + '/chat')
   },
 
-  /** 发送任务对话消息 */
+  /** 发送任务对话消息（不重试，超时 5 分钟） */
   sendTaskChatMessage(taskId: number, message: string, model?: string) {
-    return requestWithRetry<{
-      message: {id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}
-      tool_calls: Array<{name: string; input: Record<string, unknown>; result?: Record<string, unknown>}> | null
-    }>('/workbench/tasks/' + taskId + '/chat', {
+    const token = localStorage.getItem('token')
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 分钟超时
+
+    return fetch(`${API_BASE}/workbench/tasks/` + taskId + '/chat', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ message, model }),
+      signal: controller.signal,
+    }).then(async (resp) => {
+      clearTimeout(timeoutId)
+      if (!resp.ok) {
+        const text = await resp.text()
+        throw new Error(`API Error ${resp.status}: ${text}`)
+      }
+      return resp.json() as Promise<{
+        message: {id: number; task_id: number; role: string; content: string; tool_calls: string | null; tool_results: string | null; created_at: string}
+        tool_calls: Array<{name: string; input: Record<string, unknown>; result?: Record<string, unknown>}> | null
+      }>
+    }).catch((err) => {
+      clearTimeout(timeoutId)
+      throw err
     })
   },
 

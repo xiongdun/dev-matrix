@@ -93,7 +93,7 @@ class OpenAIClient(LLMClient):
         settings = get_settings()
         self.api_key = api_key or settings.openai_api_key
         self.model = model
-        self.base_url = "https://api.openai.com/v1"
+        self.base_url = settings.openai_base_url
 
     async def complete(self, prompt: str, **kwargs) -> str:
         """单轮文本生成，内部转换为 chat 格式调用。
@@ -219,7 +219,7 @@ class AnthropicClient(LLMClient):
         settings = get_settings()
         self.api_key = api_key or settings.anthropic_api_key
         self.model = model
-        self.base_url = "https://api.anthropic.com/v1"
+        self.base_url = settings.anthropic_base_url
 
     async def complete(self, prompt: str, **kwargs) -> str:
         """单轮文本生成，内部转换为 chat 格式调用。

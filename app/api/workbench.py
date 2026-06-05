@@ -23,16 +23,18 @@ import logging
 from datetime import datetime
 from typing import Any, cast
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.events.bus import event_bus
 from app.events.types import Event, EventTypes
-from app.state.models import TaskChatMessageModel, WorkflowTaskModel, get_db
+from app.memory.manager import build_memory_prompt
+from app.state.models import TaskChatMessageModel, UserModel, WorkflowTaskModel, get_db
 from app.state.repository import StateRepository
-from app.tools.executor import ToolExecutor
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -324,6 +326,7 @@ async def chat_with_task(
     task_id: int,
     payload: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """与任务进行实时对话，调用 Agent SDK 处理用户消息。
 
@@ -349,13 +352,15 @@ async def chat_with_task(
         db.add(user_msg)
         db.commit()
 
-        # 2. 获取历史消息作为上下文
+        # 2. 获取历史消息作为上下文（最多保留最近 20 条）
         history = (
             db.query(TaskChatMessageModel)
             .filter(TaskChatMessageModel.task_id == task_id)
-            .order_by(TaskChatMessageModel.created_at.asc())
+            .order_by(TaskChatMessageModel.created_at.desc())
+            .limit(20)
             .all()
         )
+        history.reverse()  # 恢复时间顺序
 
         # 构建对话上下文
         context_lines = []
@@ -369,12 +374,18 @@ async def chat_with_task(
         agent_role = cast(str, task.agent_role)
         stage_name = cast(str, task.stage_name)
 
-        # 构建系统提示词
+        # 构建系统提示词（注入记忆上下文）
+        memory_context = build_memory_prompt(
+            user_id=cast(int, current_user.id),
+            agent_role=agent_role,
+            project_id=cast(str, task.project_id),
+        )
         system_prompt = (
             f"You are a {agent_role} agent working on the '{stage_name}' stage. "
             f"You have access to tools: Read, Search, Write, Edit, Bash. "
             f"Use them when needed to help the user. "
             f"Respond in the same language as the user."
+            f"{memory_context}"
         )
 
         # 尝试使用 SDK
@@ -401,18 +412,23 @@ async def chat_with_task(
                     query as sdk_query,
                 )
 
+                from app.config import get_settings
+                settings = get_settings()
+
                 session_id = get_config_value(db, "claude_sdk_session_id", "")
                 options_kwargs: dict[str, Any] = {
                     "system_prompt": system_prompt,
-                    "max_turns": 5,
+                    "max_turns": settings.sdk_max_turns,
+                    "continue_conversation": False,
                 }
-                if session_id:
-                    options_kwargs["session_id"] = session_id
+                # 不复用 session，避免重复请求
+                # if session_id:
+                #     options_kwargs["session_id"] = session_id
 
                 options = ClaudeAgentOptions(**options_kwargs)
 
-                tool_executor = ToolExecutor()
-                full_prompt = f"{context_text}\n\nUser: {payload.message}\n\nAssistant:"
+                # 只发当前消息，不拼接历史（避免重复请求）
+                full_prompt = payload.message
 
                 async for message in sdk_query(prompt=full_prompt, options=options):
                     if isinstance(message, AssistantMessage):
@@ -433,17 +449,6 @@ async def chat_with_task(
                                     task_id,
                                     tool_name,
                                 )
-
-                                # 执行工具
-                                try:
-                                    tool_result = tool_executor.execute(tool_name, **tool_input)
-                                except Exception as tool_exc:
-                                    tool_result = {"error": str(tool_exc)}
-
-                                tool_calls_log[-1]["result"] = tool_result
-
-                                # 将工具结果反馈给 SDK（下一回合会自动处理）
-                                # 这里我们记录结果，让 SDK 继续处理
                             elif isinstance(block, ToolResultBlock):
                                 result_content = getattr(
                                     block, "content", getattr(block, "output", "")
