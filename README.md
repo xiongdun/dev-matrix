@@ -186,7 +186,7 @@ cd frontend && npm run build
 MIT License
 
 ##TODO
-- [ ] 完善用户记忆系统
+- [1 ] 完善用户记忆系统
 - [ ] 优化工作流引擎
 - [ ] 增加更多技能
 - [ ] 完善测试用例
