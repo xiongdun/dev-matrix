@@ -4,51 +4,51 @@
       <div class="header-left">
         <button class="btn-back" @click="router.push('/users')">
           <ArrowLeft :size="16" />
-          返回
+          {{ t("common.back") }}
         </button>
         <div>
-          <h1>用户详情</h1>
+          <h1>{{ td("title") }}</h1>
           <p v-if="user">{{ user.username }} · {{ user.nickname || '—' }}</p>
         </div>
       </div>
     </div>
 
-    <div v-if="loading" class="empty-state">加载中...</div>
+    <div v-if="loading" class="empty-state">{{ td("loading") }}</div>
     <div v-else-if="error" class="empty-state" style="color: var(--accent-red)">{{ error }}</div>
 
     <template v-else-if="user">
       <!-- 用户基本信息 -->
       <div class="section">
-        <h2 class="section-title">基本信息</h2>
+        <h2 class="section-title">{{ td("basicInfo") }}</h2>
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">用户名</span>
+            <span class="info-label">{{ td("username") }}</span>
             <span class="info-value">{{ user.username }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">昵称</span>
+            <span class="info-label">{{ td("nickname") }}</span>
             <span class="info-value">{{ user.nickname || '—' }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">邮箱</span>
+            <span class="info-label">{{ td("email") }}</span>
             <span class="info-value">{{ user.email || '—' }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">状态</span>
+            <span class="info-label">{{ td("status") }}</span>
             <span class="user-status" :class="user.status">{{ statusLabel(user.status) }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">角色</span>
+            <span class="info-label">{{ td("roles") }}</span>
             <div>
               <span v-for="role in user.roles" :key="role.id" class="role-badge">{{ role.display_name }}</span>
             </div>
           </div>
           <div class="info-item">
-            <span class="info-label">创建时间</span>
+            <span class="info-label">{{ td("createdAt") }}</span>
             <span class="info-value">{{ formatDate(user.created_at) }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">最后登录</span>
+            <span class="info-label">{{ td("lastLogin") }}</span>
             <span class="info-value">{{ user.last_login_at ? formatDate(user.last_login_at) : '—' }}</span>
           </div>
         </div>
@@ -56,13 +56,13 @@
 
       <!-- Soul -->
       <div class="section" v-if="workspace.soul">
-        <h2 class="section-title">🧠 Soul — AI 人设 + 用户画像</h2>
+        <h2 class="section-title">{{ td("soulTitle") }}</h2>
         <div class="markdown-body" v-html="renderMarkdown(workspace.soul)"></div>
       </div>
 
       <!-- Profile -->
       <div class="section" v-if="workspace.profile && Object.keys(workspace.profile).length">
-        <h2 class="section-title">👤 用户偏好</h2>
+        <h2 class="section-title">{{ td("preferencesTitle") }}</h2>
         <div class="info-grid">
           <template v-for="(val, key) in workspace.profile" :key="key">
             <div v-if="typeof val === 'string'" class="info-item">
@@ -84,7 +84,7 @@
 
       <!-- Memories -->
       <div class="section" v-if="workspace.memories?.length">
-        <h2 class="section-title">📝 记忆 ({{ workspace.memories.length }} 条)</h2>
+        <h2 class="section-title">{{ td("memoriesCount", { count: workspace.memories.length }) }}</h2>
         <div class="memory-list">
           <div v-for="(mem, idx) in workspace.memories" :key="idx" class="memory-item">
             <div class="memory-header">
@@ -93,8 +93,8 @@
             </div>
             <div class="memory-value">{{ mem.value }}</div>
             <div class="memory-meta">
-              <span v-if="mem.source">来源: {{ mem.source }}</span>
-              <span v-if="mem.confidence">置信度: {{ mem.confidence }}</span>
+              <span v-if="mem.source">{{ td("source") }}: {{ mem.source }}</span>
+              <span v-if="mem.confidence">{{ td("confidence") }}: {{ mem.confidence }}</span>
               <span v-if="mem.created_at">{{ mem.created_at }}</span>
             </div>
           </div>
@@ -103,17 +103,17 @@
 
       <!-- Skills -->
       <div class="section" v-if="workspace.skills?.length">
-        <h2 class="section-title">⚡ 自定义技能 ({{ workspace.skills.length }} 个)</h2>
+        <h2 class="section-title">{{ td("skillsCount", { count: workspace.skills.length }) }}</h2>
         <div class="skill-list">
           <div v-for="skill in workspace.skills" :key="skill.name" class="skill-card">
             <div class="skill-name">{{ skill.name }}</div>
             <div class="skill-desc" v-if="skill.description">{{ skill.description }}</div>
             <div class="skill-triggers" v-if="skill.triggers?.length">
-              <span class="skill-label">触发条件：</span>
+              <span class="skill-label">{{ td("trigger") }}：</span>
               <span v-for="t in skill.triggers" :key="t" class="skill-tag">{{ t }}</span>
             </div>
             <div class="skill-constraints" v-if="skill.constraints?.length">
-              <span class="skill-label">约束：</span>
+              <span class="skill-label">{{ td("constraint") }}：</span>
               <span v-for="c in skill.constraints" :key="c" class="skill-tag constraint">{{ c }}</span>
             </div>
           </div>
@@ -122,7 +122,7 @@
 
       <!-- MCP Servers -->
       <div class="section" v-if="workspace.mcp_servers?.length">
-        <h2 class="section-title">🔌 MCP 服务器 ({{ workspace.mcp_servers.length }} 个)</h2>
+        <h2 class="section-title">{{ td("mcpCount", { count: workspace.mcp_servers.length }) }}</h2>
         <div class="mcp-list">
           <div v-for="mcp in workspace.mcp_servers" :key="mcp.name" class="mcp-card">
             <div class="mcp-header">
@@ -144,7 +144,7 @@
 
       <!-- Projects -->
       <div class="section" v-if="Object.keys(workspace.projects || {}).length">
-        <h2 class="section-title">📂 项目记忆 ({{ Object.keys(workspace.projects).length }} 个)</h2>
+        <h2 class="section-title">{{ td("projectsCount", { count: Object.keys(workspace.projects).length }) }}</h2>
         <div class="project-list">
           <div v-for="(proj, pid) in workspace.projects" :key="pid" class="project-card">
             <div class="project-name">{{ pid }}</div>
@@ -169,10 +169,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft } from 'lucide-vue-next'
 import { marked } from 'marked'
 import { api } from '../../api'
 
+const { t } = useI18n()
+const td = (key: string, params?: Record<string, any>) => t(`userDetail.${key}`, params || {})
 const route = useRoute()
 const router = useRouter()
 
@@ -205,7 +208,7 @@ function renderMarkdown(content: string): string {
 }
 
 function statusLabel(status: string) {
-  const map: Record<string, string> = { active: '启用', disabled: '禁用' }
+  const map: Record<string, string> = { active: td('statusActive'), disabled: td('statusDisabled') }
   return map[status] || status
 }
 

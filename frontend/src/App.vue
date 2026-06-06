@@ -111,16 +111,16 @@ onMounted(async () => {
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item" @click="goToProfile">
                   <Home :size="16" />
-                  <span>主页</span>
+                  <span>{{ t("userMenu.homepage") }}</span>
                 </button>
                 <button class="dropdown-item" @click="goToSettings">
                   <Settings :size="16" />
-                  <span>系统设置</span>
+                  <span>{{ t("userMenu.settings") }}</span>
                 </button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item danger" @click="handleLogout">
                   <LogOut :size="16" />
-                  <span>退出登录</span>
+                  <span>{{ t("userMenu.logout") }}</span>
                 </button>
               </div>
             </div>

@@ -27,8 +27,8 @@
             <span class="thinking-dot"></span>
           </div>
           <div class="thinking-info">
-            <span class="thinking-text">AI 正在思考...</span>
-            <span class="thinking-hint" v-if="thinkingTime > 5">正在处理复杂任务，请耐心等待</span>
+            <span class="thinking-text">{{ tc("thinking") }}</span>
+            <span class="thinking-hint" v-if="thinkingTime > 5">{{ tc("thinkingHint") }}</span>
           </div>
           <span class="thinking-timer">{{ thinkingTime }}s</span>
         </div>
@@ -37,7 +37,7 @@
         <div v-if="message.toolCalls?.length" class="tool-calls">
           <!-- 工具调用摘要 -->
           <div v-if="message.toolCalls.length > 1 && !showAllTools" class="tool-summary" @click="showAllTools = true">
-            <span>🔧 AI 使用了 {{ message.toolCalls.length }} 个工具</span>
+            <span>🔧 {{ tc("toolSummary", { count: message.toolCalls.length }) }}</span>
             <ChevronDown :size="14" />
           </div>
           <template v-for="(tc, idx) in message.toolCalls" :key="idx">
@@ -47,7 +47,7 @@
                 <span class="tool-call-name">{{ tc.name }}</span>
                 <span class="tool-call-path" v-if="tc.input?.path">{{ tc.input.path }}</span>
                 <span v-if="tc.result" class="tool-call-status" :class="tc.result.error ? 'error' : 'success'">
-                  {{ tc.result.error ? '失败' : '成功' }}
+                  {{ tc.result.error ? tc("toolFail") : tc("toolSuccess") }}
                 </span>
                 <ChevronDown v-if="!expandedTools.has(idx)" :size="14" class="tool-toggle" />
                 <ChevronUp v-else :size="14" class="tool-toggle" />
@@ -58,19 +58,19 @@
                 </div>
             <!-- Write/Edit 工具显示 diff -->
             <div v-if="tc.name === 'Write' && tc.result?.success" class="tool-diff">
-              <div class="diff-badge">📄 文件已写入</div>
+              <div class="diff-badge">{{ tc("fileWritten") }}</div>
               <code class="diff-path">{{ tc.input.path }}</code>
             </div>
             <div v-if="tc.name === 'Edit' && tc.result?.success" class="tool-diff">
-              <div class="diff-badge">✏️ 文件已修改</div>
+              <div class="diff-badge">{{ tc("fileModified") }}</div>
               <code class="diff-path">{{ tc.input.path }}</code>
               <div v-if="tc.input.old_string" class="diff-content">
                 <div class="diff-old">
-                  <span class="diff-label">- 删除</span>
+                  <span class="diff-label">- {{ tc("removed") }}</span>
                   <pre>{{ tc.input.old_string }}</pre>
                 </div>
                 <div class="diff-new">
-                  <span class="diff-label">+ 新增</span>
+                  <span class="diff-label">+ {{ tc("added") }}</span>
                   <pre>{{ tc.input.new_string }}</pre>
                 </div>
               </div>
@@ -94,13 +94,13 @@
 
         <!-- 操作按钮栏 -->
         <div v-if="message.role === 'assistant' && message.content && !isStreaming" class="message-actions">
-          <button class="action-btn-sm" @click="copyContent" title="复制">
+          <button class="action-btn-sm" @click="copyContent" :title="tc('copy')">
             <Copy :size="14" />
-            <span>{{ copied ? '已复制' : '复制' }}</span>
+            <span>{{ copied ? tc("copied") : tc("copy") }}</span>
           </button>
-          <button class="action-btn-sm" @click="emit('regenerate', messageIndex ?? 0)" title="重新生成">
+          <button class="action-btn-sm" @click="emit('regenerate', messageIndex ?? 0)" :title="tc('regenerate')">
             <RefreshCw :size="14" />
-            <span>重新生成</span>
+            <span>{{ tc("regenerate") }}</span>
           </button>
         </div>
       </div>
@@ -118,6 +118,7 @@ import { User, Bot, Wrench, Copy, RefreshCw, ChevronDown, ChevronUp } from 'luci
 import DiffViewer from './DiffViewer.vue'
 
 const { t } = useI18n()
+const tc = (key: string, params?: Record<string, any>) => t(`chatMessage.${key}`, params || {})
 
 interface Message {
   id: string

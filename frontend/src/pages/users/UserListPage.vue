@@ -2,20 +2,20 @@
   <div>
     <div class="dashboard-header">
       <div>
-        <h1>用户管理</h1>
-        <p>管理系统用户、角色分配和权限控制</p>
+        <h1>{{ tu("title") }}</h1>
+        <p>{{ tu("subtitle") }}</p>
       </div>
       <button class="btn-create" @click="showCreateModal">
-        新建用户
+        {{ tu("create") }}
       </button>
     </div>
 
     <div class="filters-bar">
-      <input v-model="keyword" placeholder="搜索用户名或昵称" @input="loadUsers" class="filter-input" />
+      <input v-model="keyword" placeholder="{{ tu("searchPlaceholder") }}" @input="loadUsers" class="filter-input" />
       <select v-model="statusFilter" @change="loadUsers" class="filter-select">
-        <option value="">全部状态</option>
-        <option value="active">启用</option>
-        <option value="disabled">禁用</option>
+        <option value="">{{ tu("allStatus") }}</option>
+        <option value="active">{{ tu("enabled") }}</option>
+        <option value="disabled">{{ tu("disabled") }}</option>
       </select>
     </div>
 
@@ -27,12 +27,12 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>用户名</th>
-            <th>昵称</th>
-            <th>角色</th>
-            <th>状态</th>
-            <th>最后登录</th>
-            <th>操作</th>
+            <th>{{ tu("colUsername") }}</th>
+            <th>{{ tu("colNickname") }}</th>
+            <th>{{ tu("colRoles") }}</th>
+            <th>{{ tu("colStatus") }}</th>
+            <th>{{ tu("colLastLogin") }}</th>
+            <th>{{ tu("colActions") }}</th>
           </tr>
         </thead>
         <tbody>
@@ -49,15 +49,15 @@
             </td>
             <td class="user-time">{{ user.last_login_at ? formatDate(user.last_login_at) : '—' }}</td>
             <td class="user-actions">
-              <button class="btn-action btn-view" @click="router.push(`/users/${user.id}`)">查看</button>
-              <button class="btn-action" @click="editUser(user)">编辑</button>
+              <button class="btn-action btn-view" @click="router.push(`/users/${user.id}`)">{{ tu("view") }}</button>
+              <button class="btn-action" @click="editUser(user)">{{ t("common.edit") }}</button>
               <button class="btn-action" :class="user.status === 'active' ? 'btn-archive' : 'btn-enable'" @click="toggleStatus(user)">
-                {{ user.status === 'active' ? '禁用' : '启用' }}
+                {{ user.status === 'active' ? tu('disabled') : tu('enabled') }}
               </button>
-              <button class="btn-action btn-delete" @click="deleteUser(user)">删除</button>
+              <button class="btn-action btn-delete" @click="deleteUser(user)">{{ t("common.delete") }}</button>
             </td>
           </tr>
-          <EmptyTableRow v-if="users.length === 0" :colspan="6" message="暂无用户数据" />
+          <EmptyTableRow v-if="users.length === 0" :colspan="6" :message="tu('empty')" />
         </tbody>
       </table>
     </div>
@@ -80,6 +80,7 @@ import UserFormModal from './UserFormModal.vue'
 import EmptyTableRow from '../../components/EmptyTableRow.vue'
 
 const { t } = useI18n()
+const tu = (key: string) => t(`userManagement.${key}`)
 const router = useRouter()
 
 const users = ref<any[]>([])
@@ -127,7 +128,7 @@ async function toggleStatus(user: any) {
 }
 
 async function deleteUser(user: any) {
-  if (!confirm(`确认删除用户「${user.username}」？`)) return
+  if (!confirm(tu('confirmDelete').replace('{name}', user.username))) return
   try {
     await api.delete('/users/' + user.id)
     loadUsers()
@@ -137,7 +138,7 @@ async function deleteUser(user: any) {
 }
 
 function statusLabel(status: string) {
-  const map: Record<string, string> = { active: '启用', disabled: '禁用' }
+  const map: Record<string, string> = { active: tu('enabled'), disabled: tu('disabled') }
   return map[status] || status
 }
 
