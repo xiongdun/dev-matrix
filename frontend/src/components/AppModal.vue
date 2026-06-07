@@ -34,6 +34,11 @@ function handleKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  // 强制聚焦到当前弹窗，确保 Esc 事件可被捕获
+  const backdrop = document.querySelector('.modal-backdrop')
+  if (backdrop instanceof HTMLElement) {
+    backdrop.focus()
+  }
 })
 
 onUnmounted(() => {
@@ -44,7 +49,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="visible" class="modal-backdrop" @click="handleBackdropClick">
+      <div v-if="visible" class="modal-backdrop" tabindex="-1" @click="handleBackdropClick">
         <div class="modal-container" :style="{ maxWidth: width }">
           <div v-if="title || showClose" class="modal-header">
             <h3 v-if="title" class="modal-title">{{ title }}</h3>

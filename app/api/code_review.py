@@ -50,11 +50,14 @@ class CodeReviewResponse(BaseModel):
     improvements: list[dict[str, str]] = []
     llm_model: str | None = None
     duration_ms: int | None = None
-    created_at: str
-    completed_at: str | None = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None,
+        }
 
 
 @router.post("", response_model=CodeReviewResponse)

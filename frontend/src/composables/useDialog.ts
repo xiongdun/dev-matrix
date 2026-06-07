@@ -22,7 +22,7 @@ const confirmState = ref({
   visible: false,
   title: '',
   message: '',
-  type: 'confirm' as const,
+  type: 'confirm' as 'confirm' | 'warning' | 'info' | 'success',
   confirmText: '确认',
   cancelText: '取消',
   showCancel: true,
@@ -40,6 +40,10 @@ const promptState = ref({
 
 let confirmResolve: ((value: boolean) => void) | null = null
 let promptResolve: ((value: string | null) => void) | null = null
+
+// 模块加载时强制重置，防止状态残留
+confirmState.value.visible = false
+promptState.value.visible = false
 
 export function useDialog() {
   function showConfirm(options: ConfirmOptions): Promise<boolean> {
@@ -84,6 +88,16 @@ export function useDialog() {
     promptResolve = null
   }
 
+  // 强制关闭所有弹窗（紧急重置）
+  function forceCloseAll() {
+    confirmState.value.visible = false
+    promptState.value.visible = false
+    confirmResolve?.(false)
+    promptResolve?.(null)
+    confirmResolve = null
+    promptResolve = null
+  }
+
   return {
     confirmState,
     promptState,
@@ -91,5 +105,6 @@ export function useDialog() {
     showPrompt,
     confirmResult,
     promptResult,
+    forceCloseAll,
   }
 }

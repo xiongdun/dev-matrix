@@ -56,6 +56,7 @@ class ChatMessageResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
     model: str | None = None
+    sdk: str | None = None  # "claude_code" | "openai_agents" | "direct_llm"
 
 
 class ChatResponse(BaseModel):
@@ -388,90 +389,49 @@ async def chat_with_task(
             f"{memory_context}"
         )
 
-        # 尝试使用 SDK
-        ai_content = ""
-        tool_calls_log: list[dict[str, Any]] = []
+        # 选择 SDK
+        sdk_name = payload.sdk or "direct_llm"
+        from app.config import get_settings
+        from app.sdk.base import SDKRegistry
+        settings = get_settings()
 
         try:
-            from app.agents.base import CLAUDE_SDK_AVAILABLE
-            from app.api.settings import get_config_value
-
-            claude_sdk_enabled = (
-                get_config_value(db, "claude_sdk_enabled", "false").lower() == "true"
-            )
-
-            if CLAUDE_SDK_AVAILABLE and claude_sdk_enabled:
-                from claude_agent_sdk import (
-                    AssistantMessage,
-                    ClaudeAgentOptions,
-                    TextBlock,
-                    ToolResultBlock,
-                    ToolUseBlock,
+            # 创建 SDK 实例
+            if sdk_name == "claude_code":
+                sdk = SDKRegistry.create("claude_code", max_turns=settings.sdk_max_turns)
+            elif sdk_name == "openai_agents":
+                sdk = SDKRegistry.create(
+                    "openai_agents",
+                    model=settings.openai_agents_model,
+                    api_key=settings.openai_agents_api_key,
+                    base_url=settings.openai_agents_base_url,
                 )
-                from claude_agent_sdk import (
-                    query as sdk_query,
-                )
-
-                from app.config import get_settings
-                settings = get_settings()
-
-                session_id = get_config_value(db, "claude_sdk_session_id", "")
-                options_kwargs: dict[str, Any] = {
-                    "system_prompt": system_prompt,
-                    "max_turns": settings.sdk_max_turns,
-                    "continue_conversation": False,
-                }
-                # 不复用 session，避免重复请求
-                # if session_id:
-                #     options_kwargs["session_id"] = session_id
-
-                options = ClaudeAgentOptions(**options_kwargs)
-
-                # 只发当前消息，不拼接历史（避免重复请求）
-                full_prompt = payload.message
-
-                async for message in sdk_query(prompt=full_prompt, options=options):
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock):
-                                ai_content += block.text
-                            elif isinstance(block, ToolUseBlock):
-                                tool_name = block.name
-                                tool_input = getattr(block, "input", {}) or {}
-                                tool_calls_log.append(
-                                    {
-                                        "name": tool_name,
-                                        "input": tool_input,
-                                    }
-                                )
-                                logger.info(
-                                    "Task %d Agent using tool: %s",
-                                    task_id,
-                                    tool_name,
-                                )
-                            elif isinstance(block, ToolResultBlock):
-                                result_content = getattr(
-                                    block, "content", getattr(block, "output", "")
-                                )
-                                if tool_calls_log:
-                                    tool_calls_log[-1]["output"] = result_content
             else:
-                # SDK 未启用或不可用，使用简单 fallback
-                if not CLAUDE_SDK_AVAILABLE:
-                    ai_content = (
-                        f"[{agent_role}] 收到您的消息：{payload.message}\n\n"
-                        f"（Claude Agent SDK 未安装，当前为模拟回复。请安装 claude-agent-sdk 后启用智能对话。）"
-                    )
-                else:
-                    ai_content = (
-                        f"[{agent_role}] 收到您的消息：{payload.message}\n\n"
-                        f"（Claude Agent SDK 已安装但未启用。请在 LLM 设置中开启「启用 Claude Agent SDK」以使用智能对话。）"
-                    )
-        except Exception as sdk_exc:
-            logger.exception("SDK query failed for task %d", task_id)
-            ai_content = (
-                f"处理消息时出错：{sdk_exc}\n\n请检查 claude-agent-sdk 是否正确安装和配置。"
+                sdk = SDKRegistry.create("direct_llm")
+
+            # 构建历史消息
+            history = [
+                {"role": "user" if h.role == "user" else "assistant", "content": h.content}
+                for h in history
+            ]
+
+            # 调用 SDK
+            response = await sdk.chat(
+                message=payload.message,
+                system_prompt=system_prompt,
+                history=history,
             )
+
+            ai_content = response.content
+            tool_calls_log = response.tool_calls
+
+            if not response.success:
+                logger.error("SDK %s failed: %s", sdk_name, response.error)
+                ai_content = f"[{sdk_name}] 调用失败：{response.error}"
+
+        except Exception as e:
+            logger.exception("SDK %s error for task %d", sdk_name, task_id)
+            ai_content = f"处理消息时出错：{e}"
 
         # 5. 保存 AI 回复
         ai_msg = TaskChatMessageModel(
@@ -532,6 +492,35 @@ async def get_available_models():
             {"id": "claude-3-opus", "name": "Claude 3 Opus", "provider": "Anthropic"},
         ]
     return {"models": models}
+
+
+@router.get("/sdks", response_model=dict[str, list[dict[str, Any]]])
+async def list_sdks():
+    """获取可用的 Agent SDK 列表。"""
+    from app.sdk.base import SDKRegistry
+    # 确保 SDK 已注册
+    import app.sdk.claude_code  # noqa: F401
+    import app.sdk.openai_agents  # noqa: F401
+    import app.sdk.direct_llm  # noqa: F401
+
+    sdks = []
+    for name, sdk_cls in SDKRegistry.list_all().items():
+        try:
+            instance = sdk_cls()
+            sdks.append({
+                "id": name,
+                "name": instance.display_name,
+                "description": instance.description,
+                "available": instance.is_available(),
+            })
+        except Exception:
+            sdks.append({
+                "id": name,
+                "name": name,
+                "description": "",
+                "available": False,
+            })
+    return {"sdks": sdks}
 
 
 @router.post("/transcribe", response_model=dict[str, str])

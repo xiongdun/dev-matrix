@@ -97,7 +97,7 @@ def _build_memories_md(memories: list[dict[str, Any]]) -> str:
         groups.setdefault(t, []).append(m)
 
     for group_name, items in groups.items():
-        lines.append(f"---\n")
+        lines.append("---\n")
         lines.append(f"## {group_name}")
         lines.append("")
         for item in items:
@@ -810,3 +810,456 @@ def build_mcp_options(user_id: int) -> list[dict[str, Any]]:
         )
 
     return mcp_configs
+
+
+# ===== Rules 解析 =====
+
+
+def get_user_rules(user_id: int) -> list[dict[str, Any]]:
+    """扫描用户 rules/ 目录，返回规则列表。"""
+    rules_dir = MEMORY_ROOT / str(user_id) / "rules"
+    return _parse_rules_dir(rules_dir)
+
+
+def get_shared_rules() -> list[dict[str, Any]]:
+    """扫描 _shared/rules/ 目录，返回共享规则列表。"""
+    rules_dir = MEMORY_ROOT / "_shared" / "rules"
+    return _parse_rules_dir(rules_dir)
+
+
+def _parse_rules_dir(rules_dir: Path) -> list[dict[str, Any]]:
+    """解析 rules/ 目录下的所有 .md 文件。"""
+    if not rules_dir.exists():
+        return []
+
+    rules = []
+    for md_file in sorted(rules_dir.glob("*.md")):
+        content = _read_file(md_file)
+        parsed = _parse_rules_md(content, md_file.stem)
+        if parsed:
+            rules.append(parsed)
+    return rules
+
+
+def _parse_rules_md(content: str, name: str) -> dict[str, Any]:
+    """解析单个规则 .md 文件。"""
+    rules: dict[str, Any] = {"name": name}
+    section = ""
+
+    for line in content.split("\n"):
+        if "## 禁止" in line:
+            section = "forbidden"
+            continue
+        if "## 必须" in line:
+            section = "required"
+            continue
+        if "## 偏好" in line:
+            section = "preferred"
+            continue
+
+        if line.startswith("- ") and section:
+            rules.setdefault(section, []).append(line[2:].strip())
+
+    return rules
+
+
+def get_rules_prompt(user_id: int) -> str:
+    """组装规则注入到 system prompt。"""
+    user_rules = get_user_rules(user_id)
+    shared_rules = get_shared_rules()
+    all_rules = shared_rules + user_rules
+    if not all_rules:
+        return ""
+
+    parts = []
+    for rules in all_rules:
+        lines = []
+        if rules.get("forbidden"):
+            lines.append("禁止：" + "；".join(rules["forbidden"]))
+        if rules.get("required"):
+            lines.append("必须：" + "；".join(rules["required"]))
+        if rules.get("preferred"):
+            lines.append("偏好：" + "；".join(rules["preferred"]))
+        if lines:
+            parts.extend(lines)
+
+    if not parts:
+        return ""
+
+    return "\n\n规则约束：\n" + "\n".join(f"- {p}" for p in parts)
+
+
+# ===== Context 解析 =====
+
+
+def get_user_context(user_id: int) -> str:
+    """扫描用户 context/ 目录，返回上下文内容。"""
+    ctx_dir = MEMORY_ROOT / str(user_id) / "context"
+    return _read_md_dir(ctx_dir)
+
+
+def get_shared_context() -> str:
+    """扫描 _shared/context/ 目录，返回共享上下文。"""
+    ctx_dir = MEMORY_ROOT / "_shared" / "context"
+    return _read_md_dir(ctx_dir)
+
+
+def get_context_prompt(user_id: int) -> str:
+    """组装上下文注入到 system prompt。"""
+    user_ctx = get_user_context(user_id)
+    shared_ctx = get_shared_context()
+
+    parts = []
+    if shared_ctx:
+        parts.append(shared_ctx.strip())
+    if user_ctx:
+        parts.append(user_ctx.strip())
+
+    if not parts:
+        return ""
+
+    return "\n\n项目上下文：\n" + "\n\n".join(parts)
+
+
+# ===== Templates 解析 =====
+
+
+def get_user_templates(user_id: int) -> dict[str, str]:
+    """扫描用户 templates/ 目录，返回模板名->内容映射。"""
+    tpl_dir = MEMORY_ROOT / str(user_id) / "templates"
+    if not tpl_dir.exists():
+        return {}
+
+    templates = {}
+    for md_file in sorted(tpl_dir.glob("*.md")):
+        content = _read_file(md_file)
+        if content:
+            templates[md_file.stem] = content
+    return templates
+
+
+# ===== Hooks 解析 =====
+
+
+def get_user_hooks(user_id: int) -> list[dict[str, Any]]:
+    """扫描用户 hooks/ 目录，返回钩子列表。"""
+    hooks_dir = MEMORY_ROOT / str(user_id) / "hooks"
+    if not hooks_dir.exists():
+        return []
+
+    hooks = []
+    for md_file in sorted(hooks_dir.glob("*.md")):
+        content = _read_file(md_file)
+        hook = _parse_hook_md(content, md_file.stem)
+        if hook:
+            hooks.append(hook)
+    return hooks
+
+
+def _parse_hook_md(content: str, name: str) -> dict[str, Any]:
+    """解析钩子 .md 文件。"""
+    hook: dict[str, Any] = {"name": name}
+    section = ""
+
+    for line in content.split("\n"):
+        if "## 触发时机" in line:
+            section = "trigger"
+            continue
+        if "## 执行内容" in line:
+            section = "actions"
+            continue
+        if "## 失败处理" in line:
+            section = "failure"
+            continue
+
+        if section == "trigger" and line.strip() and not line.startswith("#"):
+            hook["trigger"] = hook.get("trigger", "") + line.strip() + " "
+        elif section == "actions" and line.strip():
+            hook.setdefault("actions", []).append(line.strip())
+        elif section == "failure" and line.strip():
+            hook.setdefault("failure", []).append(line.strip())
+
+    return hook
+
+
+# ===== Knowledge 解析 =====
+
+
+def get_user_knowledge(user_id: int) -> str:
+    """扫描用户 knowledge/ 目录，返回知识内容。"""
+    kb_dir = MEMORY_ROOT / str(user_id) / "knowledge"
+    return _read_md_dir(kb_dir)
+
+
+def get_shared_knowledge() -> str:
+    """扫描 _shared/knowledge/ 目录，返回共享知识。"""
+    kb_dir = MEMORY_ROOT / "_shared" / "knowledge"
+    return _read_md_dir(kb_dir)
+
+
+def get_knowledge_prompt(user_id: int) -> str:
+    """组装知识注入到 system prompt。"""
+    user_kb = get_user_knowledge(user_id)
+    shared_kb = get_shared_knowledge()
+
+    parts = []
+    if shared_kb:
+        parts.append(shared_kb.strip())
+    if user_kb:
+        parts.append(user_kb.strip())
+
+    if not parts:
+        return ""
+
+    return "\n\n领域知识：\n" + "\n\n".join(parts)
+
+
+# ===== Artifacts =====
+
+
+def get_user_artifacts(user_id: int, project_id: str | None = None) -> dict[str, str]:
+    """获取用户产出物。"""
+    art_dir = MEMORY_ROOT / str(user_id) / "artifacts"
+    if not art_dir.exists():
+        return {}
+
+    if project_id:
+        proj_dir = art_dir / project_id
+        if proj_dir.exists():
+            return _read_md_dir_files(proj_dir)
+        return {}
+
+    # 返回所有项目的产出物
+    result = {}
+    for proj_dir in sorted(art_dir.iterdir()):
+        if proj_dir.is_dir():
+            files = _read_md_dir_files(proj_dir)
+            for fname, content in files.items():
+                result[f"{proj_dir.name}/{fname}"] = content
+    return result
+
+
+def save_artifact(user_id: int, project_id: str, name: str, content: str) -> None:
+    """保存产出物。"""
+    art_dir = MEMORY_ROOT / str(user_id) / "artifacts" / project_id
+    _ensure_dir(art_dir)
+    _write_file(art_dir / f"{name}.md", content)
+
+
+# ===== Plugins 解析 =====
+
+
+def get_user_plugins(user_id: int) -> list[dict[str, Any]]:
+    """扫描用户 plugins/ 目录，返回插件列表。"""
+    plugins_dir = MEMORY_ROOT / str(user_id) / "plugins"
+    return _parse_plugins_dir(plugins_dir)
+
+
+def get_shared_plugins() -> list[dict[str, Any]]:
+    """扫描 _shared/plugins/ 目录，返回共享插件列表。"""
+    plugins_dir = MEMORY_ROOT / "_shared" / "plugins"
+    return _parse_plugins_dir(plugins_dir)
+
+
+def get_all_plugins(user_id: int) -> list[dict[str, Any]]:
+    """获取所有插件（共享 + 用户），用户插件覆盖同名共享插件。"""
+    shared = {p["name"]: p for p in get_shared_plugins()}
+    user = {p["name"]: p for p in get_user_plugins(user_id)}
+    # 用户插件覆盖共享插件
+    shared.update(user)
+    return list(shared.values())
+
+
+def _parse_plugins_dir(plugins_dir: Path) -> list[dict[str, Any]]:
+    """解析 plugins/ 目录下的所有 .md 文件。"""
+    if not plugins_dir.exists():
+        return []
+
+    plugins = []
+    for md_file in sorted(plugins_dir.glob("*.md")):
+        content = _read_file(md_file)
+        plugin = _parse_plugin_md(content, md_file.stem)
+        if plugin:
+            plugins.append(plugin)
+    return plugins
+
+
+def _parse_plugin_md(content: str, name: str) -> dict[str, Any]:
+    """解析插件 .md 文件。"""
+    plugin: dict[str, Any] = {"name": name}
+    section = ""
+
+    for line in content.split("\n"):
+        if "## 描述" in line:
+            section = "desc"
+            continue
+        if "## 功能" in line:
+            section = "features"
+            continue
+        if "## 触发条件" in line:
+            section = "triggers"
+            continue
+        if "## 配置" in line:
+            section = "config"
+            continue
+        if "## 命令" in line:
+            section = "commands"
+            continue
+        if "## 约束" in line:
+            section = "constraints"
+            continue
+
+        if section == "desc" and line.strip() and not line.startswith("#"):
+            plugin["description"] = plugin.get("description", "") + line.strip() + " "
+        elif section == "features" and line.startswith("- "):
+            plugin.setdefault("features", []).append(line[2:].strip())
+        elif section == "triggers" and line.startswith("- "):
+            plugin.setdefault("triggers", []).append(line[2:].strip())
+        elif section == "constraints" and line.startswith("- "):
+            plugin.setdefault("constraints", []).append(line[2:].strip())
+        elif section == "config":
+            m = re.match(r"^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|$", line)
+            if m and m.group(1).strip() not in ("选项", "---") and "---" not in line:
+                plugin.setdefault("config", []).append({
+                    "key": m.group(1).strip(),
+                    "default": m.group(2).strip(),
+                    "description": m.group(3).strip(),
+                })
+        elif section == "commands":
+            m = re.match(r"^\|\s*`?(.+?)`?\s*\|\s*(.+?)\s*\|$", line)
+            if m and m.group(1).strip() not in ("命令", "---") and "---" not in line:
+                plugin.setdefault("commands", []).append({
+                    "command": m.group(1).strip().strip("`"),
+                    "description": m.group(2).strip(),
+                })
+
+    return plugin
+
+
+def get_plugins_prompt(user_id: int) -> str:
+    """组装插件信息注入到 system prompt。"""
+    plugins = get_all_plugins(user_id)
+    if not plugins:
+        return ""
+
+    parts = []
+    for plugin in plugins:
+        lines = [f"### {plugin['name']}"]
+        if plugin.get("description"):
+            lines.append(plugin["description"].strip())
+        if plugin.get("features"):
+            lines.append("功能：" + "、".join(plugin["features"]))
+        if plugin.get("constraints"):
+            lines.append("约束：" + "；".join(plugin["constraints"]))
+        parts.append("\n".join(lines))
+
+    return "\n\n可用插件：\n" + "\n\n".join(parts)
+
+
+# ===== Collaboration =====
+
+
+def get_collaboration_config(user_id: int) -> dict[str, Any]:
+    """获取用户协作配置。"""
+    collab_path = MEMORY_ROOT / str(user_id) / "collaboration" / "team.md"
+    if not collab_path.exists():
+        return {}
+
+    content = _read_file(collab_path)
+    config: dict[str, Any] = {}
+    section = ""
+
+    for line in content.split("\n"):
+        if "## 共享范围" in line:
+            section = "sharing"
+            continue
+        if "## 协作规则" in line:
+            section = "rules"
+            continue
+
+        if section == "sharing":
+            m = re.match(r"^\|\s*(.+?)\s*\|\s*(.+?)\s*\|$", line)
+            if m and m.group(1).strip() not in ("资源", "---") and "---" not in line:
+                config.setdefault("sharing", {})[m.group(1).strip()] = m.group(2).strip()
+
+        elif section == "rules" and line.startswith("- "):
+            config.setdefault("rules", []).append(line[2:].strip())
+
+    return config
+
+
+# ===== 工具函数 =====
+
+
+def _read_md_dir(dir_path: Path) -> str:
+    """读取目录下所有 .md 文件，拼接为一个字符串。"""
+    if not dir_path.exists():
+        return ""
+
+    parts = []
+    for md_file in sorted(dir_path.glob("*.md")):
+        content = _read_file(md_file)
+        if content:
+            parts.append(content)
+    return "\n\n".join(parts)
+
+
+def _read_md_dir_files(dir_path: Path) -> dict[str, str]:
+    """读取目录下所有 .md 文件，返回文件名->内容映射。"""
+    if not dir_path.exists():
+        return {}
+
+    result = {}
+    for md_file in sorted(dir_path.glob("*.md")):
+        content = _read_file(md_file)
+        if content:
+            result[md_file.stem] = content
+    return result
+
+
+# ===== 完整记忆组装 =====
+
+
+def build_full_prompt(user_id: int, agent_role: str, project_id: str | None = None) -> str:
+    """组装完整的 system prompt 上下文。
+
+    注入顺序：
+    1. soul.md（AI 人设 + 用户画像）
+    2. rules（行为规则）
+    3. context（项目上下文）
+    4. knowledge（领域知识）
+    5. memory（用户记忆）
+    6. agent shared（Agent 共享记忆）
+    7. project memory（项目记忆）
+    """
+    parts = []
+
+    # 1. Soul
+    soul = get_soul_prompt(user_id)
+    if soul:
+        parts.append(soul)
+
+    # 2. Rules
+    rules = get_rules_prompt(user_id)
+    if rules:
+        parts.append(rules)
+
+    # 3. Context
+    ctx = get_context_prompt(user_id)
+    if ctx:
+        parts.append(ctx)
+
+    # 4. Knowledge
+    kb = get_knowledge_prompt(user_id)
+    if kb:
+        parts.append(kb)
+
+    # 5. Memory
+    mem = build_memory_prompt(user_id, agent_role, project_id)
+    if mem:
+        parts.append(mem)
+
+    if not parts:
+        return ""
+
+    return "\n\n---\n" + "\n\n".join(parts)

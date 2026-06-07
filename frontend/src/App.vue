@@ -14,7 +14,7 @@
 -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import TabBar from './components/TabBar.vue'
@@ -29,7 +29,7 @@ import { api } from './api'
 import { User, ChevronDown, LogOut, Home, Settings } from 'lucide-vue-next'
 
 const { t } = useI18n()
-const { confirmState, promptState, confirmResult, promptResult } = useDialog()
+const { confirmState, promptState, confirmResult, promptResult, forceCloseAll } = useDialog()
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -72,7 +72,22 @@ function closeUserMenu(e: Event) {
   }
 }
 
+// 路由切换时自动关闭所有弹窗，防止遮罩层残留
+watch(() => route.path, () => {
+  forceCloseAll()
+})
+
 onMounted(async () => {
+  // 强制关闭所有弹窗，防止遮罩层残留
+  forceCloseAll()
+
+  // 全局 Esc 键兜底
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && (confirmState.value.visible || promptState.value.visible)) {
+      forceCloseAll()
+    }
+  })
+
   if (userStore.isLoggedIn && userStore.menus.length === 0) {
     try {
       const userInfo = await authApi.getMe()
@@ -134,7 +149,8 @@ onMounted(async () => {
     </div>
 
     <AppConfirm
-      v-model:visible="confirmState.visible"
+      v-if="confirmState.visible"
+      :visible="confirmState.visible"
       :title="confirmState.title"
       :message="confirmState.message"
       :type="confirmState.type"
@@ -146,7 +162,8 @@ onMounted(async () => {
     />
 
     <AppPrompt
-      v-model:visible="promptState.visible"
+      v-if="promptState.visible"
+      :visible="promptState.visible"
       :title="promptState.title"
       :message="promptState.message"
       :placeholder="promptState.placeholder"
@@ -156,6 +173,22 @@ onMounted(async () => {
       @confirm="(v) => promptResult(v)"
       @cancel="promptResult(null)"
     />
+
+    <!-- 全局 Esc 兜底：关闭所有弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="confirmState.visible || promptState.visible"
+        class="modal-esc-catcher"
+        @keydown.esc="
+          confirmState.visible = false;
+          promptState.visible = false;
+          confirmResult(false);
+          promptResult(null);
+        "
+        tabindex="0"
+        style="position:fixed;top:0;left:0;width:0;height:0;opacity:0;pointer-events:none;"
+      ></div>
+    </Teleport>
 
     <ErrorToast />
   </div>

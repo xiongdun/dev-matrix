@@ -162,6 +162,108 @@
           </div>
         </div>
       </div>
+
+      <!-- Rules -->
+      <div class="section" v-if="workspace.rules?.length">
+        <h2 class="section-title">📏 行为规则 ({{ workspace.rules.length }} 个)</h2>
+        <div class="rules-list">
+          <div v-for="rule in workspace.rules" :key="rule.name" class="rule-card">
+            <div class="rule-name">{{ rule.name }}</div>
+            <div v-if="rule.forbidden?.length" class="rule-group">
+              <span class="rule-label forbidden">禁止：</span>
+              <span v-for="item in rule.forbidden" :key="item" class="rule-item">{{ item }}</span>
+            </div>
+            <div v-if="rule.required?.length" class="rule-group">
+              <span class="rule-label required">必须：</span>
+              <span v-for="item in rule.required" :key="item" class="rule-item">{{ item }}</span>
+            </div>
+            <div v-if="rule.preferred?.length" class="rule-group">
+              <span class="rule-label preferred">偏好：</span>
+              <span v-for="item in rule.preferred" :key="item" class="rule-item">{{ item }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Templates -->
+      <div class="section" v-if="Object.keys(workspace.templates || {}).length">
+        <h2 class="section-title">📋 输出模板 ({{ Object.keys(workspace.templates).length }} 个)</h2>
+        <div class="template-list">
+          <div v-for="(content, name) in workspace.templates" :key="name" class="template-card">
+            <div class="template-name">{{ name }}</div>
+            <div class="markdown-body" v-html="renderMarkdown(content)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hooks -->
+      <div class="section" v-if="workspace.hooks?.length">
+        <h2 class="section-title">🪝 生命周期钩子 ({{ workspace.hooks.length }} 个)</h2>
+        <div class="hooks-list">
+          <div v-for="hook in workspace.hooks" :key="hook.name" class="hook-card">
+            <div class="hook-name">{{ hook.name }}</div>
+            <div class="hook-trigger" v-if="hook.trigger">
+              <span class="hook-label">触发时机：</span>{{ hook.trigger }}
+            </div>
+            <div class="hook-actions" v-if="hook.actions?.length">
+              <span class="hook-label">执行内容：</span>
+              <div v-for="(action, i) in hook.actions" :key="i" class="hook-action">{{ action }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Artifacts -->
+      <div class="section" v-if="Object.keys(workspace.artifacts || {}).length">
+        <h2 class="section-title">📦 产出物 ({{ Object.keys(workspace.artifacts).length }} 个)</h2>
+        <div class="artifact-list">
+          <div v-for="(content, name) in workspace.artifacts" :key="name" class="artifact-card">
+            <div class="artifact-name">{{ name }}</div>
+            <div class="markdown-body" v-html="renderMarkdown(content)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plugins -->
+      <div class="section" v-if="workspace.plugins?.length">
+        <h2 class="section-title">🧩 插件 ({{ workspace.plugins.length }} 个)</h2>
+        <div class="plugin-list">
+          <div v-for="plugin in workspace.plugins" :key="plugin.name" class="plugin-card">
+            <div class="plugin-header">
+              <span class="plugin-name">{{ plugin.name }}</span>
+            </div>
+            <div class="plugin-desc" v-if="plugin.description">{{ plugin.description }}</div>
+            <div class="plugin-features" v-if="plugin.features?.length">
+              <span class="plugin-label">功能：</span>
+              <span v-for="f in plugin.features" :key="f" class="plugin-tag">{{ f }}</span>
+            </div>
+            <div class="plugin-constraints" v-if="plugin.constraints?.length">
+              <span class="plugin-label">约束：</span>
+              <span v-for="c in plugin.constraints" :key="c" class="plugin-tag constraint">{{ c }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collaboration -->
+      <div class="section" v-if="workspace.collaboration && Object.keys(workspace.collaboration).length">
+        <h2 class="section-title">🤝 协作配置</h2>
+        <div class="collab-content">
+          <div v-if="workspace.collaboration.sharing" class="collab-sharing">
+            <h3>共享范围</h3>
+            <div v-for="(val, key) in workspace.collaboration.sharing" :key="key" class="collab-row">
+              <span class="collab-key">{{ key }}</span>
+              <span class="collab-val">{{ val }}</span>
+            </div>
+          </div>
+          <div v-if="workspace.collaboration.rules?.length" class="collab-rules">
+            <h3>协作规则</h3>
+            <div v-for="(rule, i) in workspace.collaboration.rules" :key="i" class="collab-rule">
+              {{ rule }}
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -606,6 +708,229 @@ onMounted(loadData)
   font-size: 13px;
   color: var(--text-secondary);
   padding: 4px 0;
+}
+
+/* Rules */
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rule-card {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.rule-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.rule-group {
+  margin-bottom: 6px;
+}
+
+.rule-label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.rule-label.forbidden { color: #ef4444; }
+.rule-label.required { color: #3b82f6; }
+.rule-label.preferred { color: #10b981; }
+
+.rule-item {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+
+.rule-item::after {
+  content: "；";
+}
+
+.rule-item:last-child::after {
+  content: "";
+}
+
+/* Templates */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-card {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.template-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+/* Hooks */
+.hooks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hook-card {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.hook-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.hook-trigger, .hook-actions {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.hook-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.hook-action {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0 2px 12px;
+}
+
+/* Artifacts */
+.artifact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.artifact-card {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.artifact-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+/* Plugins */
+.plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plugin-card {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.plugin-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.plugin-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.plugin-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.plugin-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.plugin-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.plugin-tag.constraint {
+  background: rgba(234, 179, 8, 0.1);
+  color: var(--accent-yellow);
+}
+
+/* Collaboration */
+.collab-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 12px 0 8px 0;
+}
+
+.collab-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.collab-key {
+  color: var(--text-muted);
+  min-width: 100px;
+}
+
+.collab-val {
+  color: var(--text-primary);
+}
+
+.collab-rule {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+.collab-rule::before {
+  content: "• ";
+  color: var(--text-muted);
 }
 
 .empty-state {

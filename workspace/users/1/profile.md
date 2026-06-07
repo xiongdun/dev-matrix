@@ -12,6 +12,8 @@
 | 缩进 | 4 |
 | 引号 | single |
 | 最大行宽 | 100 |
+| language | zh |
+| style | concise |
 
 ## 交互模式（系统学习）
 

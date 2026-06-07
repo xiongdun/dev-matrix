@@ -1,21 +1,25 @@
 """用户 Workspace API 模块。
 
-提供指定用户的完整 workspace 数据读取接口，
-包含 profile、memory、soul、skill、mcp、projects 等。
+提供指定用户的完整 workspace 数据读取接口。
 """
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user
 from app.memory.manager import (
-    AgentMemoryManager,
     UserMemoryManager,
-    get_user_mcp_servers,
-    get_user_skills,
+    get_all_plugins,
+    get_collaboration_config,
     get_soul_prompt,
+    get_user_artifacts,
+    get_user_hooks,
+    get_user_mcp_servers,
+    get_user_rules,
+    get_user_skills,
+    get_user_templates,
 )
 from app.state.models import UserModel
 
@@ -31,11 +35,9 @@ async def get_user_workspace(
     """获取指定用户的完整 workspace 数据。"""
     mgr = UserMemoryManager(user_id)
 
-    # 检查 workspace 目录是否存在
     if not mgr.user_dir.exists():
         raise HTTPException(status_code=404, detail=f"User {user_id} workspace not found")
 
-    # 收集所有数据
     result: dict[str, Any] = {
         "user_id": user_id,
         "profile": mgr.get_profile(),
@@ -43,10 +45,15 @@ async def get_user_workspace(
         "soul": get_soul_prompt(user_id),
         "skills": get_user_skills(user_id),
         "mcp_servers": get_user_mcp_servers(user_id),
+        "rules": get_user_rules(user_id),
+        "templates": get_user_templates(user_id),
+        "hooks": get_user_hooks(user_id),
+        "plugins": get_all_plugins(user_id),
+        "artifacts": get_user_artifacts(user_id),
+        "collaboration": get_collaboration_config(user_id),
         "projects": {},
     }
 
-    # 扫描项目记忆
     if mgr.projects_dir.exists():
         for md_file in sorted(mgr.projects_dir.glob("*.md")):
             project_id = md_file.stem
@@ -112,3 +119,58 @@ async def get_user_projects(
             project_id = md_file.stem
             projects[project_id] = mgr.get_project_memory(project_id)
     return {"projects": projects}
+
+
+@router.get("/{user_id}/workspace/rules")
+async def get_user_rules_list(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的规则列表。"""
+    return {"rules": get_user_rules(user_id)}
+
+
+@router.get("/{user_id}/workspace/templates")
+async def get_user_templates_list(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的模板列表。"""
+    return {"templates": get_user_templates(user_id)}
+
+
+@router.get("/{user_id}/workspace/hooks")
+async def get_user_hooks_list(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的钩子列表。"""
+    return {"hooks": get_user_hooks(user_id)}
+
+
+@router.get("/{user_id}/workspace/plugins")
+async def get_user_plugins_list(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的插件列表（含共享插件）。"""
+    return {"plugins": get_all_plugins(user_id)}
+
+
+@router.get("/{user_id}/workspace/artifacts")
+async def get_user_artifacts_list(
+    user_id: int,
+    project_id: str | None = None,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的产出物。"""
+    return {"artifacts": get_user_artifacts(user_id, project_id)}
+
+
+@router.get("/{user_id}/workspace/collaboration")
+async def get_user_collaboration(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+):
+    """获取指定用户的协作配置。"""
+    return {"collaboration": get_collaboration_config(user_id)}

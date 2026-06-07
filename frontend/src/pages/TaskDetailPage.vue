@@ -121,6 +121,27 @@
                   </div>
                 </div>
 
+                <!-- SDK 选择器 -->
+                <div class="model-selector">
+                  <button class="sdk-select-btn" @click.stop="showSDKDropdown = !showSDKDropdown" title="选择 Agent SDK">
+                    <Bot :size="14" />
+                    <span>{{ selectedSDKLabel }}</span>
+                    <ChevronDown :size="12" />
+                  </button>
+                  <div v-if="showSDKDropdown" class="model-dropdown">
+                    <div
+                      v-for="sdk in availableSDKs"
+                      :key="sdk.id"
+                      class="model-option"
+                      :class="{ active: selectedSDK === sdk.id, disabled: !sdk.available }"
+                      @click="selectSDK(sdk.id)"
+                    >
+                      <span class="model-name">{{ sdk.name }}</span>
+                      <span class="model-provider">{{ sdk.available ? sdk.description : '不可用' }}</span>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- 语音输入按钮 -->
                 <button
                   class="toolbar-btn"
@@ -249,6 +270,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowLeft,
+  Bot,
   CheckCircle,
   Undo2,
   RefreshCw,
@@ -409,6 +431,50 @@ async function loadAvailableModels() {
 function selectModel(modelId: string) {
   selectedModel.value = modelId
   showModelDropdown.value = false
+}
+
+// ==================== Agent SDK 选择器 ====================
+interface AgentSDK {
+  id: string
+  name: string
+  description: string
+  available: boolean
+}
+
+const availableSDKs = ref<AgentSDK[]>([])
+const selectedSDK = ref('direct_llm')
+const showSDKDropdown = ref(false)
+
+const selectedSDKLabel = computed(() => {
+  const sdk = availableSDKs.value.find(s => s.id === selectedSDK.value)
+  return sdk?.name || 'Direct LLM'
+})
+
+async function loadAvailableSDKs() {
+  try {
+    const res = await api.getAvailableSDKs()
+    availableSDKs.value = res.sdks
+  } catch (e) {
+    console.error('Failed to load SDKs:', e)
+    availableSDKs.value = [
+      { id: 'direct_llm', name: 'Direct LLM', description: '直接调用 LLM API', available: true },
+      { id: 'claude_code', name: 'Claude Code', description: '基于 Claude Code CLI', available: false },
+      { id: 'openai_agents', name: 'OpenAI Agents', description: '基于 OpenAI Agents SDK', available: false },
+    ]
+  }
+}
+
+function selectSDK(sdkId: string) {
+  selectedSDK.value = sdkId
+  showSDKDropdown.value = false
+}
+
+// 点击外部关闭 SDK 下拉菜单
+function closeSDKDropdown(e: Event) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.sdk-select-btn') && !target.closest('.model-dropdown')) {
+    showSDKDropdown.value = false
+  }
 }
 
 // ==================== 语音输入 ====================
@@ -579,6 +645,8 @@ watch(
 
 loadAllTasks()
 loadAvailableModels()
+loadAvailableSDKs()
+document.addEventListener('click', closeSDKDropdown)
 
 const showReject = ref(false)
 const showRetry = ref(false)
@@ -695,7 +763,7 @@ async function sendMessage() {
   scrollToBottom()
 
   try {
-    const res = await api.sendTaskChatMessage(taskId.value, text, selectedModel.value)
+    const res = await api.sendTaskChatMessage(taskId.value, text, selectedModel.value, selectedSDK.value)
 
     aiMsg.isThinking = false
     aiMsg.content = res.message.content
@@ -1117,6 +1185,27 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
+/* SDK 选择器 */
+.sdk-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sdk-select-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
 .model-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -1128,6 +1217,8 @@ onUnmounted(() => {
   padding: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .model-option {

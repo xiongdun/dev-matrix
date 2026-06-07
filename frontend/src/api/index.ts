@@ -301,7 +301,7 @@ export const api = {
   },
 
   /** 发送任务对话消息（不重试，超时 5 分钟） */
-  sendTaskChatMessage(taskId: number, message: string, model?: string) {
+  sendTaskChatMessage(taskId: number, message: string, model?: string, sdk?: string) {
     const token = localStorage.getItem('token')
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 分钟超时
@@ -312,7 +312,7 @@ export const api = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ message, model }),
+      body: JSON.stringify({ message, model, sdk }),
       signal: controller.signal,
     }).then(async (resp) => {
       clearTimeout(timeoutId)
@@ -328,6 +328,11 @@ export const api = {
       clearTimeout(timeoutId)
       throw err
     })
+  },
+
+  /** 获取可用 Agent SDK 列表 */
+  getAvailableSDKs() {
+    return requestWithRetry<{ sdks: Array<{ id: string; name: string; description: string; available: boolean }> }>('/workbench/sdks')
   },
 
   /** 获取可用 LLM 模型列表 */
