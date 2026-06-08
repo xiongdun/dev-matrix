@@ -6,6 +6,7 @@
 import json
 import logging
 from collections.abc import AsyncIterator
+from typing import Any
 
 from app.sdk.base import BaseSDK, SDKMessage, SDKRegistry, SDKResponse
 
@@ -35,8 +36,9 @@ class ClaudeCodeSDK(BaseSDK):
     display_name = "Claude Code"
     description = "基于 Claude Code CLI 的 Agent SDK，支持文件读写、代码执行等工具"
 
-    def __init__(self, max_turns: int = 20):
+    def __init__(self, max_turns: int = 20, sandbox_enabled: bool = True):
         self.max_turns = max_turns
+        self.sandbox_enabled = sandbox_enabled
 
     def is_available(self) -> bool:
         return CLAUDE_SDK_AVAILABLE
@@ -57,10 +59,19 @@ class ClaudeCodeSDK(BaseSDK):
             )
 
         max_turns = kwargs.get("max_turns", self.max_turns)
+        sandbox: Any = None
+        if self.sandbox_enabled:
+            sandbox = {
+                "enabled": True,
+                "autoAllowBashIfSandboxed": True,
+            }
+            logger.info("Sandbox enabled for Claude Code SDK")
+
         options = ClaudeAgentOptions(
             system_prompt=system_prompt,
             max_turns=max_turns,
             continue_conversation=False,
+            sandbox=sandbox,
         )
 
         ai_content = ""

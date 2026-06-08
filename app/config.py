@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # Claude Code SDK
     sdk_max_turns: int = 20
+    sdk_sandbox_enabled: bool = True
 
     # OpenAI Agents SDK
     openai_agents_model: str = "mimo-v2.5-pro"

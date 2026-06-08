@@ -181,6 +181,18 @@ pytest tests/ -v
 cd frontend && npm run build
 ```
 
+## 已知问题
+
+### WSL + NTFS 下 Vite HMR 不可靠
+
+项目在 WSL 中运行且源码位于 NTFS 挂载盘（如 `/mnt/d/`）时，Vite 的 HMR（Hot Module Replacement）文件监听不可靠，CSS/Vue 模板改动可能不触发热更新。
+
+**解决方案**：修改前端代码后，手动重启 Vite dev server（`Ctrl+C` 后重新 `npx vite`）。
+
+### WSL 系统代理干扰 API 请求
+
+WSL 环境可能配置了 `HTTP_PROXY` 系统代理，导致 `httpx.AsyncClient` 请求小米 API 返回 503/404。后端所有 `httpx.AsyncClient` 已统一设置 `trust_env=False` 绕过。
+
 ## 许可证
 
 MIT License

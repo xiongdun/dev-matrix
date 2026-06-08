@@ -71,6 +71,28 @@ from app.api import (
     user_workspace as user_workspace_api,
 )
 from app.api import (
+    events_enhanced as events_enhanced_api,
+)
+from app.api import (
+    message_bus as message_bus_api,
+)
+from app.api import (
+    tracing as tracing_api,
+)
+from app.api import (
+    mcp as mcp_api,
+)
+from app.api import (
+    lifecycle_mgmt as lifecycle_api,
+)
+from app.api import (
+    observability as observability_api,
+)
+from app.api import (
+    sandbox as sandbox_api,
+)
+from app.events.sources import router as webhook_router
+from app.api import (
     health as health_api,
 )
 from app.api import (
@@ -387,6 +409,13 @@ protected_routers = [
     (audit_api.router, "/api/audit", ["audit"]),
     (memory_api.router, "/api/memory", ["memory"]),
     (user_workspace_api.router, "/api/users", ["user-workspace"]),
+    (events_enhanced_api.router, "/api/events", ["events"]),
+    (message_bus_api.router, "/api/messages", ["messages"]),
+    (tracing_api.router, "/api/tracing", ["tracing"]),
+    (mcp_api.router, "/api/mcp", ["mcp"]),
+    (lifecycle_api.router, "/api/lifecycle-mgmt", ["lifecycle-mgmt"]),
+    (observability_api.router, "/api/observability", ["observability"]),
+    (sandbox_api.router, "/api/sandbox", ["sandbox"]),
 ]
 
 for router, prefix, tags in protected_routers:
@@ -399,6 +428,9 @@ for router, prefix, tags in protected_routers:
 
 # 注册健康检查路由（公开，无需认证）
 app.include_router(health_api.router)
+
+# 注册 Webhook 路由（公开，无需认证）
+app.include_router(webhook_router, prefix="/api/webhooks", tags=["webhooks"])
 
 # 注册审计中间件（在请求日志中间件之后）
 app.middleware("http")(audit_middleware)

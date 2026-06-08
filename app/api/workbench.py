@@ -398,7 +398,11 @@ async def chat_with_task(
         try:
             # 创建 SDK 实例
             if sdk_name == "claude_code":
-                sdk = SDKRegistry.create("claude_code", max_turns=settings.sdk_max_turns)
+                sdk = SDKRegistry.create(
+                    "claude_code",
+                    max_turns=settings.sdk_max_turns,
+                    sandbox_enabled=settings.sdk_sandbox_enabled,
+                )
             elif sdk_name == "openai_agents":
                 sdk = SDKRegistry.create(
                     "openai_agents",

@@ -54,6 +54,10 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
+    watch: {
+      // NTFS 挂载下 .venv/node_modules 变更会触发无效 HMR，排除它们
+      ignored: ['**/.venv/**', '**/node_modules/**', '**/.git/**', '**/dist/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

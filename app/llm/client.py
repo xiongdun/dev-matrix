@@ -153,7 +153,7 @@ class OpenAIClient(LLMClient):
             len(messages),
         )
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False) as client:
                 resp = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers=headers,
@@ -280,7 +280,7 @@ class AnthropicClient(LLMClient):
             len(messages),
         )
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False) as client:
                 resp = await client.post(
                     f"{self.base_url}/messages",
                     headers=headers,
